@@ -1,0 +1,1519 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>勤怠変換 - Sakigake</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/encoding-japanese/2.0.0/encoding.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=JetBrains+Mono:wght@400;500&display=swap');
+        
+        :root {
+            --bg-primary: #0f1419;
+            --bg-secondary: #1a2332;
+            --bg-card: #1e2a3a;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-purple: #8b5cf6;
+            --accent-cyan: #06b6d4;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --border-color: #334155;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        body {
+            font-family: 'Noto Sans JP', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+        
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 1.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        h1 {
+            font-size: 1.75rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .subtitle { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.25rem; }
+        
+        .tabs {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem;
+            flex-wrap: wrap;
+        }
+        
+        .tab {
+            padding: 0.75rem 1.25rem;
+            border-radius: 8px 8px 0 0;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            background: transparent;
+            border: none;
+            transition: all 0.2s;
+            font-family: inherit;
+            position: relative;
+        }
+        
+        .tab:hover { color: var(--text-primary); background: var(--bg-secondary); }
+        .tab.active { color: var(--accent-blue); background: var(--bg-card); border-bottom: 2px solid var(--accent-blue); }
+        
+        .tab .status-dot {
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-left: 6px;
+        }
+        .status-dot.ok { background: var(--accent-green); }
+        .status-dot.ng { background: var(--accent-red); }
+        
+        .tab-content { display: none; min-height: 500px; }
+        .tab-content.active { display: block; }
+        
+        .card {
+            background: var(--bg-card);
+            border-radius: 10px;
+            padding: 1.25rem;
+            border: 1px solid var(--border-color);
+            margin-bottom: 1rem;
+        }
+        
+        .card-title {
+            font-size: 0.95rem;
+            font-weight: 500;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .card-title .icon {
+            width: 22px; height: 22px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+        }
+        
+        .icon-blue { background: rgba(59, 130, 246, 0.2); color: var(--accent-blue); }
+        .icon-green { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .icon-amber { background: rgba(245, 158, 11, 0.2); color: var(--accent-amber); }
+        .icon-purple { background: rgba(139, 92, 246, 0.2); color: var(--accent-purple); }
+        .icon-cyan { background: rgba(6, 182, 212, 0.2); color: var(--accent-cyan); }
+        
+        .upload-zone {
+            border: 2px dashed var(--border-color);
+            border-radius: 8px;
+            padding: 1.25rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: var(--bg-secondary);
+        }
+        
+        .upload-zone:hover, .upload-zone.dragover { border-color: var(--accent-blue); background: rgba(59, 130, 246, 0.1); }
+        .upload-zone.loaded { border-color: var(--accent-green); background: rgba(16, 185, 129, 0.1); }
+        .upload-zone input { display: none; }
+        .upload-text { color: var(--text-secondary); font-size: 0.85rem; }
+        .file-name { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; color: var(--accent-green); margin-top: 0.5rem; }
+        
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.4rem;
+            padding: 0.7rem 1.25rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            border: none;
+            transition: all 0.2s;
+            font-family: inherit;
+        }
+        
+        .btn-primary { background: linear-gradient(135deg, var(--accent-blue), #2563eb); color: white; }
+        .btn-primary:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4); }
+        .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-success { background: linear-gradient(135deg, var(--accent-green), #059669); color: white; }
+        .btn-success:hover:not(:disabled) { box-shadow: 0 4px 15px rgba(16, 185, 129, 0.4); }
+        .btn-danger { background: linear-gradient(135deg, var(--accent-red), #dc2626); color: white; }
+        .btn-secondary { background: var(--bg-secondary); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-small { padding: 0.4rem 0.75rem; font-size: 0.8rem; }
+        .btn-cyan { background: linear-gradient(135deg, var(--accent-cyan), #0891b2); color: white; }
+        
+        .action-area { display: flex; gap: 1rem; justify-content: center; margin: 1.5rem 0; flex-wrap: wrap; }
+        
+        .status-log {
+            background: var(--bg-secondary);
+            border-radius: 6px;
+            padding: 0.75rem;
+            max-height: 200px;
+            overflow-y: auto;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.75rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .log-entry { padding: 0.2rem 0; border-bottom: 1px solid var(--border-color); }
+        .log-entry:last-child { border-bottom: none; }
+        .log-success { color: var(--accent-green); }
+        .log-warning { color: var(--accent-amber); }
+        .log-error { color: var(--accent-red); }
+        .log-info { color: var(--text-secondary); }
+        
+        .data-table-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+        
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+        
+        .data-table th, .data-table td {
+            padding: 0.5rem 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .data-table th {
+            background: var(--bg-secondary);
+            font-weight: 500;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+        
+        .data-table tr:hover { background: rgba(59, 130, 246, 0.05); }
+        
+        .data-table input {
+            width: 100%;
+            padding: 0.35rem 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.8rem;
+        }
+        
+        .data-table input:focus { outline: none; border-color: var(--accent-blue); }
+        .data-table input[type="number"] { width: 80px; font-family: 'JetBrains Mono', monospace; }
+        
+        .btn-icon {
+            width: 28px; height: 28px;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+        }
+        
+        .toolbar {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        
+        .toolbar input[type="text"] {
+            flex: 1;
+            min-width: 150px;
+            padding: 0.6rem 0.875rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.875rem;
+        }
+        
+        .toolbar input:focus { outline: none; border-color: var(--accent-blue); }
+        
+        .stats { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 0.75rem; }
+        .stat-item { background: var(--bg-secondary); padding: 0.5rem 0.75rem; border-radius: 5px; font-size: 0.8rem; }
+        .stat-value { font-weight: 700; color: var(--accent-blue); }
+        
+        select {
+            padding: 0.6rem 0.875rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            font-family: inherit;
+            font-size: 0.875rem;
+        }
+        
+        select:focus { outline: none; border-color: var(--accent-blue); }
+        
+        .preview-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 0.75rem; }
+        .preview-table th, .preview-table td { padding: 0.4rem; border: 1px solid var(--border-color); text-align: left; }
+        .preview-table th { background: var(--bg-secondary); font-weight: 500; }
+        
+        .hidden { display: none !important; }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }
+        .badge-success { background: rgba(16, 185, 129, 0.2); color: var(--accent-green); }
+        .badge-error { background: rgba(239, 68, 68, 0.2); color: var(--accent-red); }
+        
+        .month-selector { margin-top: 0.75rem; }
+        .month-selector label { display: block; margin-bottom: 0.35rem; color: var(--text-secondary); font-size: 0.8rem; }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 90%;
+            border: 1px solid var(--border-color);
+        }
+        
+        .modal h3 { margin-bottom: 1rem; font-size: 1.1rem; }
+        .modal-actions { display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.25rem; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        
+        .stats-grid .stat-item {
+            text-align: center;
+            padding: 1rem;
+        }
+        
+        .stats-grid .stat-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+        
+        .stats-grid .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            margin-top: 0.25rem;
+        }
+
+        .flow-indicator {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+            margin: 1rem 0;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+        }
+
+        .flow-step {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .flow-step.active { background: var(--accent-blue); color: white; }
+        .flow-step.done { background: var(--accent-green); color: white; }
+        .flow-step.pending { background: var(--border-color); color: var(--text-secondary); }
+        .flow-arrow { color: var(--text-secondary); }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🏥 勤怠変換</h1>
+            <p class="subtitle">働き方マイスター → 楽々勤怠 → TKC</p>
+        </header>
+        
+        <!-- タブ -->
+        <div class="tabs">
+            <button class="tab active" data-tab="shift">📅 マイスター→楽々</button>
+            <button class="tab" data-tab="tkc">⚡ 楽々→TKC</button>
+            <button class="tab" data-tab="employees">
+                👤 社員マスタ
+                <span class="status-dot ng" id="empStatusDot"></span>
+            </button>
+            <button class="tab" data-tab="codes">
+                📋 勤務符号
+                <span class="status-dot ng" id="codeStatusDot"></span>
+            </button>
+        </div>
+        
+        <!-- マイスター→楽々 タブ -->
+        <div class="tab-content active" id="tab-shift">
+            <div class="card">
+                <div class="card-title"><span class="icon icon-green">📅</span> 看護部勤務表（XLSX）</div>
+                <div class="upload-zone" id="scheduleZone">
+                    <input type="file" id="scheduleFile" accept=".xlsx">
+                    <div class="upload-text">勤務表.xlsx をドロップ</div>
+                    <div class="file-name" id="scheduleFileName"></div>
+                </div>
+                <div class="month-selector hidden" id="monthSelector">
+                    <label>対象年月</label>
+                    <select id="targetMonth"></select>
+                </div>
+                <div class="stats" id="scheduleStats"></div>
+            </div>
+            
+            <div class="action-area">
+                <button class="btn btn-primary" id="convertBtn" disabled>🔄 変換実行</button>
+                <button class="btn btn-success hidden" id="downloadBtn">⬇️ CSVダウンロード</button>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span class="icon icon-blue">📝</span> 処理ログ</div>
+                <div class="status-log" id="logArea">
+                    <div class="log-entry log-info">社員マスタと勤務符号を各タブで読み込んでください</div>
+                </div>
+            </div>
+            
+            <div class="card hidden" id="previewSection">
+                <div class="card-title"><span class="icon icon-green">👁️</span> 変換結果プレビュー</div>
+                <div style="overflow-x: auto;">
+                    <table class="preview-table" id="previewTable"></table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 楽々→TKC タブ -->
+        <div class="tab-content" id="tab-tkc">
+            <div class="card">
+                <div class="card-title"><span class="icon icon-cyan">📊</span> 楽々勤怠CSV</div>
+                <div class="upload-zone" id="tkcUploadZone">
+                    <input type="file" id="tkcFile" accept=".csv">
+                    <div class="upload-text">楽々勤怠CSVをドロップ</div>
+                    <div class="file-name" id="tkcFileName"></div>
+                </div>
+            </div>
+            
+            <div class="card hidden" id="tkcResultCard">
+                <div class="card-title"><span class="icon icon-green">✓</span> 変換完了</div>
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="tkcStatMatched">0</div>
+                        <div class="stat-label">マッチング成功</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="tkcStatNotFound">0</div>
+                        <div class="stat-label">TKCに未登録</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="tkcStatTotal">0</div>
+                        <div class="stat-label">楽々勤怠の社員数</div>
+                    </div>
+                </div>
+                <div class="action-area">
+                    <button class="btn btn-cyan" id="tkcDownloadBtn">⬇️ TKC用CSVをダウンロード</button>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title"><span class="icon icon-amber">📌</span> マッピング設定</div>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.5rem; font-size: 0.75rem;">
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">D:出勤日数</span> → <span style="color: var(--accent-cyan);">C:平日出勤</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">E:実働時間</span> → <span style="color: var(--accent-cyan);">E:出勤時間</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">G:法定内時間外</span> → <span style="color: var(--accent-cyan);">R:時間外A</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">H:法定外時間外</span> → <span style="color: var(--accent-cyan);">S:時間外B</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">Q:深夜手当</span> → <span style="color: var(--accent-cyan);">AQ列</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">R:準夜手当</span> → <span style="color: var(--accent-cyan);">AR列</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">S:遅出手当</span> → <span style="color: var(--accent-cyan);">AS列</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">T:早出手当</span> → <span style="color: var(--accent-cyan);">AU列</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">Y:日直日数</span> → <span style="color: var(--accent-cyan);">Y:回数手当Ⅰ</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">Z:宿直日数</span> → <span style="color: var(--accent-cyan);">Z:回数手当Ⅱ</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 社員マスタタブ -->
+        <div class="tab-content" id="tab-employees">
+            <div class="card">
+                <div class="card-title"><span class="icon icon-purple">📂</span> JSONファイル読み込み</div>
+                <div class="upload-zone" id="employeeZone">
+                    <input type="file" id="employeeFile" accept=".json">
+                    <div class="upload-text">社員マスタ.json をドロップ</div>
+                    <div class="file-name" id="employeeFileName"></div>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    ※ 読み込んだデータはブラウザに保存され、次回以降は自動で復元されます
+                </p>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon icon-purple">👤</span>
+                    社員マスタ管理
+                    <span class="badge badge-error" id="employeeCount">0名</span>
+                </div>
+                
+                <div class="toolbar">
+                    <input type="text" id="employeeSearch" placeholder="🔍 氏名または社員番号で検索...">
+                    <button class="btn btn-primary btn-small" id="addEmployeeBtn">➕ 追加</button>
+                    <button class="btn btn-success btn-small" id="saveEmployeeBtn">💾 JSON保存</button>
+                    <button class="btn btn-secondary btn-small" id="clearEmployeeBtn">🗑️ クリア</button>
+                </div>
+                
+                <div class="data-table-wrapper">
+                    <table class="data-table" id="employeeTable">
+                        <thead>
+                            <tr>
+                                <th style="width:100px;">社員番号</th>
+                                <th>氏名</th>
+                                <th style="width:80px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeeTableBody">
+                            <tr><td colspan="3" style="text-align:center; color: var(--text-secondary);">JSONファイルを読み込んでください</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 勤務符号タブ -->
+        <div class="tab-content" id="tab-codes">
+            <div class="card">
+                <div class="card-title"><span class="icon icon-amber">📂</span> JSONファイル読み込み</div>
+                <div class="upload-zone" id="codeZone">
+                    <input type="file" id="codeFile" accept=".json">
+                    <div class="upload-text">勤務符号.json をドロップ</div>
+                    <div class="file-name" id="codeFileName"></div>
+                </div>
+                <p style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                    ※ 読み込んだデータはブラウザに保存され、次回以降は自動で復元されます
+                </p>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">
+                    <span class="icon icon-amber">📋</span>
+                    勤務符号マッピング管理
+                    <span class="badge badge-error" id="codeCount">0件</span>
+                </div>
+                
+                <div class="toolbar">
+                    <input type="text" id="codeSearch" placeholder="🔍 符号名で検索...">
+                    <button class="btn btn-primary btn-small" id="addCodeBtn">➕ 追加</button>
+                    <button class="btn btn-success btn-small" id="saveCodeBtn">💾 JSON保存</button>
+                    <button class="btn btn-secondary btn-small" id="clearCodeBtn">🗑️ クリア</button>
+                </div>
+                
+                <div class="data-table-wrapper">
+                    <table class="data-table" id="codeTable">
+                        <thead>
+                            <tr>
+                                <th style="width:150px;">名称</th>
+                                <th style="width:80px;">勤務表</th>
+                                <th style="width:120px;">楽楽勤怠</th>
+                                <th>備考</th>
+                                <th style="width:80px;">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody id="codeTableBody">
+                            <tr><td colspan="5" style="text-align:center; color: var(--text-secondary);">JSONファイルを読み込んでください</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 削除確認モーダル -->
+    <div class="modal-overlay hidden" id="deleteModal">
+        <div class="modal">
+            <h3>⚠️ 削除確認</h3>
+            <p id="deleteModalText">この項目を削除しますか？</p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelDeleteBtn">キャンセル</button>
+                <button class="btn btn-danger" id="confirmDeleteBtn">削除</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==================== グローバル変数 ====================
+        let employees = [];
+        let codes = [];
+        let scheduleData = null;
+        let convertedData = null;
+        let targetYear = 2026;
+        let targetMonth = 2;
+        let deleteTarget = { type: null, index: null };
+
+        // TKC変換用
+        let rakurakuData = null;
+        let tkcConvertedCsv = null;
+
+        const STORAGE_KEY_EMP = 'sakigake_employees_v6';
+        const STORAGE_KEY_CODE = 'sakigake_codes_v6';
+
+        // TKCテンプレート（ヘッダー）
+        const TKC_HEADER = ['社員番号(必須)', '社員氏名(ﾃﾝﾌﾟﾚｰﾄ項目)', '平日出勤', '休日出勤', '出勤時間', '遅刻', '早退', '有休日数', '代休', '公休', 'その他の休日', '生理休暇', '休職日数', '欠勤日数', '日額表用勤務日数', '控除日数', '控除時間', '時間外手当時間Ａ', '時間外手当時間Ｂ', '時間外手当時間Ｃ', '時間外手当時間Ｄ', '時間外手当時間Ｅ', '時間外手当時間Ｆ', '時間外手当時間Ｇ', '回数手当回数Ⅰ', '回数手当回数Ⅱ', '回数手当回数Ⅲ', '回数手当回数Ⅳ', '回数手当回数Ⅴ', '要出勤日数', '要出勤時間', '所定労働日数', '所定労働時間', '有休日数残繰越分', '有休日数残当年分', '支給項目1', '支給項目2', '支給項目3', '支給項目4', '支給項目5', '支給項目6', '支給項目7', '支給項目8', '支給項目9', '支給項目10', '支給項目11', '支給項目12', '支給項目13', '時間外手当', '回数手当', '課税通勤手当', '給与控除額', '給与控除加算分', '(非)通勤手当/通勤手当', '(非)支給項目20', '健康保険料(介護)', '健康保険料(一般)', '厚生年金保険料', '報酬月額', '標準報酬月額', '厚生年金基金掛金', '確定拠出年金掛金', '雇用保険料', '所得税', '住民税', '控除項目1', '控除項目2', '控除項目3', '控除項目4', '控除項目5', '控除項目6', '控除項目7', '控除項目8', '控除項目9', '控除項目10', '預り金前残', '支給項目1単価', '支給項目2単価', '支給項目3単価', '支給項目4単価', '支給項目5単価', '支給項目6単価', '支給項目7単価', '支給項目8単価', '支給項目9単価', '支給項目10単価', '支給項目11単価', '支給項目12単価', '支給項目13単価', '(非)支給20単価', '課税通勤単価', '(非)通勤/通勤単価', '控除項目1単価', '控除項目2単価', '控除項目3単価', '控除項目4単価', '控除項目5単価', '控除項目6単価', '控除項目7単価', '控除項目8単価', '控除項目9単価', '控除項目10単価', '有休時間', '時間外手当時間Ｈ', '有休１日の時間数', '有休時間残繰越分', '有休時間残当年分', '代替休暇', '当月60超残業時間', '換算率', '前月代替休暇時間残', '前々月代替休暇時間残', '当月消化代替休暇時間数', 'うち時間単位分'];
+
+        // TKC社員マスタ（社員マスタと共用）
+        
+        // マッピング定義（楽々勤怠の列インデックス → TKCの列インデックス）
+        const TKC_MAPPING = {
+            3: 2,    // D列(出勤日数) → C列(平日出勤)
+            4: 4,    // E列(実働時間) → E列(出勤時間)
+            6: 17,   // G列(法定内時間外) → R列(時間外手当時間Ａ)
+            7: 18,   // H列(法定外時間外) → S列(時間外手当時間Ｂ)
+            16: 42,  // Q列(深夜手当) → AQ列
+            17: 43,  // R列(準夜手当) → AR列
+            18: 44,  // S列(遅出手当) → AS列
+            19: 46,  // T列(早出手当) → AU列
+            24: 24,  // Y列(日直勤務日数) → Y列(回数手当回数Ⅰ)
+            25: 25,  // Z列(宿直勤務日数) → Z列(回数手当回数Ⅱ)
+        };
+
+        // ==================== 初期化 ====================
+        function init() {
+            try {
+                const savedEmp = localStorage.getItem(STORAGE_KEY_EMP);
+                const savedCode = localStorage.getItem(STORAGE_KEY_CODE);
+                
+                if (savedEmp) {
+                    try {
+                        employees = JSON.parse(savedEmp);
+                        updateEmployeeStatus();
+                        renderEmployeeTable();
+                        log('社員マスタを復元しました', 'success');
+                    } catch (e) {
+                        console.error('社員マスタ復元エラー:', e);
+                    }
+                }
+                
+                if (savedCode) {
+                    try {
+                        codes = JSON.parse(savedCode);
+                        updateCodeStatus();
+                        renderCodeTable();
+                        log('勤務符号を復元しました', 'success');
+                    } catch (e) {
+                        console.error('勤務符号復元エラー:', e);
+                    }
+                }
+                
+                setupEventListeners();
+                checkReady();
+                console.log('初期化完了');
+            } catch (e) {
+                console.error('初期化エラー:', e);
+                alert('初期化エラー: ' + e.message);
+            }
+        }
+
+        // ==================== ステータス更新 ====================
+        function updateEmployeeStatus() {
+            const dot = document.getElementById('empStatusDot');
+            const count = document.getElementById('employeeCount');
+            
+            if (employees.length > 0) {
+                dot.className = 'status-dot ok';
+                count.textContent = `${employees.length}名`;
+                count.className = 'badge badge-success';
+            } else {
+                dot.className = 'status-dot ng';
+                count.textContent = '0名';
+                count.className = 'badge badge-error';
+            }
+        }
+
+        function updateCodeStatus() {
+            const dot = document.getElementById('codeStatusDot');
+            const count = document.getElementById('codeCount');
+            
+            if (codes.length > 0) {
+                dot.className = 'status-dot ok';
+                count.textContent = `${codes.length}件`;
+                count.className = 'badge badge-success';
+            } else {
+                dot.className = 'status-dot ng';
+                count.textContent = '0件';
+                count.className = 'badge badge-error';
+            }
+        }
+
+        // ==================== ログ ====================
+        function log(message, type = 'info') {
+            const logArea = document.getElementById('logArea');
+            const entry = document.createElement('div');
+            entry.className = `log-entry log-${type}`;
+            const time = new Date().toLocaleTimeString('ja-JP');
+            entry.textContent = `[${time}] ${message}`;
+            logArea.appendChild(entry);
+            logArea.scrollTop = logArea.scrollHeight;
+        }
+
+        // ==================== ファイルアップロード ====================
+        function setupUploadZone(zoneId, inputId, handler) {
+            const zone = document.getElementById(zoneId);
+            const input = document.getElementById(inputId);
+            
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.classList.add('dragover'); });
+            zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.classList.remove('dragover');
+                if (e.dataTransfer.files.length) {
+                    input.files = e.dataTransfer.files;
+                    handler(e.dataTransfer.files[0]);
+                }
+            });
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length) handler(e.target.files[0]);
+            });
+        }
+
+        // ==================== 社員マスタ ====================
+        async function loadEmployeeFile(file) {
+            try {
+                const text = await file.text();
+                employees = JSON.parse(text);
+                localStorage.setItem(STORAGE_KEY_EMP, JSON.stringify(employees));
+                
+                document.getElementById('employeeFileName').textContent = `✅ ${file.name}`;
+                document.getElementById('employeeZone').classList.add('loaded');
+                
+                updateEmployeeStatus();
+                renderEmployeeTable();
+                log(`社員マスタ読込完了: ${employees.length}名`, 'success');
+                checkReady();
+            } catch (e) {
+                log(`社員マスタ読込エラー: ${e.message}`, 'error');
+            }
+        }
+
+        function saveEmployees() {
+            localStorage.setItem(STORAGE_KEY_EMP, JSON.stringify(employees));
+            updateEmployeeStatus();
+        }
+
+        function renderEmployeeTable(filter = '') {
+            const tbody = document.getElementById('employeeTableBody');
+            if (employees.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="3" style="text-align:center; color: var(--text-secondary);">データなし</td></tr>';
+                return;
+            }
+            
+            let filtered = filter 
+                ? employees.filter(e => e.name.includes(filter) || String(e.id).includes(filter))
+                : employees;
+            
+            filtered.sort((a, b) => a.id - b.id);
+            
+            tbody.innerHTML = filtered.map((emp) => {
+                const idx = employees.findIndex(e => e.id === emp.id && e.name === emp.name);
+                return `
+                <tr data-idx="${idx}">
+                    <td><input type="number" value="${emp.id}" class="emp-id"></td>
+                    <td><input type="text" value="${emp.name}" class="emp-name"></td>
+                    <td><button class="btn btn-danger btn-icon delete-emp" title="削除">🗑️</button></td>
+                </tr>
+            `}).join('');
+            
+            tbody.querySelectorAll('.emp-id, .emp-name').forEach(input => {
+                input.addEventListener('change', handleEmployeeEdit);
+            });
+            tbody.querySelectorAll('.delete-emp').forEach(btn => {
+                btn.addEventListener('click', handleEmployeeDelete);
+            });
+        }
+
+        function handleEmployeeEdit(e) {
+            const tr = e.target.closest('tr');
+            const idx = parseInt(tr.dataset.idx);
+            employees[idx].id = parseInt(tr.querySelector('.emp-id').value);
+            employees[idx].name = tr.querySelector('.emp-name').value.trim();
+            saveEmployees();
+        }
+
+        function handleEmployeeDelete(e) {
+            const tr = e.target.closest('tr');
+            const idx = parseInt(tr.dataset.idx);
+            deleteTarget = { type: 'employee', index: idx };
+            document.getElementById('deleteModalText').textContent = 
+                `「${employees[idx].name}」（社員番号: ${employees[idx].id}）を削除しますか？`;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function addEmployee() {
+            const maxId = employees.length > 0 ? Math.max(...employees.map(e => e.id)) : 0;
+            employees.push({ id: maxId + 1, name: '新規社員' });
+            saveEmployees();
+            // 検索フィルターをクリアして全件表示
+            document.getElementById('employeeSearch').value = '';
+            renderEmployeeTable();
+            log(`社員追加: ${maxId + 1}`, 'success');
+        }
+
+        function saveEmployeeJSON() {
+            const json = JSON.stringify(employees, null, 2);
+            downloadFile(json, '社員マスタ.json', 'application/json');
+            log('社員マスタJSONを保存しました', 'success');
+        }
+
+        function clearEmployees() {
+            if (confirm('社員マスタをクリアしますか？')) {
+                employees = [];
+                localStorage.removeItem(STORAGE_KEY_EMP);
+                document.getElementById('employeeZone').classList.remove('loaded');
+                document.getElementById('employeeFileName').textContent = '';
+                updateEmployeeStatus();
+                renderEmployeeTable();
+                checkReady();
+                log('社員マスタをクリアしました', 'warning');
+            }
+        }
+
+        // ==================== 勤務符号 ====================
+        async function loadCodeFile(file) {
+            try {
+                const text = await file.text();
+                codes = JSON.parse(text);
+                localStorage.setItem(STORAGE_KEY_CODE, JSON.stringify(codes));
+                
+                document.getElementById('codeFileName').textContent = `✅ ${file.name}`;
+                document.getElementById('codeZone').classList.add('loaded');
+                
+                updateCodeStatus();
+                renderCodeTable();
+                log(`勤務符号読込完了: ${codes.length}件`, 'success');
+                checkReady();
+            } catch (e) {
+                log(`勤務符号読込エラー: ${e.message}`, 'error');
+            }
+        }
+
+        function saveCodes() {
+            localStorage.setItem(STORAGE_KEY_CODE, JSON.stringify(codes));
+            updateCodeStatus();
+        }
+
+        function renderCodeTable(filter = '') {
+            const tbody = document.getElementById('codeTableBody');
+            if (codes.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color: var(--text-secondary);">データなし</td></tr>';
+                return;
+            }
+            
+            let filtered = filter 
+                ? codes.filter(c => c.name.includes(filter) || c.master.includes(filter))
+                : codes;
+            
+            tbody.innerHTML = filtered.map((code) => {
+                const idx = codes.findIndex(c => c.master === code.master && c.name === code.name);
+                return `
+                <tr data-idx="${idx}">
+                    <td><input type="text" value="${code.name}" class="code-name"></td>
+                    <td><input type="text" value="${code.master}" class="code-master" style="width:60px;"></td>
+                    <td><input type="text" value="${code.rakuraku || ''}" class="code-rakuraku"></td>
+                    <td><input type="text" value="${code.note || ''}" class="code-note"></td>
+                    <td><button class="btn btn-danger btn-icon delete-code" title="削除">🗑️</button></td>
+                </tr>
+            `}).join('');
+            
+            tbody.querySelectorAll('.code-name, .code-master, .code-rakuraku, .code-note').forEach(input => {
+                input.addEventListener('change', handleCodeEdit);
+            });
+            tbody.querySelectorAll('.delete-code').forEach(btn => {
+                btn.addEventListener('click', handleCodeDelete);
+            });
+        }
+
+        function handleCodeEdit(e) {
+            const tr = e.target.closest('tr');
+            const idx = parseInt(tr.dataset.idx);
+            codes[idx].name = tr.querySelector('.code-name').value.trim();
+            codes[idx].master = tr.querySelector('.code-master').value.trim();
+            const rakuraku = tr.querySelector('.code-rakuraku').value.trim();
+            codes[idx].rakuraku = rakuraku || null;
+            codes[idx].note = tr.querySelector('.code-note').value.trim();
+            saveCodes();
+        }
+
+        function handleCodeDelete(e) {
+            const tr = e.target.closest('tr');
+            const idx = parseInt(tr.dataset.idx);
+            deleteTarget = { type: 'code', index: idx };
+            document.getElementById('deleteModalText').textContent = 
+                `「${codes[idx].name}」（${codes[idx].master}）を削除しますか？`;
+            document.getElementById('deleteModal').classList.remove('hidden');
+        }
+
+        function addCode() {
+            console.log('addCode called, current codes:', codes.length);
+            codes.push({ name: '新規符号', master: '?', rakuraku: '', note: '' });
+            saveCodes();
+            // 検索フィルターをクリアして全件表示
+            document.getElementById('codeSearch').value = '';
+            renderCodeTable();
+            log('勤務符号を追加しました', 'success');
+            console.log('addCode done, new codes:', codes.length);
+        }
+
+        function saveCodeJSON() {
+            const json = JSON.stringify(codes, null, 2);
+            downloadFile(json, '勤務符号.json', 'application/json');
+            log('勤務符号JSONを保存しました', 'success');
+        }
+
+        function clearCodes() {
+            if (confirm('勤務符号をクリアしますか？')) {
+                codes = [];
+                localStorage.removeItem(STORAGE_KEY_CODE);
+                document.getElementById('codeZone').classList.remove('loaded');
+                document.getElementById('codeFileName').textContent = '';
+                updateCodeStatus();
+                renderCodeTable();
+                checkReady();
+                log('勤務符号をクリアしました', 'warning');
+            }
+        }
+
+        // ==================== 削除確認 ====================
+        function confirmDelete() {
+            if (deleteTarget.type === 'employee') {
+                const emp = employees[deleteTarget.index];
+                employees.splice(deleteTarget.index, 1);
+                saveEmployees();
+                renderEmployeeTable(document.getElementById('employeeSearch').value);
+                log(`社員削除: ${emp.id} - ${emp.name}`, 'warning');
+            } else if (deleteTarget.type === 'code') {
+                const code = codes[deleteTarget.index];
+                codes.splice(deleteTarget.index, 1);
+                saveCodes();
+                renderCodeTable(document.getElementById('codeSearch').value);
+                log(`勤務符号削除: ${code.master}`, 'warning');
+            }
+            document.getElementById('deleteModal').classList.add('hidden');
+            deleteTarget = { type: null, index: null };
+        }
+
+        // ==================== 勤務表読み込み ====================
+        async function loadScheduleFile(file) {
+            try {
+                log(`看護部勤務表を読み込み中: ${file.name}`);
+                const buffer = await file.arrayBuffer();
+                const workbook = XLSX.read(buffer, { type: 'array' });
+                
+                scheduleData = { sheets: {}, workbook, dateCols: [] };
+                
+                for (const sheetName of workbook.SheetNames) {
+                    const sheet = workbook.Sheets[sheetName];
+                    const data = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                    
+                    // タイトル行から年月を取得（全セルをスキャン）
+                    if (data[0]) {
+                        for (let c = 0; c < data[0].length; c++) {
+                            if (data[0][c]) {
+                                const title = String(data[0][c]);
+                                const match = title.match(/(\d{4})年(\d{1,2})月/);
+                                if (match) {
+                                    targetYear = parseInt(match[1]);
+                                    targetMonth = parseInt(match[2]);
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // 日付行（行5）から日付列を取得
+                    if (data[5] && scheduleData.dateCols.length === 0) {
+                        for (let col = 0; col < data[5].length; col++) {
+                            const val = data[5][col];
+                            if (val !== undefined && val !== null && !isNaN(parseInt(val))) {
+                                const day = parseInt(val);
+                                if (day >= 1 && day <= 31) {
+                                    scheduleData.dateCols.push({ col, day });
+                                }
+                            }
+                        }
+                        log(`日付列を検出: ${scheduleData.dateCols.length}日分`, 'info');
+                    }
+                    
+                    // 氏名列を自動検出（「氏名」ヘッダーを探す）
+                    let nameCol = -1;
+                    let scheduleCol = -1; // 「日付」列（予定/実施が入る列）
+                    if (data[5]) {
+                        for (let c = 0; c < data[5].length; c++) {
+                            const v = data[5][c];
+                            if (v && String(v).includes('氏名')) nameCol = c;
+                            if (v && String(v) === '日付') scheduleCol = c;
+                        }
+                    }
+                    if (nameCol === -1) nameCol = 1; // フォールバック: B列が職種ならC列=col[1]が氏名
+
+                    const staff = [];
+                    for (let i = 0; i < data.length; i++) {
+                        const row = data[i];
+                        // 予定行を検出: scheduleCol に「予定」がある行
+                        if (row && scheduleCol >= 0 && String(row[scheduleCol] || '').trim() === '予定') {
+                            // 次の行（実施行）に実名がある
+                            const nextRow = (i + 1 < data.length) ? data[i + 1] : null;
+                            let name = null;
+                            if (nextRow && nextRow[nameCol] && typeof nextRow[nameCol] === 'string') {
+                                const candidate = nextRow[nameCol].trim();
+                                if ((candidate.includes('\u3000') || candidate.includes(' ')) &&
+                                    !candidate.includes('勤務表') && !candidate.includes('曜日')) {
+                                    name = candidate;
+                                }
+                            }
+                            // 実施行に名前がなければ予定行の氏名列を試す
+                            if (!name && row[nameCol] && typeof row[nameCol] === 'string') {
+                                const candidate = row[nameCol].trim();
+                                if ((candidate.includes('\u3000') || candidate.includes(' ')) &&
+                                    !candidate.includes('勤務表') && !candidate.includes('曜日')) {
+                                    name = candidate;
+                                }
+                            }
+                            if (name) {
+                                const shifts = [];
+                                for (const dateCol of scheduleData.dateCols) {
+                                    const val = row[dateCol.col];
+                                    shifts.push(val !== undefined && val !== null ? String(val).trim() : '');
+                                }
+                                staff.push({ name, shifts, row: i });
+                            }
+                        }
+                    }
+
+                    // 予定/実施パターンで見つからなかった場合、従来ロジックにフォールバック
+                    if (staff.length === 0) {
+                        for (let i = 0; i < data.length; i++) {
+                            const row = data[i];
+                            // 各行の全セルから氏名候補を探す
+                            for (let c = 0; c <= Math.min(nameCol, 2); c++) {
+                                if (row && row[c] && typeof row[c] === 'string') {
+                                    const cellValue = row[c].trim();
+                                    if ((cellValue.includes('\u3000') || cellValue.includes(' ')) &&
+                                        !cellValue.includes('勤務表') &&
+                                        cellValue !== '氏名／曜日' &&
+                                        !cellValue.includes('曜日')) {
+                                        const shifts = [];
+                                        for (const dateCol of scheduleData.dateCols) {
+                                            const val = row[dateCol.col];
+                                            shifts.push(val !== undefined && val !== null ? String(val).trim() : '');
+                                        }
+                                        staff.push({ name: cellValue, shifts, row: i });
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    scheduleData.sheets[sheetName] = { data, staff };
+                    log(`${sheetName}: ${staff.length}名検出`, 'info');
+                }
+                
+                document.getElementById('scheduleFileName').textContent = `✅ ${file.name}`;
+                document.getElementById('scheduleZone').classList.add('loaded');
+                
+                const monthSelector = document.getElementById('monthSelector');
+                const targetMonthSelect = document.getElementById('targetMonth');
+                monthSelector.classList.remove('hidden');
+                targetMonthSelect.innerHTML = '';
+                for (let m = 1; m <= 12; m++) {
+                    const opt = document.createElement('option');
+                    opt.value = m;
+                    opt.textContent = `${targetYear}年${m}月`;
+                    if (m === targetMonth) opt.selected = true;
+                    targetMonthSelect.appendChild(opt);
+                }
+                targetMonthSelect.addEventListener('change', (e) => { targetMonth = parseInt(e.target.value); });
+                
+                let totalStaff = 0;
+                for (const sheet of Object.values(scheduleData.sheets)) totalStaff += sheet.staff.length;
+                
+                document.getElementById('scheduleStats').innerHTML = 
+                    `<div class="stat-item">合計: <span class="stat-value">${totalStaff}</span>名</div>
+                     <div class="stat-item">シート: <span class="stat-value">${workbook.SheetNames.length}</span></div>`;
+                
+                log(`看護部勤務表読込完了: ${totalStaff}名 (${workbook.SheetNames.join(', ')})`, 'success');
+                checkReady();
+            } catch (e) {
+                log(`看護部勤務表読込エラー: ${e.message}`, 'error');
+            }
+        }
+
+        // ==================== シフト変換処理 ====================
+        function checkReady() {
+            const ready = employees.length > 0 && codes.length > 0 && scheduleData;
+            document.getElementById('convertBtn').disabled = !ready;
+            
+            if (ready) {
+                log('準備完了。変換実行可能です。', 'success');
+            }
+        }
+
+        function getCodeMapping() {
+            const map = {};
+            for (const code of codes) {
+                map[code.master] = code.rakuraku;
+            }
+            return map;
+        }
+
+        function getEmployeeMap() {
+            const map = {};
+            for (const emp of employees) {
+                map[emp.name] = emp.id;
+            }
+            return map;
+        }
+
+        function isHoliday(masterShift) {
+            if (!masterShift || masterShift === 'nan') return false;
+            const codeMap = getCodeMapping();
+            return codeMap.hasOwnProperty(masterShift) && codeMap[masterShift] === null;
+        }
+
+        function convertShiftsForStaff(shifts, dateColumns) {
+            const codeMap = getCodeMapping();
+            const result = [];
+            
+            // 各日の曜日を取得
+            const weekdays = [];
+            for (const dateCol of dateColumns) {
+                weekdays.push(new Date(dateCol.year, dateCol.month - 1, dateCol.day).getDay());
+            }
+            
+            let weekHasLegalHoliday = false;
+            
+            for (let d = 0; d < shifts.length; d++) {
+                const weekday = weekdays[d];
+                const masterShift = shifts[d] || '';
+                
+                if (weekday === 0) {
+                    weekHasLegalHoliday = false;
+                }
+                
+                if (!masterShift || masterShift === 'nan') {
+                    result.push('');
+                } else if (isHoliday(masterShift)) {
+                    if (!weekHasLegalHoliday) {
+                        result.push('法定休日');
+                        weekHasLegalHoliday = true;
+                    } else {
+                        result.push('所定休日');
+                    }
+                } else if (codeMap.hasOwnProperty(masterShift)) {
+                    result.push(codeMap[masterShift]);
+                } else {
+                    log(`未知の符号: "${masterShift}"`, 'warning');
+                    result.push(masterShift);
+                }
+            }
+            
+            return result;
+        }
+
+        function convert() {
+            try {
+                log('変換処理を開始...', 'info');
+                const employeeMap = getEmployeeMap();
+                
+                // 検出した日付列から日付ヘッダーを作成（月の繰り上がり対応）
+                const dateColumns = [];
+                let currentYear = targetYear;
+                let currentMonth = targetMonth;
+                let prevDay = 0;
+                
+                for (const dateCol of scheduleData.dateCols) {
+                    // 日付が前の日より小さくなったら月が変わった
+                    if (dateCol.day < prevDay) {
+                        currentMonth++;
+                        if (currentMonth > 12) {
+                            currentMonth = 1;
+                            currentYear++;
+                        }
+                    }
+                    prevDay = dateCol.day;
+                    
+                    dateColumns.push({
+                        str: String(currentYear) + '-' + String(currentMonth).padStart(2, '0') + '-' + String(dateCol.day).padStart(2, '0'),
+                        year: currentYear,
+                        month: currentMonth,
+                        day: dateCol.day
+                    });
+                }
+                
+                const daysInMonth = scheduleData.dateCols.length;
+                
+                convertedData = [];
+                let matchedCount = 0;
+                let unmatchedNames = [];
+                
+                for (const [sheetName, sheet] of Object.entries(scheduleData.sheets)) {
+                    for (const staff of sheet.staff) {
+                        const empId = employeeMap[staff.name];
+                        if (empId) {
+                            matchedCount++;
+                            
+                            const convertedShifts = convertShiftsForStaff(staff.shifts, dateColumns);
+                            
+                            const shiftRow = { 社員番号: empId, 区分: 'シフト' };
+                            const calRow = { 社員番号: empId, 区分: 'カレンダー' };
+                            for (let d = 0; d < daysInMonth; d++) {
+                                shiftRow[dateColumns[d].str] = convertedShifts[d] || '';
+                                calRow[dateColumns[d].str] = '';
+                            }
+                            convertedData.push(shiftRow);
+                            convertedData.push(calRow);
+                        } else {
+                            unmatchedNames.push(staff.name);
+                        }
+                    }
+                }
+                
+                log(`変換完了: ${matchedCount}名`, 'success');
+                if (unmatchedNames.length > 0) {
+                    log(`マッチなし(${unmatchedNames.length}名): ${unmatchedNames.join(', ')}`, 'warning');
+                }
+                
+                if (matchedCount === 0) {
+                    log('--- デバッグ情報 ---', 'info');
+                    for (const [sheetName, sheet] of Object.entries(scheduleData.sheets)) {
+                        log(`${sheetName}の名前: ${sheet.staff.map(s => s.name).slice(0, 5).join(', ')}...`, 'info');
+                    }
+                    log(`社員マスタの名前例: ${employees.slice(0, 5).map(e => e.name).join(', ')}...`, 'info');
+                }
+                
+                showPreview();
+                document.getElementById('downloadBtn').classList.remove('hidden');
+            } catch (e) {
+                log(`変換エラー: ${e.message}`, 'error');
+            }
+        }
+
+        function showPreview() {
+            const previewSection = document.getElementById('previewSection');
+            const previewTable = document.getElementById('previewTable');
+            previewSection.classList.remove('hidden');
+            
+            if (!convertedData || convertedData.length === 0) return;
+            
+            const headers = Object.keys(convertedData[0]);
+            let html = '<thead><tr>' + headers.slice(0, 12).map(h => `<th>${h}</th>`).join('') + '<th>...</th></tr></thead>';
+            html += '<tbody>';
+            for (let i = 0; i < Math.min(10, convertedData.length); i++) {
+                const row = convertedData[i];
+                html += '<tr>' + headers.slice(0, 12).map(h => `<td>${row[h] || ''}</td>`).join('') + '<td>...</td></tr>';
+            }
+            html += '</tbody>';
+            previewTable.innerHTML = html;
+        }
+
+        function downloadCSV() {
+            if (!convertedData || convertedData.length === 0) {
+                log('変換データがありません。先に変換を実行してください。', 'error');
+                return;
+            }
+            const headers = Object.keys(convertedData[0]);
+            const quoteCell = (val) => {
+                const str = String(val || '');
+                return '"' + str.replace(/"/g, '""') + '"';
+            };
+            let csv = headers.map(quoteCell).join(',') + '\n';
+            for (const row of convertedData) {
+                csv += headers.map(h => quoteCell(row[h])).join(',') + '\n';
+            }
+
+            // UTF-8 BOM付きで出力（楽々勤怠のフォーマットに合わせる）
+            const bom = '\uFEFF';
+            const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const now = new Date();
+            const ts = now.getFullYear().toString() +
+                       String(now.getMonth()+1).padStart(2,'0') +
+                       String(now.getDate()).padStart(2,'0') +
+                       String(now.getHours()).padStart(2,'0') +
+                       String(now.getMinutes()).padStart(2,'0') +
+                       String(now.getSeconds()).padStart(2,'0');
+            a.download = `シフトスケジュール_(${targetMonth}月)_${ts}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+            log('CSVファイルをダウンロードしました（UTF-8 BOM）', 'success');
+        }
+
+        // ==================== TKC変換処理 ====================
+        function parseCSV(text) {
+            const lines = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                    current += char;
+                } else if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (current.trim()) {
+                        lines.push(parseCSVLine(current));
+                    }
+                    current = '';
+                    if (char === '\r' && text[i + 1] === '\n') i++;
+                } else {
+                    current += char;
+                }
+            }
+            if (current.trim()) {
+                lines.push(parseCSVLine(current));
+            }
+            return lines;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+            
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                if (char === '"') {
+                    if (inQuotes && line[i + 1] === '"') {
+                        current += '"';
+                        i++;
+                    } else {
+                        inQuotes = !inQuotes;
+                    }
+                } else if (char === ',' && !inQuotes) {
+                    result.push(current);
+                    current = '';
+                } else {
+                    current += char;
+                }
+            }
+            result.push(current);
+            return result;
+        }
+
+        function toCSV(data) {
+            return data.map(row => 
+                row.map(cell => {
+                    if (cell === null || cell === undefined) return '';
+                    const str = String(cell);
+                    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+                        return '"' + str.replace(/"/g, '""') + '"';
+                    }
+                    return str;
+                }).join(',')
+            ).join('\r\n');
+        }
+
+        async function loadTkcFile(file) {
+            try {
+                const text = await file.text();
+                rakurakuData = parseCSV(text);
+                
+                document.getElementById('tkcFileName').textContent = `✅ ${file.name}`;
+                document.getElementById('tkcUploadZone').classList.add('loaded');
+                
+                // 自動で変換実行
+                setTimeout(() => convertTkc(), 300);
+            } catch (e) {
+                alert('ファイル読み込みエラー: ' + e.message);
+            }
+        }
+
+        function convertTkc() {
+            try {
+                // 楽々勤怠のデータを社員番号でインデックス化
+                const rakurakuByEmp = {};
+                for (let i = 1; i < rakurakuData.length; i++) {
+                    const row = rakurakuData[i];
+                    if (row && row[0]) {
+                        const empNo = row[0].trim();
+                        rakurakuByEmp[empNo] = row;
+                    }
+                }
+
+                // 社員マスタからTKC社員リストを作成
+                const tkcEmployees = employees.map(e => [String(e.id), e.name]);
+
+                const colCount = TKC_HEADER.length;
+                const resultData = [TKC_HEADER];
+
+                let matched = 0;
+                let notFound = 0;
+
+                for (const empNo in rakurakuByEmp) {
+                    const srcRow = rakurakuByEmp[empNo];
+                    
+                    const tkcEmp = tkcEmployees.find(e => e[0] === empNo);
+                    
+                    const newRow = new Array(colCount).fill('');
+                    newRow[0] = empNo;
+                    newRow[1] = tkcEmp ? tkcEmp[1] : srcRow[1];
+
+                    for (const [srcColStr, dstCol] of Object.entries(TKC_MAPPING)) {
+                        const srcCol = Number(srcColStr);
+                        if (srcCol < srcRow.length) {
+                            newRow[dstCol] = srcRow[srcCol] || '';
+                        }
+                    }
+
+                    resultData.push(newRow);
+
+                    if (tkcEmp) {
+                        matched++;
+                    } else {
+                        notFound++;
+                    }
+                }
+
+                tkcConvertedCsv = toCSV(resultData);
+
+                // 結果表示
+                document.getElementById('tkcStatMatched').textContent = matched;
+                document.getElementById('tkcStatNotFound').textContent = notFound;
+                document.getElementById('tkcStatTotal').textContent = Object.keys(rakurakuByEmp).length;
+                document.getElementById('tkcResultCard').classList.remove('hidden');
+            } catch (e) {
+                alert('変換エラー: ' + e.message);
+            }
+        }
+
+        function downloadTkcCSV() {
+            if (!tkcConvertedCsv) return;
+
+            const unicodeArray = Encoding.stringToCode(tkcConvertedCsv);
+            const sjisArray = Encoding.convert(unicodeArray, {
+                to: 'SJIS',
+                from: 'UNICODE'
+            });
+            const uint8Array = new Uint8Array(sjisArray);
+            
+            const blob = new Blob([uint8Array], { type: 'text/csv' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            const today = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            a.download = `TKC_勤怠データ_${today}.csv`;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== ユーティリティ ====================
+        function downloadFile(content, filename, type) {
+            const blob = new Blob([content], { type });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // ==================== イベント設定 ====================
+        function setupEventListeners() {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.addEventListener('click', () => {
+                    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                    tab.classList.add('active');
+                    document.getElementById(`tab-${tab.dataset.tab}`).classList.add('active');
+                });
+            });
+            
+            setupUploadZone('employeeZone', 'employeeFile', loadEmployeeFile);
+            setupUploadZone('codeZone', 'codeFile', loadCodeFile);
+            setupUploadZone('scheduleZone', 'scheduleFile', loadScheduleFile);
+            setupUploadZone('tkcUploadZone', 'tkcFile', loadTkcFile);
+            
+            document.getElementById('convertBtn').addEventListener('click', convert);
+            document.getElementById('downloadBtn').addEventListener('click', downloadCSV);
+            document.getElementById('tkcDownloadBtn').addEventListener('click', downloadTkcCSV);
+            
+            document.getElementById('employeeSearch').addEventListener('input', (e) => renderEmployeeTable(e.target.value));
+            document.getElementById('addEmployeeBtn').addEventListener('click', addEmployee);
+            document.getElementById('saveEmployeeBtn').addEventListener('click', saveEmployeeJSON);
+            document.getElementById('clearEmployeeBtn').addEventListener('click', clearEmployees);
+            
+            document.getElementById('codeSearch').addEventListener('input', (e) => renderCodeTable(e.target.value));
+            document.getElementById('addCodeBtn').addEventListener('click', addCode);
+            document.getElementById('saveCodeBtn').addEventListener('click', saveCodeJSON);
+            document.getElementById('clearCodeBtn').addEventListener('click', clearCodes);
+            
+            document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
+                document.getElementById('deleteModal').classList.add('hidden');
+                deleteTarget = { type: null, index: null };
+            });
+            document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDelete);
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

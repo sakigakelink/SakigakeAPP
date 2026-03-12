@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TKC Monthly Analyzer</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+        }
+        .header {
+            background: #1e293b;
+            padding: 1.5rem 2rem;
+            border-bottom: 1px solid #334155;
+        }
+        .header h1 { font-size: 1.5rem; color: #38bdf8; }
+        .header span { color: #64748b; font-size: 0.9rem; }
+        .container { max-width: 100%; margin: 0 auto; padding: 1.5rem; }
+        
+        .upload-zone {
+            background: #1e293b;
+            border: 2px dashed #475569;
+            border-radius: 12px;
+            padding: 3rem;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 1.5rem;
+        }
+        .upload-zone:hover { border-color: #38bdf8; background: #1e3a5f; }
+        .upload-zone h3 { margin-bottom: 0.5rem; }
+        .upload-zone p { color: #64748b; }
+        .upload-zone input { display: none; }
+        
+        .file-list { margin-bottom: 1.5rem; }
+        .file-item {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 8px;
+            padding: 0.8rem 1rem;
+            margin-bottom: 0.5rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .file-item span { color: #94a3b8; font-size: 0.85rem; margin-left: 1rem; }
+        .btn-remove {
+            background: none;
+            border: none;
+            color: #ef4444;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+        
+        .btn {
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin-right: 0.5rem;
+        }
+        .btn-primary { background: #3b82f6; color: white; }
+        .btn-primary:hover { background: #2563eb; }
+        .btn-secondary { background: #334155; color: #e2e8f0; }
+        .btn-secondary:hover { background: #475569; }
+        
+        .results { display: none; margin-top: 2rem; }
+        .results.active { display: block; }
+        
+        .table-container {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            overflow: hidden;
+            margin-bottom: 2rem;
+        }
+        .table-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #334155;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #0f172a;
+        }
+        .table-header h3 { font-size: 1.1rem; }
+        .table-header.revenue h3 { color: #4ade80; }
+        .table-header.expense h3 { color: #f97316; }
+        .table-header.profit h3 { color: #38bdf8; }
+        .table-header.output h3 { color: #e879f9; }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.75rem;
+            table-layout: fixed;
+        }
+        th {
+            background: #0f172a;
+            padding: 0.6rem 0.4rem;
+            text-align: right;
+            font-weight: 500;
+            color: #94a3b8;
+            white-space: nowrap;
+        }
+        th:first-child { 
+            text-align: left; 
+            width: 160px;
+            min-width: 160px;
+            padding-left: 1rem;
+        }
+        td {
+            padding: 0.5rem 0.4rem;
+            border-bottom: 1px solid #334155;
+            text-align: right;
+            font-family: 'Consolas', monospace;
+            font-size: 0.7rem;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        td:first-child { 
+            text-align: left; 
+            font-family: inherit; 
+            padding-left: 1rem;
+            font-size: 0.75rem;
+        }
+        tr:hover td { background: #334155; }
+        .subtotal { background: rgba(100, 116, 139, 0.2); font-weight: 600; }
+        .subtotal td { border-top: 1px solid #64748b; }
+        .total-row { background: rgba(59, 130, 246, 0.15); font-weight: 700; }
+        .total-row td { border-top: 2px solid #3b82f6; color: #38bdf8; }
+        .calculated { background: rgba(168, 85, 247, 0.1); font-style: italic; }
+        .manual-row { background: rgba(34, 197, 94, 0.1); }
+        .manual-input {
+            width: 100%;
+            padding: 0.3rem;
+            border: 1px solid #475569;
+            border-radius: 4px;
+            background: #1e293b;
+            color: #e2e8f0;
+            font-family: 'Consolas', monospace;
+            font-size: 0.7rem;
+            text-align: right;
+            -moz-appearance: textfield;
+        }
+        .manual-input::-webkit-outer-spin-button,
+        .manual-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .manual-input:focus {
+            outline: none;
+            border-color: #38bdf8;
+        }
+        
+        .loading {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.9);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s;
+        }
+        .loading.active { opacity: 1; visibility: visible; }
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid #334155;
+            border-top-color: #38bdf8;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading p { margin-top: 1rem; color: #94a3b8; }
+        
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        .info-text { color: #64748b; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>TKC Monthly Trial Balance Analyzer</h1>
+        <span>Upload multiple monthly PDFs to compare</span>
+    </header>
+
+    <main class="container">
+        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+            <h3>Drop PDF and TXT files here or click to select</h3>
+            <p>Upload monthly trial balance PDFs + General Ledger TXT</p>
+            <input type="file" id="fileInput" accept=".pdf,.txt" multiple>
+        </div>
+
+        <div class="file-list" id="fileList"></div>
+
+        <div id="actionBar" style="display: none;">
+            <button class="btn btn-primary" onclick="analyzeFiles()">Analyze</button>
+            <button class="btn btn-secondary" onclick="clearFiles()">Clear</button>
+        </div>
+        
+        <div class="action-bar" style="margin-bottom: 1.5rem;">
+            <button class="btn btn-secondary" onclick="document.getElementById('jsonInput').click()">データ読込</button>
+            <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="loadJSON(event)">
+        </div>
+
+        <section class="results" id="results">
+            <div class="action-bar">
+                <span class="info-text" id="infoText"></span>
+                <div>
+                    <button class="btn btn-secondary" onclick="saveJSON()">データ保存</button>
+                    <button class="btn btn-secondary" onclick="exportPDF()">PDF出力</button>
+                </div>
+            </div>
+            
+            <!-- 収益テーブル -->
+            <div class="table-container">
+                <div class="table-header revenue">
+                    <h3>収益</h3>
+                </div>
+                <table>
+                    <thead id="revenueHead"></thead>
+                    <tbody id="revenueBody"></tbody>
+                </table>
+            </div>
+            
+            <!-- 費用テーブル -->
+            <div class="table-container">
+                <div class="table-header expense">
+                    <h3>費用</h3>
+                </div>
+                <table>
+                    <thead id="expenseHead"></thead>
+                    <tbody id="expenseBody"></tbody>
+                </table>
+            </div>
+            
+            <!-- 利益テーブル -->
+            <div class="table-container">
+                <div class="table-header profit">
+                    <h3>利益</h3>
+                </div>
+                <table>
+                    <thead id="profitHead"></thead>
+                    <tbody id="profitBody"></tbody>
+                </table>
+            </div>
+
+            <!-- 出力テーブル -->
+            <div class="table-container">
+                <div class="table-header output">
+                    <h3>出力</h3>
+                </div>
+                <table>
+                    <thead id="outputHead"></thead>
+                    <tbody id="outputBody"></tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <p>Analyzing...</p>
+    </div>
+
+    <script>
+        let uploadedFiles = [];
+        let analysisData = null;
+
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+
+        uploadZone.addEventListener('dragover', e => {
+            e.preventDefault();
+            uploadZone.style.borderColor = '#38bdf8';
+        });
+
+        uploadZone.addEventListener('dragleave', () => {
+            uploadZone.style.borderColor = '#475569';
+        });
+
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault();
+            uploadZone.style.borderColor = '#475569';
+            handleFiles(e.dataTransfer.files);
+        });
+
+        fileInput.addEventListener('change', e => handleFiles(e.target.files));
+
+        function handleFiles(files) {
+            for (const file of files) {
+                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') || file.name.toLowerCase().endsWith('.txt')) {
+                    uploadedFiles.push(file);
+                }
+            }
+            renderFileList();
+        }
+
+        function renderFileList() {
+            const list = document.getElementById('fileList');
+            const actionBar = document.getElementById('actionBar');
+            
+            if (uploadedFiles.length === 0) {
+                list.innerHTML = '';
+                actionBar.style.display = 'none';
+                return;
+            }
+            
+            actionBar.style.display = 'block';
+            list.innerHTML = uploadedFiles.map((f, i) => `
+                <div class="file-item">
+                    <div>
+                        ${f.name}
+                        <span>${(f.size / 1024).toFixed(1)} KB</span>
+                    </div>
+                    <button class="btn-remove" onclick="removeFile(${i})">×</button>
+                </div>
+            `).join('');
+        }
+
+        function removeFile(i) {
+            uploadedFiles.splice(i, 1);
+            renderFileList();
+        }
+
+        function clearFiles() {
+            uploadedFiles = [];
+            analysisData = null;
+            renderFileList();
+            document.getElementById('results').classList.remove('active');
+        }
+
+        async function analyzeFiles() {
+            if (uploadedFiles.length === 0) return;
+            
+            document.getElementById('loading').classList.add('active');
+            
+            const formData = new FormData();
+            uploadedFiles.forEach(f => formData.append('files', f));
+            
+            try {
+                const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                analysisData = await res.json();
+                renderResults();
+                document.getElementById('results').classList.add('active');
+            } catch (e) {
+                alert('Error: ' + e.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        }
+
+        function renderResults() {
+            const revenue = analysisData.revenue_display;
+            const expense = analysisData.expense_display;
+            const profit = analysisData.profit_display;
+            const months = revenue.months || [];
+            
+            document.getElementById('infoText').textContent = 
+                `${revenue.organization || ''} | ${revenue.keiri_kubun || ''} | ${months.join(', ')}`;
+            
+            renderTable('revenue', revenue.accounts, months);
+            renderTable('expense', expense.accounts, months);
+            renderTable('profit', profit.accounts, months);
+
+            const output = analysisData.output_display;
+            if (output && output.accounts) {
+                renderTable('output', output.accounts, months);
+            }
+        }
+
+        function renderTable(prefix, accounts, months) {
+            console.log('renderTable:', prefix, accounts);
+            const headEl = document.getElementById(prefix + 'Head');
+            const bodyEl = document.getElementById(prefix + 'Body');
+            
+            headEl.innerHTML = `
+                <tr>
+                    <th>勘定科目</th>
+                    ${months.map(m => `<th>${m}</th>`).join('')}
+                    <th>合計</th>
+                </tr>
+            `;
+            
+            bodyEl.innerHTML = accounts.map((acc, idx) => {
+                const isTotal = acc.name.includes('合計');
+                const isSubtotal = acc.is_subtotal && !isTotal;
+                const isCalculated = acc.is_calculated;
+                const isManual = acc.is_manual;
+                const dependsOnManual = acc.depends_on_manual;
+                console.log('acc:', acc.name, 'isManual:', isManual);
+                let total = 0;
+                
+                let cells;
+                if (isManual) {
+                    console.log('Creating manual input for:', acc.name);
+                    cells = months.map(m => {
+                        const val = acc.monthly_data[m] || 0;
+                        return `<td><input type="number" class="manual-input" data-prefix="${prefix}" data-name="${acc.name}" data-month="${m}" value="${val}" onchange="updateManualValue(this)"></td>`;
+                    }).join('');
+                    total = Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
+                } else {
+                    cells = months.map(m => {
+                        const val = acc.monthly_data[m] || 0;
+                        total += val;
+                        return `<td>${formatNum(val)}</td>`;
+                    }).join('');
+                }
+                
+                let rowClass = '';
+                if (isTotal) rowClass = 'total-row';
+                else if (isSubtotal) rowClass = 'subtotal';
+                else if (isCalculated) rowClass = 'calculated';
+                else if (isManual) rowClass = 'manual-row';
+                
+                const rowId = dependsOnManual ? `data-depends-on="${dependsOnManual}"` : '';
+                const totalId = dependsOnManual ? `id="${prefix}-${acc.name}-total"` : '';
+                
+                return `
+                    <tr class="${rowClass}" ${rowId}>
+                        <td>${acc.name}</td>
+                        ${cells}
+                        <td ${totalId}>${formatNum(total)}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+        
+        function updateManualValue(input) {
+            const prefix = input.dataset.prefix;
+            const name = input.dataset.name;
+            const month = input.dataset.month;
+            const value = parseFloat(input.value) || 0;
+            
+            // analysisDataを更新
+            const display = analysisData[prefix + '_display'];
+            const acc = display.accounts.find(a => a.name === name);
+            if (acc) {
+                acc.monthly_data[month] = value;
+            }
+            
+            // 合計を更新
+            const total = Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
+            const row = input.closest('tr');
+            row.querySelector('td:last-child').textContent = formatNum(total);
+            
+            // 依存する行（経常利益）を更新
+            updateDependentRows(prefix, name);
+        }
+        
+        function updateDependentRows(prefix, manualFieldName) {
+            const display = analysisData[prefix + '_display'];
+            const months = display.months;
+            
+            // 医業利益を取得
+            const igyoRieki = display.accounts.find(a => a.name === '医業（事業）利益');
+            // マニュアル入力値を取得
+            const manualAcc = display.accounts.find(a => a.name === manualFieldName);
+            // 経常利益を取得
+            const keijyoRieki = display.accounts.find(a => a.depends_on_manual === manualFieldName);
+            
+            if (igyoRieki && manualAcc && keijyoRieki) {
+                // 経常利益 = 医業利益 + 医業外利益
+                months.forEach(m => {
+                    keijyoRieki.monthly_data[m] = (igyoRieki.monthly_data[m] || 0) + (manualAcc.monthly_data[m] || 0);
+                });
+                
+                // 画面を再描画
+                renderTable(prefix, display.accounts, months);
+            }
+        }
+
+        function formatNum(n) {
+            if (n === 0 || n === null || n === undefined) return '-';
+            return Math.round(n).toLocaleString('ja-JP');
+        }
+
+        async function saveJSON() {
+            if (!analysisData) {
+                alert('データがありません');
+                return;
+            }
+            
+            try {
+                const res = await fetch('/api/save_json', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(analysisData)
+                });
+                
+                const blob = await res.blob();
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'tkc_data.json';
+                a.click();
+                URL.revokeObjectURL(url);
+            } catch (e) {
+                alert('保存エラー: ' + e.message);
+            }
+        }
+        
+        async function loadJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const formData = new FormData();
+            formData.append('file', file);
+            
+            document.getElementById('loading').classList.add('active');
+            
+            try {
+                const res = await fetch('/api/load_json', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await res.json();
+                if (data.error) {
+                    alert('読込エラー: ' + data.error);
+                    return;
+                }
+                
+                analysisData = data;
+                document.getElementById('results').classList.add('active');
+                renderResults();
+            } catch (e) {
+                alert('読込エラー: ' + e.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+                event.target.value = '';
+            }
+        }
+
+        async function exportPDF() {
+            if (!analysisData) return;
+            
+            try {
+                const res = await fetch('/api/export_pdf', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(analysisData)
+                });
+                
+                const html = await res.text();
+                const printWindow = window.open('', '_blank');
+                printWindow.document.write(html);
+                printWindow.document.close();
+            } catch (e) {
+                alert('Export error: ' + e.message);
+            }
+        }
+    </script>
+</body>
+</html>

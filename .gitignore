@@ -1,0 +1,6 @@
+__pycache__/
+.claude/
+node_modules/
+*.pyc
+backup/
+temp/

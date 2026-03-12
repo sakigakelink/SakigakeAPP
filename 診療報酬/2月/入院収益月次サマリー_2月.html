@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>さきがけホスピタル 入院収益月次サマリー 2月度</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@media print{@page{size:A4 portrait;margin:6mm}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{padding:0!important;font-size:7px!important}.no-print{display:none!important}.summary-cards{gap:8px!important;margin-bottom:10px!important}.card{padding:10px!important}.card-value{font-size:18px!important}table{font-size:7.5px!important}th,td{padding:4px 5px!important}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Noto Sans JP',sans-serif;font-size:11px;color:#1e293b;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);min-height:100vh;padding:20px}
+.container{max-width:1000px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:24px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}
+h1{font-size:22px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:12px}
+h1::before{content:'';width:5px;height:28px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:3px}
+.print-date{font-size:11px;color:#64748b}
+.btn-group{display:flex;gap:10px}
+.btn{padding:10px 20px;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;gap:6px}
+.btn-print{background:linear-gradient(135deg,#6366f1,#4f46e5)}
+.btn-print:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,0.4)}
+.btn-save{background:linear-gradient(135deg,#10b981,#059669)}
+.btn-save:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,0.4)}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.card{background:#fff;border-radius:12px;padding:18px;position:relative;overflow:hidden;border:1px solid #e2e8f0;transition:transform 0.2s,box-shadow 0.2s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.card-revenue::before{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.card-expense::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.card-profit::before{background:linear-gradient(90deg,#10b981,#34d399)}
+.card-margin::before{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}
+.card-label{font-size:11px;color:#64748b;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.card-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px}
+.card-revenue .card-icon{background:#dbeafe;color:#2563eb}
+.card-expense .card-icon{background:#fef3c7;color:#d97706}
+.card-profit .card-icon{background:#d1fae5;color:#059669}
+.card-margin .card-icon{background:#ede9fe;color:#7c3aed}
+.card-value{font-size:26px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-0.5px}
+.card-sub{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px}
+.card-period{color:#94a3b8;font-size:10px}
+table{width:100%;border-collapse:collapse;font-size:9px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+thead th{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);color:#fff;padding:10px 8px;text-align:center;font-weight:600;letter-spacing:0.3px;position:relative}
+thead th::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,0.1)}
+th:first-child{text-align:left;padding-left:14px;min-width:200px;border-radius:8px 0 0 0}
+th:last-child{border-radius:0 8px 0 0}
+td{padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Inter',monospace;font-variant-numeric:tabular-nums;color:#334155}
+td:first-child{text-align:left;padding-left:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;color:#1e293b}
+tbody tr{background:#fff;transition:background 0.15s}
+tbody tr:nth-child(even){background:#fafbfc}
+tbody tr:hover{background:#f1f5f9}
+.indent{padding-left:28px!important;color:#64748b;font-weight:400!important}
+.indent2{padding-left:42px!important;color:#94a3b8;font-weight:400!important;font-size:8.5px}
+.section{background:linear-gradient(90deg,#eff6ff,#f8fafc)!important}
+.section td{font-weight:600}
+.section td:first-child{color:#1d4ed8}
+.subtotal{background:#f8fafc!important}
+.subtotal td{font-weight:600;color:#1e3a8a}
+.grand{background:linear-gradient(90deg,#ecfdf5,#f0fdf4)!important}
+.grand td{font-weight:700;color:#047857}
+.final{background:linear-gradient(90deg,#eff6ff,#dbeafe)!important}
+.final td{font-weight:700;color:#0f172a;font-size:10px}
+.negative{color:#dc2626!important}
+.pct{color:#94a3b8;font-size:7px;display:block;margin-top:2px}
+tbody tr:last-child td:first-child{border-radius:0 0 0 8px}
+tbody tr:last-child td:last-child{border-radius:0 0 8px 0}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>さきがけホスピタル 入院収益月次サマリー 2月度</h1>
+  <div class="btn-group no-print">
+    <button class="btn btn-save" onclick="saveHTML()">💾 HTMLを保存</button>
+    <button class="btn btn-print" onclick="window.print()">🖨️ 印刷 / PDF</button>
+  </div>
+  <div class="print-date">令和8年3月11日作成</div>
+</div>
+
+<div class="summary-cards">
+  <div class="card card-revenue">
+    <div class="card-label"><span class="card-icon">💰</span>最終請求額</div>
+    <div class="card-value">7,814万円</div>
+    <div class="card-sub"><span class="card-period">78,144,242円（減算後）</span></div>
+  </div>
+  <div class="card card-expense">
+    <div class="card-label"><span class="card-icon">🏥</span>入院料 小計</div>
+    <div class="card-value">5,851万円</div>
+    <div class="card-sub"><span class="card-period">5,850,621点 ／ 構成比 74.7%</span></div>
+  </div>
+  <div class="card card-profit">
+    <div class="card-label"><span class="card-icon">🧠</span>精神科専門 小計</div>
+    <div class="card-value">590万円</div>
+    <div class="card-sub"><span class="card-period">589,730点 ／ 構成比 7.5%</span></div>
+  </div>
+  <div class="card card-margin">
+    <div class="card-label"><span class="card-icon">📊</span>2月 合計</div>
+    <div class="card-value">7,814万円</div>
+    <div class="card-sub"><span class="card-period">最終請求額 78,144,242円（減算 ▲216,268円）</span></div>
+  </div>
+</div>
+
+<table>
+<thead>
+  <tr>
+    <th>項目</th>
+    <th>2月（点）</th>
+    <th>構成比</th>
+  </tr>
+</thead>
+<tbody>
+  <tr><td>診察</td><td>19,610<span class="pct">196,100円</span></td><td>0.3%</td></tr>
+  <tr><td>投薬</td><td>157,491<span class="pct">1,574,910円</span></td><td>2.0%</td></tr>
+  <tr><td>注射</td><td>23,591<span class="pct">235,910円</span></td><td>0.3%</td></tr>
+  <tr><td>処置</td><td>35,641<span class="pct">356,410円</span></td><td>0.5%</td></tr>
+  <tr><td>検査</td><td>78,338<span class="pct">783,380円</span></td><td>1.0%</td></tr>
+  <tr><td>画像</td><td>44,838<span class="pct">448,380円</span></td><td>0.6%</td></tr>
+  <tr class="section"><td>精神科専門</td><td>589,730<span class="pct">5,897,300円</span></td><td>7.5%</td></tr>
+  <tr><td class="indent">医療保護入院等</td><td>4,500<span class="pct">45,000円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">治療抵抗性統合失調症</td><td>1,000<span class="pct">10,000円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">精神科作業療法</td><td>465,740<span class="pct">4,657,400円</span></td><td>5.9%</td></tr>
+  <tr><td class="indent">退院指導料</td><td>3,200<span class="pct">32,000円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">退院前訪問指導料</td><td>1,140<span class="pct">11,400円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">その他</td><td>1,260<span class="pct">12,600円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">入院精神療法</td><td>112,890<span class="pct">1,128,900円</span></td><td>1.4%</td></tr>
+  <tr><td class="indent2">(I) 59件</td><td>23,600</td><td></td></tr>
+  <tr><td class="indent2">(II)(6月以内) 215件</td><td>32,250</td><td></td></tr>
+  <tr><td class="indent2">(II)(6月超) 713件</td><td>57,040</td><td></td></tr>
+  <tr><td>ベースアップ評価料</td><td>80,304<span class="pct">803,040円</span></td><td>1.0%</td></tr>
+  <tr><td>その他・器材</td><td>1,967<span class="pct">19,670円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>入院料（1病棟：精神療養）</td><td>1,975,026<span class="pct">19,750,260円</span></td><td>25.2%</td></tr>
+  <tr><td class="indent">重症者加算1</td><td>98,820<span class="pct">988,200円</span></td><td>1.3%</td></tr>
+  <tr><td class="indent">非定型抗精神病薬</td><td>18,390<span class="pct">183,900円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">地域移行実施加算</td><td>32,940<span class="pct">329,400円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">精神療養病棟入院料</td><td>1,824,876<span class="pct">18,248,760円</span></td><td>23.3%</td></tr>
+  <tr class="section"><td>入院料（2病棟：15対1）</td><td>1,512,182<span class="pct">15,121,820円</span></td><td>19.3%</td></tr>
+  <tr><td class="indent">看護配置加算</td><td>30,925<span class="pct">309,250円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">看護補助加算</td><td>143,492<span class="pct">1,434,920円</span></td><td>1.8%</td></tr>
+  <tr><td class="indent">看護補助体制充実</td><td>24,680<span class="pct">246,800円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">重度認知症加算</td><td>40,800<span class="pct">408,000円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">隔離室管理加算</td><td>11,440<span class="pct">114,400円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">身体合併症管理</td><td>12,450<span class="pct">124,500円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">地域移行実施加算</td><td>24,740<span class="pct">247,400円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">入院基本料15:1(期間加算含)</td><td>1,223,455<span class="pct">12,234,550円</span></td><td>15.6%</td></tr>
+  <tr class="section"><td>入院料（3病棟：15対1）</td><td>2,363,413<span class="pct">23,634,130円</span></td><td>30.2%</td></tr>
+  <tr><td class="indent">看護配置加算</td><td>41,525<span class="pct">415,250円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">看護補助加算</td><td>192,676<span class="pct">1,926,760円</span></td><td>2.5%</td></tr>
+  <tr><td class="indent">看護補助体制充実</td><td>32,280<span class="pct">322,800円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">重度認知症加算</td><td>8,700<span class="pct">87,000円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">身体合併症管理</td><td>8,100<span class="pct">81,000円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">地域移行実施加算</td><td>33,220<span class="pct">332,200円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">入院基本料15:1(期間加算含)</td><td>1,424,037<span class="pct">14,240,370円</span></td><td>18.2%</td></tr>
+  <tr><td class="indent">特殊疾患入院施設管理</td><td>581,350<span class="pct">5,813,500円</span></td><td>7.4%</td></tr>
+  <tr><td class="indent">療養環境加算</td><td>41,525<span class="pct">415,250円</span></td><td>0.5%</td></tr>
+  <tr class="subtotal"><td>入院料 小計</td><td>5,850,621<span class="pct">58,506,210円</span></td><td>74.7%</td></tr>
+  <tr class="subtotal"><td>食事 小計</td><td>953,920<span class="pct">9,539,200円</span></td><td>12.2%</td></tr>
+  <tr class="grand"><td>合計</td><td>7,836,051<span class="pct">78,360,510円</span></td><td>100.0%</td></tr>
+  <tr><td>集計額</td><td>78,360,510<span class="pct">円</span></td><td></td></tr>
+  <tr><td class="negative">減算分</td><td class="negative">-216,268<span class="pct">円</span></td><td></td></tr>
+  <tr class="final"><td>最終請求額</td><td>78,144,242<span class="pct">円</span></td><td></td></tr>
+</tbody>
+</table>
+
+</div>
+
+<script>
+function saveHTML(){
+  const h=document.documentElement.outerHTML;
+  const b=new Blob([h],{type:'text/html;charset=utf-8'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');
+  a.href=u;
+  a.download='入院収益月次サマリー_2月.html';
+  a.click();
+  URL.revokeObjectURL(u);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>2月度 データ精査 差分分析レポート</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@media print{@page{size:A4 portrait;margin:8mm}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{padding:0!important;font-size:8px!important}.no-print{display:none!important}table{font-size:8px!important}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Noto Sans JP',sans-serif;font-size:11px;color:#1e293b;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);min-height:100vh;padding:20px}
+.container{max-width:1000px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:24px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}
+h1{font-size:20px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:12px}
+h1::before{content:'';width:5px;height:28px;background:linear-gradient(180deg,#ef4444,#dc2626);border-radius:3px}
+h2{font-size:14px;font-weight:600;color:#1e3a8a;margin:20px 0 10px;padding:6px 12px;background:linear-gradient(90deg,#eff6ff,#fff);border-left:4px solid #3b82f6;border-radius:0 8px 8px 0}
+.print-date{font-size:11px;color:#64748b}
+.btn{padding:10px 20px;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;background:linear-gradient(135deg,#6366f1,#4f46e5)}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.card{border-radius:10px;padding:14px;border:1px solid #e2e8f0;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px}
+.card-ok::before{background:#10b981}.card-warn::before{background:#f59e0b}.card-err::before{background:#ef4444}.card-info::before{background:#3b82f6}
+.card-label{font-size:10px;color:#64748b;margin-bottom:4px}.card-value{font-size:20px;font-weight:700;color:#0f172a}.card-sub{font-size:10px;color:#94a3b8;margin-top:4px}
+table{width:100%;border-collapse:collapse;font-size:10px;margin-bottom:16px;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,0.06)}
+thead th{background:linear-gradient(135deg,#1e3a8a,#1e40af);color:#fff;padding:8px 6px;text-align:center;font-weight:600;font-size:9px}
+th:first-child{text-align:left;padding-left:12px}
+td{padding:6px 8px;border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Inter',monospace;font-variant-numeric:tabular-nums}
+td:first-child{text-align:left;padding-left:12px;font-family:'Noto Sans JP',sans-serif;font-weight:500}
+tbody tr:nth-child(even){background:#fafbfc}
+.subtotal{background:#f0f9ff!important}.subtotal td{font-weight:600;color:#1e3a8a}
+.grand{background:linear-gradient(90deg,#ecfdf5,#f0fdf4)!important}.grand td{font-weight:700;color:#047857}
+.diff-row{background:#fff7ed!important}.diff-row td{font-weight:600;color:#9a3412}
+.positive{color:#059669}.negative{color:#dc2626}.zero{color:#94a3b8}
+.note{font-size:10px;color:#64748b;margin:8px 0;padding:8px 12px;background:#f8fafc;border-radius:6px;border-left:3px solid #94a3b8}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>2月度 データ精査 差分分析レポート</h1>
+  <div class="no-print"><button class="btn" onclick="window.print()">印刷 / PDF</button></div>
+  <div class="print-date">令和8年3月3日作成</div>
+</div>
+
+<div class="summary-cards">
+  <div class="card card-info">
+    <div class="card-label">総括表 合計請求額</div>
+    <div class="card-value">78,144,242円</div>
+    <div class="card-sub">診療68,605,040 + 食事9,539,202</div>
+  </div>
+  <div class="card card-info">
+    <div class="card-label">各PDF集計 合計</div>
+    <div class="card-value">78,217,510円</div>
+    <div class="card-sub">7,821,751点 x 10円</div>
+  </div>
+  <div class="card card-warn">
+    <div class="card-label">差分（減算見込）</div>
+    <div class="card-value">+73,268円</div>
+    <div class="card-sub">+7,330点（1月は70,248円）</div>
+  </div>
+  <div class="card card-ok">
+    <div class="card-label">食事差分</div>
+    <div class="card-value">-2円</div>
+    <div class="card-sub">端数のみ（実質一致）</div>
+  </div>
+</div>
+
+<h2>1. 総括表 vs 各PDF集計 差分サマリー</h2>
+<table>
+<thead><tr><th>項目</th><th>総括表（入院）</th><th>各PDF集計</th><th>差分</th><th>判定</th></tr></thead>
+<tbody>
+<tr><td>診療点数</td><td>6,860,501点</td><td>6,867,831点</td><td class="positive">+7,330点</td><td>減算分</td></tr>
+<tr><td>診療収益(a)</td><td>68,605,040円</td><td>68,678,310円</td><td class="positive">+73,270円</td><td>減算分</td></tr>
+<tr><td>食事請求(b)</td><td>9,539,202円</td><td>9,539,200円</td><td class="negative">-2円</td><td>一致（端数）</td></tr>
+<tr class="grand"><td>合計(a+b)</td><td>78,144,242円</td><td>78,217,510円</td><td class="positive">+73,268円</td><td>減算=73,268円</td></tr>
+</tbody>
+</table>
+<div class="note">差分 +73,268円 は各PDF合算が総括表より多いことを示し、「減算分」に該当します。（参考: 1月減算 70,248円）</div>
+
+<h2>2. 区分別内訳 — 2月 vs 1月 比較</h2>
+<table>
+<thead><tr><th>区分</th><th>2月（点）</th><th>2月（円）</th><th>1月（点）</th><th>前月差（点）</th><th>前月比</th></tr></thead>
+<tbody>
+<tr><td>診察</td><td>19,330</td><td>193,300</td><td>12,405</td><td class="positive">+6,925</td><td>155.8%</td></tr>
+<tr><td>投薬（薬剤+調剤処方）</td><td>155,732</td><td>1,557,320</td><td>170,524</td><td class="negative">-14,792</td><td>91.3%</td></tr>
+<tr><td>注射（手技+薬剤）</td><td>23,591</td><td>235,910</td><td>30,810</td><td class="negative">-7,219</td><td>76.6%</td></tr>
+<tr><td>処置</td><td>35,116</td><td>351,160</td><td>41,442</td><td class="negative">-6,326</td><td>84.7%</td></tr>
+<tr><td>検査</td><td>77,465</td><td>774,650</td><td>65,800</td><td class="positive">+11,665</td><td>117.7%</td></tr>
+<tr><td>画像</td><td>45,048</td><td>450,480</td><td>36,524</td><td class="positive">+8,524</td><td>123.3%</td></tr>
+<tr><td>精神科専門</td><td>589,230</td><td>5,892,300</td><td>607,660</td><td class="negative">-18,430</td><td>97.0%</td></tr>
+<tr><td>ベースアップ評価料</td><td>80,304</td><td>803,040</td><td>89,400</td><td class="negative">-9,096</td><td>89.8%</td></tr>
+<tr><td>その他・器材</td><td>1,944</td><td>19,440</td><td>2,733</td><td class="negative">-789</td><td>71.1%</td></tr>
+<tr class="subtotal"><td>区分小計</td><td>1,027,760</td><td>10,277,600</td><td>1,057,298</td><td class="negative">-29,538</td><td>97.2%</td></tr>
+<tr><td>1病棟（精神療養）</td><td>1,974,186</td><td>19,741,860</td><td>2,046,138</td><td class="negative">-71,952</td><td>96.5%</td></tr>
+<tr><td>2病棟（精神15:1）</td><td>1,508,052</td><td>15,080,520</td><td>1,621,265</td><td class="negative">-113,213</td><td>93.0%</td></tr>
+<tr><td>3病棟（精神15:1）</td><td>2,357,833</td><td>23,578,330</td><td>2,599,262</td><td class="negative">-241,429</td><td>90.7%</td></tr>
+<tr class="subtotal"><td>入院料小計</td><td>5,840,071</td><td>58,400,710</td><td>6,266,665</td><td class="negative">-426,594</td><td>93.2%</td></tr>
+<tr><td>食事</td><td>953,920</td><td>9,539,200</td><td>1,042,606</td><td class="negative">-88,686</td><td>91.5%</td></tr>
+<tr class="grand"><td>合計</td><td>7,821,751</td><td>78,217,510</td><td>8,366,569</td><td class="negative">-544,818</td><td>93.5%</td></tr>
+
+</tbody>
+</table>
+
+<h2>3. 食事データ 病棟別内訳</h2>
+<table>
+<thead><tr><th>項目</th><th>金額（円）</th><th>構成比</th></tr></thead>
+<tbody>
+<tr><td>1病棟 食事（逆算）</td><td>3,437,592</td><td>36.0%</td></tr>
+<tr><td>2病棟 食事（診区97）</td><td>2,588,922</td><td>27.1%</td></tr>
+<tr><td>3病棟 食事（診区97）</td><td>3,512,688</td><td>36.8%</td></tr>
+<tr class="grand"><td>食事合計</td><td>9,539,202</td><td>100.0%</td></tr>
+<tr><td>総括表食事</td><td>9,539,202</td><td></td></tr>
+<tr class="diff-row"><td>差分</td><td>+0</td><td>一致</td></tr>
+</tbody>
+</table>
+
+<h2>4. 総括表 保険区分別内訳</h2>
+<table>
+<thead><tr><th>保険区分</th><th>件数</th><th>日数</th><th>点数</th><th>収益a(円)</th><th>食事b(円)</th><th>合計a+b(円)</th></tr></thead>
+<tbody>
+<tr><td>社保（小計1）</td><td>15</td><td>334</td><td>505,005</td><td>5,050,054</td><td>688,744</td><td>5,738,798</td></tr>
+<tr><td>国保（小計2）</td><td>76</td><td>1,977</td><td>2,918,385</td><td>29,183,856</td><td>4,132,032</td><td>33,315,888</td></tr>
+<tr><td>後期高齢者（小計3）</td><td>91</td><td>2,237</td><td>3,437,111</td><td>34,371,130</td><td>4,718,426</td><td>39,089,556</td></tr>
+<tr class="grand"><td>保険合計</td><td>182</td><td>4,548</td><td>6,860,501</td><td>68,605,040</td><td>9,539,202</td><td>78,144,242</td></tr>
+</tbody>
+</table>
+
+<h2>5. 分割ファイル抽出状況</h2>
+<div class="note">以下のファイルは分割ファイルのため個別の総合計行がなく、最終ファイルの総合計で合算されています。</div>
+<table>
+<thead><tr><th>ファイル名</th><th>grand_total</th><th>診区別小計</th><th>備考</th></tr></thead>
+<tbody>
+<tr><td>検査(1).pdf</td><td>0</td><td>-</td><td>検査(3)に合算総合計あり</td></tr>
+<tr><td>検査(2).pdf</td><td>0</td><td>-</td><td>検査(3)に合算総合計あり</td></tr>
+<tr><td>検査(3).pdf</td><td>774,650</td><td>-</td><td>3ファイル合計値</td></tr>
+<tr class="subtotal"><td>検査合計</td><td>774,650</td><td></td><td></td></tr>
+<tr><td>薬剤(1)-(5).pdf</td><td>各0</td><td>-</td><td>分割前半（小計なし）</td></tr>
+<tr><td>薬剤(6).pdf</td><td>0</td><td>診区21: 1,142,485</td><td>内服小計</td></tr>
+<tr><td>薬剤(7).pdf</td><td>0</td><td>診区22: 13,468</td><td>屯服小計</td></tr>
+<tr><td>薬剤(8).pdf</td><td>0</td><td>診区23: 150,895 / 31: 23,770</td><td>外用・注射小計</td></tr>
+<tr><td>薬剤(9).pdf</td><td>1,441,038</td><td>診区33: 110,141 / 40: 279</td><td>点滴・処置薬+総合計</td></tr>
+<tr class="subtotal"><td>薬剤合計</td><td>1,441,038</td><td>全診区計: 1,441,038</td><td></td></tr>
+</tbody>
+</table>
+
+</div>
+</body>
+</html>

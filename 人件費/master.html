@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>職員マスター管理</title>
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{overflow-y:scroll}
+    body{min-height:100vh;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);font-family:'Hiragino Kaku Gothic ProN',sans-serif;color:#e8e8e8;padding:1rem}
+    .container{max-width:1400px;margin:0 auto}
+    .card{background:rgba(255,255,255,.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+    .card h2{margin-bottom:1rem;font-weight:500;font-size:1.1rem}
+    .btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.3rem}
+    .btn:hover{opacity:.9}
+    .btn-save{background:linear-gradient(135deg,#ee0979,#ff6a00)}
+    .btn-out{background:transparent;border:1px solid rgba(255,255,255,.3)}
+    .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin-bottom:1rem}
+    .sc{background:rgba(102,126,234,.15);border-radius:10px;padding:.8rem;text-align:center;overflow:hidden}
+    .sv{font-size:1.2rem;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;word-break:break-all}
+    .sl{font-size:.7rem;color:rgba(255,255,255,.6);margin-top:.2rem}
+    .tc{overflow-x:auto;border-radius:10px;background:rgba(0,0,0,.2);margin-bottom:1rem}
+    .st{max-height:600px;overflow-y:auto}
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.1)}
+    th{background:#1e2a4a;font-weight:500;position:sticky;top:0;white-space:nowrap;z-index:10}
+    tr:hover td{background:rgba(255,255,255,.05)}
+    .hidden{display:none!important}
+    .fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:.6rem}
+    .fg{display:flex;flex-direction:column;gap:.2rem}
+    .fg label{font-size:.75rem;color:rgba(255,255,255,.7)}
+    .fg input{padding:.5rem;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.3);color:#fff;font-size:.85rem;font-family:inherit}
+    .fg input:focus{outline:none;border-color:#667eea}
+    .mo{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000}
+    .md{background:#1a1a2e;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.5rem;max-width:600px;width:95%;max-height:90vh;overflow-y:auto}
+    .md h3{margin-bottom:1rem;font-size:1.1rem}
+    .eb,.db{background:rgba(102,126,234,.3);border:none;color:#fff;padding:.2rem .4rem;border-radius:4px;cursor:pointer;font-size:.78rem}
+    .db{background:rgba(235,51,73,.3)}
+    .tn{display:flex;gap:.4rem;margin-bottom:.5rem}
+    .tb{padding:.5rem 1rem;border:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:.85rem;font-weight:500;cursor:pointer;font-family:inherit}
+    .tb.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+    .tp{display:none}.tp.active{display:block}
+    .bi{width:95px;padding:.35rem;border:1px solid rgba(255,255,255,.3);border-radius:4px;background:rgba(0,0,0,.3);color:#fff;font-size:.82rem;text-align:right;-moz-appearance:textfield}
+    .bi::-webkit-outer-spin-button,.bi::-webkit-inner-spin-button{-webkit-appearance:none}
+    .bi:focus{outline:none;border-color:#667eea}
+    .sub{font-size:.75rem;color:rgba(255,255,255,.5)}
+    .grn{color:#38ef7d}.red{color:#ff6b6b}.dim{color:rgba(255,255,255,.5)}
+    select{padding:.4rem;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.3);color:#fff;font-size:.82rem}
+    .toast{position:fixed;bottom:2rem;right:2rem;padding:.7rem 1.3rem;border-radius:10px;font-size:.88rem;z-index:3000;animation:toastAnim 2.2s ease forwards}
+    @keyframes toastAnim{0%{opacity:0;transform:translateY(20px)}12%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
+    .toast-ok{background:rgba(56,239,125,.92);color:#1a1a2e}
+    .toast-ng{background:rgba(255,107,107,.92);color:#fff}
+    .gbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem;padding:.5rem .8rem;background:rgba(0,0,0,.15);border-radius:10px}
+    #printHeader{display:none}
+    @media print{
+      body{background:#fff!important;color:#000!important;padding:0;font-size:10pt}
+      .container{max-width:100%}
+      .gbar,.tn,.mo,#modal{display:none!important}
+      #printHeader{display:block!important;text-align:center;margin-bottom:.8rem;padding-bottom:.5rem;border-bottom:2px solid #333}
+      #printHeader h1{font-size:14pt;margin-bottom:.2rem}
+      #printHeader .ph-sub{font-size:9pt;color:#555}
+      .tp{display:none!important}.tp.active{display:block!important}
+      .card{background:none!important;border:none!important;backdrop-filter:none!important;padding:0;margin-bottom:.8rem}
+      .card h2{display:none}
+      .sg{gap:.4rem;margin-bottom:.6rem}
+      .sc{background:#f0f0f0!important;border:1px solid #ccc;padding:.4rem}
+      .sv,.sv.dim{font-size:11pt!important;background:none!important;-webkit-background-clip:unset!important;-webkit-text-fill-color:#000!important;background-clip:unset!important;color:#000!important}
+      .sl{color:#555!important}
+      .sub{color:#666!important}
+      .tc{background:none!important;border-radius:0}
+      .st{max-height:none!important;overflow:visible!important}
+      table{font-size:9pt}
+      th{background:#ddd!important;color:#000!important;position:static!important;border-bottom:2px solid #333}
+      td{border-bottom:1px solid #ccc!important;color:#000!important}
+      tr:hover td{background:none!important}
+      .eb,.db{display:none!important}
+      .bi{border:none!important;background:none!important;color:#000!important;padding:0;text-align:right}
+      .bi::-webkit-outer-spin-button,.bi::-webkit-inner-spin-button{display:none!important}
+      .red{color:#c00!important}.grn{color:#060!important}
+      select,button{display:none!important}
+      th:last-child,td:last-child{display:none}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div id="printHeader"><h1 id="phTitle">職員マスター管理</h1><div class="ph-sub" id="phSub"></div></div>
+  <div class="gbar">
+    <button class="btn btn-save" onclick="saveAll()">💾 保存</button>
+    <button class="btn btn-out" onclick="printTab()">🖨️ PDF出力</button>
+    <label class="btn btn-out" style="cursor:pointer">📂 JSON読込<input type="file" accept=".json" onchange="importJSON(event)" style="display:none"></label>
+    <span id="saveInd" style="font-size:.8rem;white-space:nowrap;color:#38ef7d">✔ 保存済</span>
+  </div>
+  <div class="tn" id="tabNav"></div>
+  <div id="tab-master" class="tp active"></div>
+  <div id="tab-bonuslump" class="tp"></div>
+</div>
+<div id="modal" class="mo hidden"><div class="md" id="modalContent"></div></div>
+
+<script>
+let EMP=[],editIdx=null,exclIds=new Set(),lsExclIds=new Set(),unsaved=false,curSort={key:'id',ord:'asc'},blSort={key:'id',ord:'asc'};
+let bonusC={},lsCorr={},lsNight={};
+const SKEY='employeeAllDataV2';
+const HP=['事務','PSW','薬剤','看護','准看','補助','栄養','調理','OT','事業'];
+const JO=[...HP,'支援'];
+
+const esc=s=>s==null?'':String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+const Y=n=>'¥'+n.toLocaleString();
+const td=()=>{const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+1).padStart(2,'0')+'-'+String(t.getDate()).padStart(2,'0')};
+const fd=d=>{if(!d)return'-';const x=new Date(d);return x.getFullYear()+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+String(x.getDate()).padStart(2,'0')};
+const age=(bd,base)=>{if(!bd)return null;const t=base?new Date(base):new Date(),b=new Date(bd);let a=t.getFullYear()-b.getFullYear();const x=new Date(b);x.setFullYear(t.getFullYear());if(t<x)a--;return a};
+// 年俸 = 基本給×15(12ヶ月+賞与3ヶ月) + (役職+調整)×12 ※役職・調整は賞与算定基礎に含まない
+const ar7=e=>(e.baseSalary||0)*15+((e.position||0)+(e.adjustment||0))*12;
+const ar8=e=>(e.baseR8||0)*15+((e.positionR8||0)+(e.adjR8||0))*12;
+const sjt=()=>{const ex=[...new Set(EMP.map(e=>e.jobType).filter(Boolean))];return ex.sort((a,b)=>{const i=JO.indexOf(a),j=JO.indexOf(b);if(i<0&&j<0)return a.localeCompare(b,'ja');if(i<0)return 1;if(j<0)return-1;return i-j})};
+const jOpts=(id,cv)=>{const s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">全職種</option><option value="病院">病院</option>'+sjt().map(j=>`<option value="${esc(j)}">${esc(j)}</option>`).join('');s.value=cv||'病院'};
+const valid=e=>e&&typeof e==='object'&&e.id&&typeof e.id==='string'&&e.name&&typeof e.name==='string';
+
+function toast(msg,ok=true){const d=document.createElement('div');d.className='toast toast-'+(ok?'ok':'ng');d.textContent=msg;document.body.appendChild(d);setTimeout(()=>d.remove(),2300)}
+
+// 退職金支給率: 勤続年数に応じた係数 (4年未満は0)
+const rc=y=>y>=11?.81:y>=9?.64:y>=7?.49:y>=5?.36:y>=4?.25:0;
+// 勤続年数(小数): 採用日から基準日までの年数
+const yos=(hd,td)=>{const h=new Date(hd),t=new Date(td);return t.getFullYear()-h.getFullYear()+(t.getMonth()-h.getMonth())/12+(t.getDate()-h.getDate()<0?-1/12:0)};
+// 退職金支給率テーブル rc() は支給率の二乗値を格納 (4年:0.5²=0.25, 5年:0.6²=0.36, ... 11年:0.9²=0.81)
+// 中途退職(60歳未満): 基本給 × rc(係数=支給率²) × 勤続年数 → 自己都合減額済み
+// 定年退職(60歳):     基本給 × √rc(=支給率) × 勤続年数 → 満額支給率
+function calcRet(bs,hd,bd,cd){
+  if(!hd||!bd)return{now:0,ret:0,y:0,yr:0};
+  const t=cd?new Date(cd):new Date(),b=new Date(bd);
+  let a=t.getFullYear()-b.getFullYear();const ba=new Date(b);ba.setFullYear(t.getFullYear());if(t<ba)a--;
+  const y=yos(hd,t),rd=new Date(b);rd.setFullYear(b.getFullYear()+60);const yr=yos(hd,rd);
+  let now=0;if(a<60&&y>=4)now=Math.floor(bs*rc(y)*y);
+  let r60=0;if(yr>=4)r60=Math.floor(bs*Math.sqrt(rc(yr))*yr);
+  return{now,ret:r60,y,yr};
+}
+// 在職日数と在職率: 賞与の按分計算用 (採用日を1日目として算入, 1年未満は日数/365で按分)
+function svcDays(hd,bd){
+  if(!hd)return{d:0,r:0};
+  const hp=hd.split('-'),h=new Date(+hp[0],hp[1]-1,+hp[2]);
+  let t;if(bd){const p=bd.split('-');t=new Date(+p[0],p[1]-1,+p[2])}else{t=new Date();t.setHours(0,0,0,0)}
+  const d=Math.floor((t-h)/864e5)+1;
+  return{d,r:Math.min(1,d/365)};
+}
+
+function buildAll(){return{version:2,employees:EMP,bonusContributions:bonusC,lumpsumCorrections:lsCorr,lumpsumNightShifts:lsNight}}
+function applyAll(data){
+  if(!data||typeof data!=='object')return false;
+  if(Array.isArray(data)){EMP=data.filter(valid);bonusC={};lsCorr={};lsNight={};return true}
+  if(Array.isArray(data.employees))EMP=data.employees.filter(valid);
+  bonusC=data.bonusContributions&&typeof data.bonusContributions==='object'?data.bonusContributions:{};
+  lsCorr=data.lumpsumCorrections&&typeof data.lumpsumCorrections==='object'?data.lumpsumCorrections:{};
+  lsNight=data.lumpsumNightShifts&&typeof data.lumpsumNightShifts==='object'?data.lumpsumNightShifts:{};
+  return EMP.length>0;
+}
+
+async function loadStorage(){
+  try{const r=localStorage.getItem(SKEY);if(r)applyAll(JSON.parse(r))}catch(e){console.log('データなし（新規）')}
+}
+async function saveAll(){
+  // localStorageには全データ(賞与・一時金含む)を保存
+  const payload=buildAll();
+  try{localStorage.setItem(SKEY,JSON.stringify(payload,null,2))}catch(e){}
+  // employees.jsonにはID順ソート済みフラット配列のみ保存
+  EMP.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
+  const json=JSON.stringify(EMP,null,2);
+  const path='../データ/employees.json';
+  let saved=false;
+  try{if(window.fs&&window.fs.writeFile){await window.fs.writeFile(path,json,{encoding:'utf8'});saved=true}}catch(e){}
+  if(!saved){
+    try{const r=await fetch(path,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});if(r.ok)saved=true}catch(e){}
+  }
+  if(!saved){
+    try{const blob=new Blob([json],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='employees.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);toast('⚠ ファイル書込不可のためダウンロードしました。データ/employees.json に上書きしてください');unsaved=false;updInd();return}catch(e){toast('保存に失敗しました',false);return}
+  }
+  unsaved=false;updInd();toast('✔ employees.json に保存しました');
+  renderMaster(); // ソート後の表示を反映
+}
+function markDirty(){unsaved=true;updInd()}
+function updInd(){const el=document.getElementById('saveInd');if(!el)return;el.textContent=unsaved?'● 未保存':'✔ 保存済';el.style.color=unsaved?'#ff6b6b':'#38ef7d'}
+window.addEventListener('beforeunload',e=>{if(unsaved){e.preventDefault();e.returnValue=''}});
+
+function printTab(){
+  const active=document.querySelector('.tb.active');
+  const tab=active?active.dataset.t:'master';
+  const names={master:'職員マスター',bonuslump:'賞与計算・一時金'};
+  const title=names[tab]||'職員マスター管理';
+  let sub=fd(new Date()).replace(/\//g,'-');
+  if(tab==='master'){
+    const jf=document.getElementById('jf')?.value||'';
+    const rcd=document.getElementById('rcd')?.value||'';
+    sub='フィルタ: '+(jf||'全職種')+' ／ 基準日: '+(rcd||sub);
+    const cnt=document.getElementById('fc')?.textContent||'';
+    if(cnt)sub+=' ／ '+cnt+'名';
+  }else if(tab==='bonuslump'){
+    const jf=document.getElementById('bljf')?.value||'';
+    const bd=document.getElementById('bDate')?.value||'';
+    const cnt=document.getElementById('blCnt')?.textContent||'';
+    sub='フィルタ: '+(jf||'全職種')+' ／ 基準日: '+bd;
+    if(cnt)sub+=' ／ '+cnt+'名';
+  }
+  document.getElementById('phTitle').textContent=title;
+  document.getElementById('phSub').textContent=sub;
+  window.print();
+}
+
+function importJSON(ev){
+  const f=ev.target.files[0];if(!f)return;
+  const r=new FileReader();r.onload=e=>{try{
+    const data=JSON.parse(e.target.result);
+    if(EMP.length&&!confirm('既存データを上書きしますか？'))return;
+    if(!applyAll(data)){alert('有効な職員データがありません');return}
+    markDirty();refreshAll();toast(EMP.length+'件読み込みました');
+  }catch(err){alert('読込エラー: '+err.message)}};r.readAsText(f);ev.target.value='';
+}
+
+function refreshAll(){
+  document.getElementById('tab-bonuslump').innerHTML='';
+  document.getElementById('tab-master').innerHTML=renderMasterHTML();
+  document.getElementById('rcd').value=td();
+  jOpts('jf','病院');renderMaster();
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.t===name));
+  document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
+  if(name==='bonuslump'){renderBonusLump();jOpts('bljf','病院')}
+}
+document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')">🎁 賞与・一時金</button>';
+
+function renderMasterHTML(){
+  return`<div class="card"><h2>職員マスター</h2>
+<div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;margin-bottom:1rem;overflow-x:auto">
+  <select id="jf" onchange="renderMaster()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
+  <span style="white-space:nowrap;font-size:.82rem">対象:<strong id="fc" style="color:#667eea">0</strong>名
+    <span id="exInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="exC">0</strong>名 <button onclick="exclIds.clear();renderMaster()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
+  </span>
+  <button class="btn" onclick="showAdd()" style="white-space:nowrap">➕追加</button>
+  <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">
+    📅<input type="date" id="rcd" onchange="renderMaster()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem">
+    <button onclick="chRD(30)" style="padding:.2rem .4rem;background:rgba(102,126,234,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">+1月</button>
+    <button onclick="chRD(365)" style="padding:.2rem .4rem;background:rgba(102,126,234,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">+1年</button>
+    <button onclick="document.getElementById('rcd').value=td();renderMaster()" style="padding:.2rem .4rem;background:rgba(56,239,125,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">今日</button>
+  </div>
+</div>
+<div class="sg">
+  <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="tMC" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">月額人件費</div><div class="sv" id="tMCR8" style="font-size:1rem;margin-top:.2rem;background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl" style="font-size:.65rem">R8月額人件費</div></div>
+  <div class="sc" style="min-width:160px"><div class="sv" id="tAS">¥0</div><div class="sl">年俸総計</div><div class="sv" id="tASR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8年俸総計</div><div class="sv" id="tAUR" style="font-size:1rem;margin-top:.3rem">+0.0%</div><div class="sl" style="font-size:.65rem">年俸UP率</div></div>
+  <div class="sc"><div class="sv" id="tBS">¥0</div><div class="sl">基本給総計</div><div class="sv dim" id="tBSR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8基本給</div></div>
+  <div class="sc"><div class="sv" id="tPos">¥0</div><div class="sl">役職手当総計</div><div class="sv dim" id="tPosR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8役職手当</div></div>
+  <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div><div class="sv dim" id="tAdjR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8調整手当</div></div>
+  <div class="sc"><div class="sv" id="tCm">¥0</div><div class="sl">通勤手当総計</div></div>
+  <div class="sc"><div class="sv" id="tRN">¥0</div><div class="sl">退職金総計</div><div class="sv dim" id="tR60" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">定年退職金</div></div>
+</div>
+<div class="tc st"><table><thead><tr>
+  <th style="cursor:pointer" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th>名前</th><th>職種</th>
+  <th style="cursor:pointer" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
+  <th style="cursor:pointer" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
+  <th>基本給<br><span class="sub">R8</span></th><th>調整<br><span class="sub">R8</span></th>
+  <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
+  <th style="cursor:pointer" onclick="doSort('pos')">役職<br><span class="sub">R8</span><span id="s-pos"></span></th>
+  <th style="cursor:pointer" onclick="doSort('as')">年俸<br><span class="sub">R8</span><span id="s-as"></span></th>
+  <th style="cursor:pointer" onclick="doSort('ur')">UP<span id="s-ur"></span></th>
+  <th>退職金<br><span class="sub">定年</span></th><th>操作</th>
+</tr></thead><tbody id="mTb"></tbody></table></div></div>`;
+}
+function chRD(d){const i=document.getElementById('rcd'),x=i.value?new Date(i.value):new Date();x.setDate(x.getDate()+d);i.value=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');renderMaster()}
+function doSort(k){if(curSort.key===k)curSort.ord=curSort.ord==='asc'?'desc':'asc';else{curSort.key=k;curSort.ord='asc'}renderMaster()}
+function doBlSort(k){if(blSort.key===k)blSort.ord=blSort.ord==='asc'?'desc':'asc';else{blSort.key=k;blSort.ord='asc'}renderBonusLump()}
+
+function renderMaster(){
+  const panel=document.getElementById('tab-master');
+  if(!panel.innerHTML)panel.innerHTML=renderMasterHTML();
+  const jf=document.getElementById('jf')?.value||'',rcd=document.getElementById('rcd')?.value||null;
+  let disp=EMP.filter((e,i)=>{e._i=i;e._ex=exclIds.has(e.id);if(jf==='病院')return HP.includes(e.jobType);if(jf)return e.jobType===jf;return true});
+  let filt=disp.filter(e=>!e._ex);
+  const ec=exclIds.size;document.getElementById('exInfo').style.display=ec?'inline':'none';if(ec)document.getElementById('exC').textContent=ec;
+  disp.forEach(e=>{e._a7=ar7(e);e._a8=ar8(e);e._ur=e._a7>0?((e._a8-e._a7)/e._a7*100):0});
+  const sk=curSort.key,so=curSort.ord==='asc'?1:-1;
+  disp.sort((a,b)=>{switch(sk){
+    case'id':return so*a.id.localeCompare(b.id,'ja',{numeric:1});
+    case'bd':return so*((a.birthDate?new Date(a.birthDate):0)-(b.birthDate?new Date(b.birthDate):0));
+    case'hd':return so*((a.hireDate?new Date(a.hireDate):0)-(b.hireDate?new Date(b.hireDate):0));
+    case'as':return so*(a._a8-b._a8);case'ur':return so*(a._ur-b._ur);
+    case'cm':return so*((a.commute||0)-(b.commute||0));case'pos':return so*((a.position||0)-(b.position||0));
+    default:return 0}});
+  ['id','bd','hd','as','ur','cm','pos'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.textContent=curSort.key===k?(curSort.ord==='asc'?'▲':'▼'):''});
+  const t=filt.reduce((a,e)=>{a.bs+=e.baseSalary||0;a.adj+=e.adjustment||0;a.pos+=e.position||0;a.pR8+=e.positionR8||0;a.cm+=e.commute||0;a.bR8+=e.baseR8||0;a.aR8+=e.adjR8||0;const r=calcRet(e.baseSalary,e.hireDate,e.birthDate,rcd);a.rn+=r.now;a.r60+=r.ret;return a},{bs:0,adj:0,pos:0,pR8:0,cm:0,bR8:0,aR8:0,rn:0,r60:0});
+  document.getElementById('fc').textContent=filt.length;
+  document.getElementById('tBS').textContent=Y(t.bs);document.getElementById('tAdj').textContent=Y(t.adj);
+  document.getElementById('tPos').textContent=Y(t.pos);document.getElementById('tPosR8').textContent=Y(t.pR8);
+  document.getElementById('tCm').textContent=Y(t.cm);document.getElementById('tBSR8').textContent=Y(t.bR8);
+  document.getElementById('tAdjR8').textContent=Y(t.aR8);document.getElementById('tRN').textContent=Y(t.rn);document.getElementById('tR60').textContent=Y(t.r60);
+  // 年俸総計: 基本給×15(12ヶ月+賞与3ヶ月) + (役職+調整)×12
+  const tA=t.bs*15+(t.pos+t.adj)*12,tR=t.bR8*15+(t.pR8+t.aR8)*12,tU=tA>0?((tR-tA)/tA*100):0;
+  document.getElementById('tAS').textContent=Y(tA);document.getElementById('tASR8').textContent=Y(tR);
+  const ue=document.getElementById('tAUR');ue.textContent=(tU>=0?'+':'')+tU.toFixed(2)+'%';ue.style.color=tU>0?'#38ef7d':tU<0?'#ff6b6b':'rgba(255,255,255,.5)';
+  // 月額人件費 = 基本給×1.25(基本給+賞与月割=基本給×3÷12) + 役職 + 調整 + 通勤
+  document.getElementById('tMC').textContent=Y(Math.round(t.bs*1.25+t.pos+t.adj+t.cm));
+  document.getElementById('tMCR8').textContent=Y(Math.round(t.bR8*1.25+t.pR8+t.aR8+t.cm));
+  document.getElementById('mTb').innerHTML=disp.map(e=>{
+    const r=calcRet(e.baseSalary,e.hireDate,e.birthDate,rcd),a=age(e.birthDate),si=esc(e.id);
+    const uc=e._ur>0?'#38ef7d':e._ur<0?'#ff6b6b':'rgba(255,255,255,.5)';
+    return`<tr style="${e._ex?'opacity:.4;background:rgba(235,51,73,.1)':''}">
+<td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td>
+<td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}</td>
+<td>${Y(e.baseSalary||0)}<br><span class="sub">${Y(e.baseR8||0)}</span></td>
+<td>${Y(e.adjustment||0)}<br><span class="sub">${Y(e.adjR8||0)}</span></td>
+<td>${Y(e.commute||0)}</td>
+<td>${Y(e.position||0)}<br><span class="sub">${Y(e.positionR8||0)}</span></td>
+<td>${Y(e._a7)}<br><span class="sub">${Y(e._a8)}</span></td>
+<td style="color:${uc};font-weight:500">${e._ur>=0?'+':''}${e._ur.toFixed(1)}%</td>
+<td>${Y(r.now)}<br><span class="sub">${Y(r.ret)}</span></td>
+<td><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
+}
+function toggleEx(id){if(exclIds.has(id))exclIds.delete(id);else exclIds.add(id);renderMaster()}
+function toggleLsEx(id){if(lsExclIds.has(id))lsExclIds.delete(id);else lsExclIds.add(id);renderBonusLump()}
+
+function showAdd(){editIdx=null;showModal('職員追加',{})}
+function editM(i){editIdx=i;showModal('職員編集',EMP[i])}
+function showModal(title,e){
+  document.getElementById('modalContent').innerHTML=`<h3>${title}</h3>
+<div class="fr"><div class="fg"><label>職員番号</label><input id="eId" value="${esc(e.id||'')}"></div><div class="fg"><label>名前</label><input id="eNm" value="${esc(e.name||'')}"></div><div class="fg"><label>職種</label><input id="eJt" value="${esc(e.jobType||'')}"></div></div>
+<div class="fr"><div class="fg"><label>生年月日</label><input type="date" id="eBd" value="${e.birthDate||''}"></div><div class="fg"><label>採用日</label><input type="date" id="eHd" value="${e.hireDate||''}"></div></div>
+<div class="fr"><div class="fg"><label>基本給</label><input type="number" id="eBs" value="${e.baseSalary||0}"></div><div class="fg"><label>調整手当</label><input type="number" id="eAd" value="${e.adjustment||0}"></div><div class="fg"><label>通勤非課税</label><input type="number" id="eCm" value="${e.commute||0}"></div></div>
+<div class="fr"><div class="fg"><label>基本給R8</label><input type="number" id="eBR" value="${e.baseR8||0}"></div><div class="fg"><label>調整手当R8</label><input type="number" id="eAR" value="${e.adjR8||0}"></div></div>
+<div class="fr"><div class="fg"><label>役職手当</label><input type="number" id="ePs" value="${e.position||0}"></div><div class="fg"><label>役職手当R8</label><input type="number" id="ePR" value="${e.positionR8||0}"></div></div>
+<div style="display:flex;gap:.6rem;margin-top:1rem"><button class="btn" onclick="saveM()">💾保存</button><button class="btn btn-out" onclick="closeM()">キャンセル</button></div>`;
+  document.getElementById('modal').classList.remove('hidden');
+}
+function closeM(){document.getElementById('modal').classList.add('hidden')}
+function saveM(){
+  const g=id=>document.getElementById(id).value;
+  const emp={id:g('eId').trim(),name:g('eNm').trim(),jobType:g('eJt').trim(),birthDate:g('eBd'),hireDate:g('eHd'),
+    baseSalary:Math.max(0,+g('eBs')||0),adjustment:+g('eAd')||0,commute:Math.max(0,+g('eCm')||0),
+    baseR8:Math.max(0,+g('eBR')||0),adjR8:+g('eAR')||0,position:Math.max(0,+g('ePs')||0),positionR8:Math.max(0,+g('ePR')||0)};
+  if(!emp.id||!emp.name){alert('番号と名前は必須');return}
+  if(editIdx===null){if(EMP.some(e=>e.id===emp.id)){alert('番号重複');return}}
+  else{if(EMP.some((e,i)=>e.id===emp.id&&i!==editIdx)){alert('番号重複');return}}
+  if(editIdx!==null)EMP[editIdx]=emp;else EMP.push(emp);
+  markDirty();const cv=document.getElementById('jf')?.value||'病院';jOpts('jf',cv);renderMaster();closeM();
+}
+function delM(i){if(!confirm('削除？'))return;const removed=EMP.splice(i,1)[0];if(removed)exclIds.delete(removed.id);markDirty();const cv=document.getElementById('jf')?.value||'病院';jOpts('jf',cv);renderMaster()}
+
+function updBonusC(id,val){if(val==='')delete bonusC[id];else bonusC[id]=+val||0;markDirty();renderBonusLump()}
+function updLsCorr(id,val){if(val==='')delete lsCorr[id];else lsCorr[id]=+val||0;markDirty();renderBonusLump()}
+function updLsNight(id,val){if(val==='')delete lsNight[id];else lsNight[id]=+val||0;markDirty();renderBonusLump()}
+function renderBonusLump(){
+  const panel=document.getElementById('tab-bonuslump');
+  if(!document.getElementById('blTb')){
+    panel.innerHTML=`<div class="card"><h2>🎁 賞与・一時金</h2>
+<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+  <select id="bljf" onchange="renderBonusLump()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
+  <div style="background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;display:flex;align-items:center;gap:.3rem"><span style="color:rgba(255,255,255,.7);font-size:.78rem">基準日:</span><input type="date" id="bDate" value="2026-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
+  <span style="font-size:.82rem">対象者:<strong id="blCnt" style="color:#667eea">0</strong>名
+    <span id="blExInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="blExC">0</strong>名 <button onclick="lsExclIds.clear();renderBonusLump()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
+  </span>
+</div>
+<div class="sg">
+  <div class="sc"><div class="sv" id="blBB">¥0</div><div class="sl">賞与基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">基本給×3 1万切上</div></div>
+  <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blBCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">賞与確定総計</div></div>
+  <div class="sc"><div class="sv" id="blLB">¥0</div><div class="sl">一時金基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">(R8-R7年俸)÷3</div></div>
+  <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="blLN" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">夜勤付加総計</div></div>
+  <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blLCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">一時金確定総計</div></div>
+  <div class="sc" style="background:rgba(102,126,234,.25)"><div class="sv" id="blTotal" style="font-size:1.3rem;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">総合計</div></div>
+</div>
+<div class="tc st"><table><thead><tr>
+  <th style="cursor:pointer" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer" onclick="doBlSort('age')">年齢<span id="bl-s-age"></span></th><th style="cursor:pointer" onclick="doBlSort('svc')">勤続<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
+  <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
+  <th style="border-left:2px solid rgba(56,239,125,.4);cursor:pointer" onclick="doBlSort('lBase')">一時金基準<span id="bl-s-lBase"></span></th><th>補正</th><th>夜勤</th><th style="cursor:pointer" onclick="doBlSort('lConf')">一時金確定<span id="bl-s-lConf"></span></th>
+  <th style="border-left:2px solid rgba(102,126,234,.6);cursor:pointer" onclick="doBlSort('total')">総額<span id="bl-s-total"></span></th><th>操作</th>
+</tr></thead><tbody id="blTb"></tbody></table></div></div>`;
+  }
+  const jf=document.getElementById('bljf')?.value||'',bd=document.getElementById('bDate')?.value||'2026-03-31';
+  let tgt=EMP.filter(e=>{if(jf==='病院')return HP.includes(e.jobType);if(jf)return e.jobType===jf;return true});
+  tgt.forEach(e=>{
+    e._blEx=lsExclIds.has(e.id);
+    e._blAge=age(e.birthDate,bd);
+    const sv=svcDays(e.hireDate,bd);e._blSv=sv;
+    const bFull=(e.baseSalary||0)*3,bRaw=bFull*sv.r;e._blBBase=Math.ceil(bRaw/10000)*10000;
+    const cb=bonusC[e.id]||0,hasB=e.id in bonusC;e._blBConf=hasB?cb:e._blBBase;
+    const a7=ar7(e),a8=ar8(e);e._blLBase=Math.round((a8-a7)/3);
+    const ns=lsNight[e.id]||0,hasLC=e.id in lsCorr,lCorr=lsCorr[e.id]||0;
+    e._blLConf=hasLC?(lCorr+ns):(e._blLBase+ns);
+    e._blTotal=e._blBConf+e._blLConf;
+  });
+  const bk=blSort.key,bo=blSort.ord==='asc'?1:-1;
+  tgt.sort((a,b)=>{switch(bk){
+    case'id':return bo*a.id.localeCompare(b.id,'ja',{numeric:1});
+    case'name':return bo*(a.name||'').localeCompare(b.name||'','ja');
+    case'jt':return bo*(a.jobType||'').localeCompare(b.jobType||'','ja');
+    case'age':return bo*((a._blAge||0)-(b._blAge||0));
+    case'svc':return bo*((a._blSv?.d||0)-(b._blSv?.d||0));
+    case'bs':return bo*((a.baseSalary||0)-(b.baseSalary||0));
+    case'bBase':return bo*(a._blBBase-b._blBBase);
+    case'bConf':return bo*(a._blBConf-b._blBConf);
+    case'lBase':return bo*(a._blLBase-b._blLBase);
+    case'lConf':return bo*(a._blLConf-b._blLConf);
+    case'total':return bo*(a._blTotal-b._blTotal);
+    default:return 0}});
+  ['id','name','jt','age','svc','bs','bBase','bConf','lBase','lConf','total'].forEach(k=>{const el=document.getElementById('bl-s-'+k);if(el)el.textContent=blSort.key===k?(blSort.ord==='asc'?'▲':'▼'):''});
+  const blEc=lsExclIds.size;document.getElementById('blExInfo').style.display=blEc?'inline':'none';if(blEc)document.getElementById('blExC').textContent=blEc;
+  let tBB=0,tBCf=0,tLB=0,tLN=0,tLCf=0;
+  document.getElementById('blTb').innerHTML=tgt.map(e=>{
+    const a=age(e.birthDate,bd),sv=svcDays(e.hireDate,bd),si=esc(e.id);
+    // 賞与: 基本給×3, 1年未満は按分し1万円切上
+    const bFull=(e.baseSalary||0)*3,bRaw=bFull*sv.r,bBase=Math.ceil(bRaw/10000)*10000;
+    const cb=bonusC[e.id]||0,hasB=e.id in bonusC,bConf=hasB?cb:bBase;
+    // 一時金: (R8年俸-R7年俸)÷3
+    const a7=ar7(e),a8=ar8(e),lBase=Math.round((a8-a7)/3);
+    const ns=lsNight[e.id]||0,hasLC=e.id in lsCorr,lCorr=lsCorr[e.id]||0;
+    const lConf=hasLC?(lCorr+ns):(lBase+ns);
+    // 総額
+    const total=bConf+lConf;
+    if(!e._blEx){tBB+=bBase;tBCf+=bConf;tLB+=lBase;tLN+=ns;tLCf+=lConf}
+    const u1=sv.r<1;
+    const svTxt=u1?`<span class="red">${sv.d}日</span><br><span class="sub">(${Math.round(sv.r*100)}%)</span>`:`${Math.floor(sv.d/365)}年`;
+    const bTxt=u1?Y(bBase)+`<br><span class="sub">満額${Y(bFull)}</span>`:Y(bBase);
+    const lbc=lBase>0?'#38ef7d':lBase<0?'#ff6b6b':'rgba(255,255,255,.5)';
+    return`<tr style="${e._blEx?'opacity:.4;background:rgba(235,51,73,.1)':''}">
+<td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td><td>${a}歳</td><td>${svTxt}</td><td>${Y(e.baseSalary||0)}</td>
+<td style="border-left:2px solid rgba(238,9,121,.15);${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
+<td><input type="number" class="bi" value="${cb||''}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
+<td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'}">${Y(bConf)}</td>
+<td style="border-left:2px solid rgba(56,239,125,.15);color:${lbc};font-weight:500;text-align:right">${Y(lBase)}</td>
+<td><input type="number" class="bi" value="${hasLC?lCorr:''}" placeholder="" onchange="updLsCorr('${si}',this.value)" style="${hasLC?'border-color:#ffd700':''}"></td>
+<td><input type="number" class="bi" value="${ns||''}" placeholder="0" onchange="updLsNight('${si}',this.value)"></td>
+<td style="${hasLC?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'};text-align:right">${Y(lConf)}</td>
+<td style="border-left:2px solid rgba(102,126,234,.3);font-weight:700;text-align:right;font-size:.9rem">${Y(total)}</td>
+<td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(235,51,73,.5)':''}">🚫</button></td></tr>`}).join('');
+  const totalAll=tBCf+tLCf;
+  document.getElementById('blCnt').textContent=tgt.filter(e=>!e._blEx).length;
+  document.getElementById('blBB').textContent=Y(tBB);document.getElementById('blBCf').textContent=Y(tBCf);
+  document.getElementById('blLB').textContent=Y(tLB);document.getElementById('blLN').textContent=Y(tLN);document.getElementById('blLCf').textContent=Y(tLCf);
+  document.getElementById('blTotal').textContent=Y(totalAll);
+}
+
+async function init(){
+  // 埋め込みデータがあれば優先読み込み
+  if(typeof __EMBEDDED_DATA__!=='undefined'&&__EMBEDDED_DATA__){
+    applyAll(__EMBEDDED_DATA__);
+  } else {
+    await loadStorage();
+  }
+  if(!EMP.length){
+    try{const txt=await window.fs.readFile('../データ/employees.json',{encoding:'utf8'});const d=JSON.parse(txt);if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}catch(e){}
+  }
+  if(!EMP.length){
+    try{const r=await fetch('../データ/employees.json');if(r.ok){const d=await r.json();if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}}catch(e){}
+  }
+  document.getElementById('tab-master').innerHTML=renderMasterHTML();
+  document.getElementById('rcd').value=td();
+  jOpts('jf','病院');
+  renderMaster();
+}
+init();
+</script>
+</body>
+</html>

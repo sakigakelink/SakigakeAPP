@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>給与分析アプリ</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
+  <style>
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{overflow-y:scroll}
+    body{min-height:100vh;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);font-family:'Noto Sans JP','Hiragino Kaku Gothic ProN',sans-serif;color:#e8e8e8;padding:1.5rem}
+    .container{max-width:1400px;margin:0 auto}
+    .header{text-align:center;margin-bottom:1.5rem}
+    .header h1{font-size:1.5rem;margin-bottom:.3rem}
+    .header .sub{font-size:.85rem;color:rgba(255,255,255,.6)}
+    .card{background:rgba(255,255,255,.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
+    .card h2{margin-bottom:1rem;font-weight:500;font-size:1.1rem}
+    .btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:.6rem 1.2rem;border-radius:8px;font-size:.88rem;font-weight:500;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.4rem;transition:all .3s ease}
+    .btn:hover{transform:translateY(-2px);box-shadow:0 8px 25px rgba(102,126,234,.4)}
+    .btn:disabled{opacity:.5;cursor:not-allowed;transform:none;box-shadow:none}
+    .btn-secondary{background:linear-gradient(135deg,#11998e,#38ef7d)}
+    .btn-out{background:transparent;border:1px solid rgba(255,255,255,.3)}
+    .btn-out:hover{background:rgba(255,255,255,.1);transform:none;box-shadow:none}
+    .upload-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:1rem;margin-bottom:1rem}
+    .upload-slot{position:relative}
+    .upload-zone{display:block;border:2px dashed rgba(255,255,255,.25);border-radius:12px;padding:1.2rem;text-align:center;cursor:pointer;transition:all .3s ease;background:rgba(102,126,234,.08)}
+    .upload-zone:hover{border-color:#667eea;background:rgba(102,126,234,.15)}
+    .upload-zone.loaded{border-color:#38ef7d;border-style:solid;background:rgba(56,239,125,.08)}
+    .upload-zone input{display:none}
+    .upload-label{font-weight:500;font-size:1rem;margin-bottom:.3rem}
+    .upload-status{font-size:.78rem;color:rgba(255,255,255,.5)}
+    .upload-zone.loaded .upload-status{color:#38ef7d}
+    .btn-group{display:flex;gap:.8rem;flex-wrap:wrap;align-items:center}
+    .folder-btns{display:flex;gap:.5rem;flex-wrap:wrap;margin-bottom:1rem}
+    .folder-btn{background:rgba(102,126,234,.2);border:1px solid rgba(102,126,234,.4);color:#e8e8e8;padding:.4rem .8rem;border-radius:8px;font-size:.82rem;cursor:pointer;font-family:inherit;transition:all .2s}
+    .folder-btn:hover{background:rgba(102,126,234,.35)}
+    .folder-btn.active{background:linear-gradient(135deg,#667eea,#764ba2);border-color:transparent;color:#fff}
+    .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:1rem;margin-bottom:1.5rem}
+    .sc{background:rgba(102,126,234,.15);border-radius:12px;padding:1rem;text-align:center}
+    .sv{font-size:1.4rem;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+    .sl{font-size:.75rem;color:rgba(255,255,255,.6);margin-top:.3rem}
+    .tc{overflow-x:auto;border-radius:10px;background:rgba(0,0,0,.2);margin-bottom:1rem}
+    .st{max-height:600px;overflow-y:auto}
+    table{width:100%;border-collapse:collapse;font-size:.82rem}
+    th,td{padding:.5rem .7rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.1)}
+    th{background:#1e2a4a;font-weight:500;position:sticky;top:0;white-space:nowrap;z-index:5}
+    tr:hover td{background:rgba(255,255,255,.05)}
+    .num{text-align:right;font-variant-numeric:tabular-nums}
+    .pay-value{font-weight:500;color:#38ef7d}
+    .total-row td{background:rgba(102,126,234,.15)!important;font-weight:600;border-top:2px solid rgba(102,126,234,.4)}
+    .hidden{display:none!important}
+    .collapsible{cursor:pointer;user-select:none;display:flex;justify-content:space-between;align-items:center}
+    .collapsible:hover{opacity:.85}
+    .toggle-arrow{font-size:.8rem;transition:transform .2s}
+    .toggle-arrow.open{transform:rotate(180deg)}
+    .loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999}
+    .loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#667eea;border-radius:50%;animation:spin .8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .period-badge{display:inline-block;background:rgba(102,126,234,.3);padding:.2rem .6rem;border-radius:6px;font-size:.82rem;margin-left:.5rem}
+    @media print{
+      body{background:#fff!important;color:#000!important;padding:0}
+      .card{background:none!important;border:none!important;backdrop-filter:none!important;padding:0;margin-bottom:.8rem}
+      .upload-grid,.btn-group,.folder-btns,.loading,.btn{display:none!important}
+      .sc{background:#f0f0f0!important;border:1px solid #ccc}
+      .sv{background:none!important;-webkit-text-fill-color:#000!important;color:#000!important}
+      .sl{color:#555!important}
+      th{background:#ddd!important;color:#000!important;position:static!important}
+      td{color:#000!important}
+      .pay-value{color:#060!important}
+      .hidden{display:none!important}
+      .detail-content{display:block!important}
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>給与分析アプリ</h1>
+    <div class="sub">TKC PX2 一人別給与統計表 解析ダッシュボード</div>
+  </div>
+
+  <!-- アップロードセクション -->
+  <div class="card" id="uploadCard">
+    <h2>PDF読込</h2>
+    <div id="folderSection">
+      <div style="font-size:.85rem;color:rgba(255,255,255,.7);margin-bottom:.5rem">サーバー上のフォルダから読込:</div>
+      <div class="folder-btns" id="folderBtns"></div>
+      <div style="margin-top:.5rem">
+        <button class="btn btn-secondary" id="loadAllBtn" onclick="loadAllFolders()">全月読込</button>
+      </div>
+    </div>
+    <div style="font-size:.85rem;color:rgba(255,255,255,.5);margin:1rem 0;text-align:center">── または PDFファイルをアップロード ──</div>
+    <div class="upload-grid">
+      <label class="upload-zone" data-key="ippan">
+        <input type="file" accept=".pdf" data-key="ippan">
+        <div class="upload-label">一般</div>
+        <div class="upload-status">PDFを選択</div>
+      </label>
+      <label class="upload-zone" data-key="ishi">
+        <input type="file" accept=".pdf" data-key="ishi">
+        <div class="upload-label">医師</div>
+        <div class="upload-status">PDFを選択</div>
+      </label>
+      <label class="upload-zone" data-key="chiiki">
+        <input type="file" accept=".pdf" data-key="chiiki">
+        <div class="upload-label">地域生活</div>
+        <div class="upload-status">PDFを選択</div>
+      </label>
+      <label class="upload-zone" data-key="hijoukin">
+        <input type="file" accept=".pdf" data-key="hijoukin">
+        <div class="upload-label">非常勤</div>
+        <div class="upload-status">PDFを選択</div>
+      </label>
+    </div>
+    <div class="btn-group">
+      <button class="btn" id="analyzeBtn" onclick="analyzeUpload()" disabled>解析実行</button>
+      <button class="btn btn-out" onclick="clearAll()">クリア</button>
+    </div>
+  </div>
+
+  <!-- 結果セクション -->
+  <div id="results" class="hidden">
+    <!-- サマリーカード -->
+    <div class="card">
+      <h2>総合サマリー <span class="period-badge" id="periodBadge"></span></h2>
+      <div class="sg">
+        <div class="sc"><div class="sv" id="statHeadcount">-</div><div class="sl">総人数</div></div>
+        <div class="sc"><div class="sv" id="statShikyu">-</div><div class="sl">支給合計</div></div>
+        <div class="sc"><div class="sv" id="statPerPerson">-</div><div class="sl">一人当たり</div></div>
+        <div class="sc"><div class="sv" id="statAge">-</div><div class="sl">平均年齢</div></div>
+        <div class="sc"><div class="sv" id="statTenure">-</div><div class="sl">平均勤続</div></div>
+      </div>
+    </div>
+
+    <!-- 部門比較テーブル -->
+    <div class="card">
+      <h2>部門別比較</h2>
+      <div class="tc">
+        <table>
+          <thead>
+            <tr>
+              <th>区分</th>
+              <th class="num">人数</th>
+              <th class="num">平均年齢</th>
+              <th class="num">平均勤続</th>
+              <th class="num">基本給計</th>
+              <th class="num">手当計</th>
+              <th class="num">時間外計</th>
+              <th class="num">支給合計</th>
+              <th class="num">一人当たり</th>
+            </tr>
+          </thead>
+          <tbody id="catTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 部署別比較テーブル -->
+    <div class="card">
+      <h2>部署別比較（部課コード）</h2>
+      <div class="tc">
+        <table>
+          <thead>
+            <tr>
+              <th>部課</th>
+              <th class="num">人数</th>
+              <th class="num">平均年齢</th>
+              <th class="num">平均勤続</th>
+              <th class="num">基本給計</th>
+              <th class="num">手当計</th>
+              <th class="num">時間外計</th>
+              <th class="num">支給合計</th>
+              <th class="num">一人当たり</th>
+            </tr>
+          </thead>
+          <tbody id="bukaTable"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 月別推移（全月読込時のみ表示） -->
+    <div class="card hidden" id="trendCard">
+      <h2>月別推移</h2>
+      <div class="tc">
+        <table>
+          <thead id="trendHead"></thead>
+          <tbody id="trendBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 部門別月別推移（全月読込時のみ表示） -->
+    <div class="card hidden" id="catTrendCard">
+      <h2>部門別 月別推移（支給合計）</h2>
+      <div class="tc">
+        <table>
+          <thead id="catTrendHead"></thead>
+          <tbody id="catTrendBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- 個人別詳細 -->
+    <div id="detailContainer"></div>
+  </div>
+</div>
+
+<!-- ローディング -->
+<div class="loading hidden" id="loading">
+  <div class="loading-spinner"></div>
+</div>
+
+<script>
+const FILES = {};
+let analysisData = null;
+
+// ファイル選択
+document.querySelectorAll('.upload-zone input[type="file"]').forEach(inp => {
+  inp.addEventListener('change', e => {
+    const key = e.target.dataset.key;
+    const file = e.target.files[0];
+    const zone = e.target.closest('.upload-zone');
+    if (file) {
+      FILES[key] = file;
+      zone.classList.add('loaded');
+      zone.querySelector('.upload-status').textContent = file.name;
+    } else {
+      delete FILES[key];
+      zone.classList.remove('loaded');
+      zone.querySelector('.upload-status').textContent = 'PDFを選択';
+    }
+    document.getElementById('analyzeBtn').disabled = !Object.keys(FILES).length;
+  });
+});
+
+// フォルダ一覧取得
+async function loadFolders() {
+  try {
+    const res = await fetch('/api/folders');
+    const folders = await res.json();
+    const container = document.getElementById('folderBtns');
+    if (!folders.length) {
+      container.innerHTML = '<span style="font-size:.82rem;color:rgba(255,255,255,.4)">月フォルダなし</span>';
+      return;
+    }
+    container.innerHTML = folders.map(f =>
+      `<button class="folder-btn" onclick="loadFolder('${f.name}')">${f.name} (${f.pdf_count}件)</button>`
+    ).join('');
+  } catch (e) { console.error(e); }
+}
+
+// フォルダ読込
+async function loadFolder(name) {
+  document.querySelectorAll('.folder-btn').forEach(b => b.classList.remove('active'));
+  event.target.classList.add('active');
+  hideTrendTables();
+  showLoading();
+  try {
+    const res = await fetch('/api/parse_folder', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ folder: name })
+    });
+    analysisData = await res.json();
+    if (analysisData.error) { alert(analysisData.error); return; }
+    renderDashboard();
+  } catch (e) {
+    alert('読込エラー: ' + e.message);
+  } finally { hideLoading(); }
+}
+
+// アップロード解析
+async function analyzeUpload() {
+  const fd = new FormData();
+  for (const [key, file] of Object.entries(FILES)) fd.append(key, file);
+  hideTrendTables();
+  showLoading();
+  try {
+    const res = await fetch('/api/parse', { method: 'POST', body: fd });
+    analysisData = await res.json();
+    if (analysisData.error) { alert(analysisData.error); return; }
+    renderDashboard();
+  } catch (e) {
+    alert('解析エラー: ' + e.message);
+  } finally { hideLoading(); }
+}
+
+function clearAll() {
+  Object.keys(FILES).forEach(k => delete FILES[k]);
+  document.querySelectorAll('.upload-zone').forEach(z => {
+    z.classList.remove('loaded');
+    z.querySelector('.upload-status').textContent = 'PDFを選択';
+    z.querySelector('input').value = '';
+  });
+  document.querySelectorAll('.folder-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('analyzeBtn').disabled = true;
+  document.getElementById('results').classList.add('hidden');
+  document.getElementById('trendCard').classList.add('hidden');
+  document.getElementById('catTrendCard').classList.add('hidden');
+  analysisData = null;
+  allMonthsData = null;
+}
+
+function hideTrendTables() {
+  document.getElementById('trendCard').classList.add('hidden');
+  document.getElementById('catTrendCard').classList.add('hidden');
+  allMonthsData = null;
+}
+
+// ダッシュボード描画
+function renderDashboard() {
+  const { combined, categories } = analysisData;
+  const t = combined.totals;
+
+  // 期間表示
+  const periods = Object.values(categories).map(c => c.period).filter(Boolean);
+  document.getElementById('periodBadge').textContent = periods[0] || '';
+
+  // 統計カード
+  document.getElementById('statHeadcount').textContent = t.headcount + '人';
+  document.getElementById('statShikyu').textContent = yen(t['支給合計']);
+  document.getElementById('statPerPerson').textContent = yen(t['一人当たり']);
+  document.getElementById('statAge').textContent = t.avg_age + '歳';
+  document.getElementById('statTenure').textContent = t.avg_tenure + '年';
+
+  // 部門テーブル
+  const tbody = document.getElementById('catTable');
+  tbody.innerHTML = combined.category_summaries.map(c => `
+    <tr>
+      <td>${c.category}</td>
+      <td class="num">${c.headcount}</td>
+      <td class="num">${c.avg_age}歳</td>
+      <td class="num">${c.avg_tenure}年</td>
+      <td class="num">${yen(c['基本給計'])}</td>
+      <td class="num">${yen(c['手当計'])}</td>
+      <td class="num">${yen(c['時間外計'])}</td>
+      <td class="num pay-value">${yen(c['支給合計'])}</td>
+      <td class="num">${yen(c['一人当たり'])}</td>
+    </tr>
+  `).join('') + `
+    <tr class="total-row">
+      <td>合計</td>
+      <td class="num">${t.headcount}</td>
+      <td class="num">${t.avg_age}歳</td>
+      <td class="num">${t.avg_tenure}年</td>
+      <td class="num">${yen(sumField(combined.category_summaries, '基本給計'))}</td>
+      <td class="num">${yen(sumField(combined.category_summaries, '手当計'))}</td>
+      <td class="num">${yen(sumField(combined.category_summaries, '時間外計'))}</td>
+      <td class="num pay-value">${yen(t['支給合計'])}</td>
+      <td class="num">${yen(t['一人当たり'])}</td>
+    </tr>
+  `;
+
+  // 部署別テーブル
+  const bukaTbody = document.getElementById('bukaTable');
+  const bukaData = analysisData.buka_summary || [];
+  bukaTbody.innerHTML = bukaData.map(b => `
+    <tr>
+      <td>${b.buka}</td>
+      <td class="num">${b.headcount}</td>
+      <td class="num">${b.avg_age}歳</td>
+      <td class="num">${b.avg_tenure}年</td>
+      <td class="num">${yen(b['基本給計'])}</td>
+      <td class="num">${yen(b['手当計'])}</td>
+      <td class="num">${yen(b['時間外計'])}</td>
+      <td class="num pay-value">${yen(b['支給合計'])}</td>
+      <td class="num">${yen(b['一人当たり'])}</td>
+    </tr>
+  `).join('') + `
+    <tr class="total-row">
+      <td>合計</td>
+      <td class="num">${sumField(bukaData, 'headcount')}</td>
+      <td class="num">-</td>
+      <td class="num">-</td>
+      <td class="num">${yen(sumField(bukaData, '基本給計'))}</td>
+      <td class="num">${yen(sumField(bukaData, '手当計'))}</td>
+      <td class="num">${yen(sumField(bukaData, '時間外計'))}</td>
+      <td class="num pay-value">${yen(sumField(bukaData, '支給合計'))}</td>
+      <td class="num">${yen(Math.round(sumField(bukaData, '支給合計') / sumField(bukaData, 'headcount')))}</td>
+    </tr>
+  `;
+
+  // 個人別詳細
+  renderDetails(categories);
+
+  document.getElementById('results').classList.remove('hidden');
+  setTimeout(() => document.getElementById('results').scrollIntoView({ behavior: 'smooth' }), 100);
+}
+
+function renderDetails(categories) {
+  const container = document.getElementById('detailContainer');
+  container.innerHTML = '';
+
+  for (const [label, data] of Object.entries(categories)) {
+    if (data.error || !data.employees || !data.employees.length) continue;
+    const emps = data.employees;
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <h2 class="collapsible" onclick="toggleDetail(this)">
+        <span>${label} (${emps.length}人)</span>
+        <span class="toggle-arrow">&#9660;</span>
+      </h2>
+      <div class="detail-content hidden">
+        <div class="tc"><div class="st">
+          <table>
+            <thead>
+              <tr>
+                <th>社員番号</th>
+                <th>氏名</th>
+                <th>性別</th>
+                <th class="num">年齢</th>
+                <th class="num">勤続</th>
+                <th class="num">基本給</th>
+                <th class="num">役職手当</th>
+                <th class="num">調整手当</th>
+                <th class="num">時間外</th>
+                <th class="num">支給合計</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${emps.map(e => `
+                <tr>
+                  <td>${e.taikei}-${e.buka}-${e.shain_no}</td>
+                  <td>${e.name}</td>
+                  <td>${e.gender}</td>
+                  <td class="num">${e.age != null ? e.age + '歳' : '-'}</td>
+                  <td class="num">${e.tenure != null ? e.tenure + '年' : '-'}</td>
+                  <td class="num">${yen(e.salary['基本給'])}</td>
+                  <td class="num">${yen(e.salary['役職手当'])}</td>
+                  <td class="num">${yen(e.salary['調整手当'])}</td>
+                  <td class="num">${yen(e.salary['時間外手当'])}</td>
+                  <td class="num pay-value">${yen(e.salary['支給合計'])}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div></div>
+      </div>
+    `;
+    container.appendChild(card);
+  }
+}
+
+function toggleDetail(el) {
+  const content = el.nextElementSibling;
+  const arrow = el.querySelector('.toggle-arrow');
+  content.classList.toggle('hidden');
+  arrow.classList.toggle('open');
+}
+
+// ユーティリティ
+function yen(n) {
+  if (!n || n === 0) return '-';
+  return n < 0
+    ? '-' + Math.abs(n).toLocaleString('ja-JP')
+    : n.toLocaleString('ja-JP');
+}
+
+function sumField(arr, field) {
+  return arr.reduce((s, c) => s + (c[field] || 0), 0);
+}
+
+function showLoading() { document.getElementById('loading').classList.remove('hidden'); }
+function hideLoading() { document.getElementById('loading').classList.add('hidden'); }
+
+// 全月読込
+let allMonthsData = null;
+
+async function loadAllFolders() {
+  showLoading();
+  try {
+    const res = await fetch('/api/parse_all_folders', { method: 'POST' });
+    allMonthsData = await res.json();
+    if (allMonthsData.error) { alert(allMonthsData.error); return; }
+
+    // 最後の月のデータで既存ダッシュボードも表示
+    const monthKeys = Object.keys(allMonthsData.months);
+    if (monthKeys.length) {
+      const lastMonth = monthKeys[monthKeys.length - 1];
+      const lastData = allMonthsData.months[lastMonth];
+      analysisData = {
+        categories: lastData.categories,
+        combined: lastData.combined,
+        buka_summary: lastData.buka_summary,
+      };
+      renderDashboard();
+    }
+
+    renderTrendTable(allMonthsData.monthly_trend);
+    renderCategoryTrendTable(allMonthsData.monthly_trend, allMonthsData.category_trend);
+    document.getElementById('results').classList.remove('hidden');
+  } catch (e) {
+    alert('全月読込エラー: ' + e.message);
+  } finally { hideLoading(); }
+}
+
+// 月別推移テーブル描画
+function renderTrendTable(trend) {
+  if (!trend || !trend.length) {
+    document.getElementById('trendCard').classList.add('hidden');
+    return;
+  }
+  document.getElementById('trendCard').classList.remove('hidden');
+
+  const months = trend.map(t => t.month);
+  const rows = [
+    { label: '人数', field: 'headcount', format: v => v + '人' },
+    { label: '支給合計', field: '支給合計', format: v => yen(v) },
+    { label: '一人当たり', field: '一人当たり', format: v => yen(v) },
+    { label: '基本給計', field: '基本給計', format: v => yen(v) },
+    { label: '手当計', field: '手当計', format: v => yen(v) },
+    { label: '時間外計', field: '時間外計', format: v => yen(v) },
+  ];
+
+  // ヘッダー
+  document.getElementById('trendHead').innerHTML =
+    '<tr><th>項目</th>' + months.map(m => `<th class="num">${m}</th>`).join('') + '</tr>';
+
+  // ボディ
+  document.getElementById('trendBody').innerHTML = rows.map(r => {
+    const cls = r.field === '支給合計' ? 'num pay-value' : 'num';
+    return '<tr><td>' + r.label + '</td>' +
+      trend.map(t => `<td class="${cls}">${r.format(t[r.field])}</td>`).join('') +
+      '</tr>';
+  }).join('');
+}
+
+// 部門別月別推移テーブル描画
+function renderCategoryTrendTable(trend, catTrend) {
+  if (!catTrend || !catTrend.length) {
+    document.getElementById('catTrendCard').classList.add('hidden');
+    return;
+  }
+  document.getElementById('catTrendCard').classList.remove('hidden');
+
+  const months = trend.map(t => t.month);
+  const categories = [...new Set(catTrend.map(c => c.category))];
+
+  // ヘッダー
+  document.getElementById('catTrendHead').innerHTML =
+    '<tr><th>区分</th>' + months.map(m => `<th class="num">${m}</th>`).join('') + '</tr>';
+
+  // カテゴリ行
+  const bodyRows = categories.map(cat => {
+    return '<tr><td>' + cat + '</td>' +
+      months.map(m => {
+        const rec = catTrend.find(c => c.month === m && c.category === cat);
+        return `<td class="num pay-value">${rec ? yen(rec['支給合計']) : '-'}</td>`;
+      }).join('') + '</tr>';
+  });
+
+  // 合計行
+  bodyRows.push(
+    '<tr class="total-row"><td>合計</td>' +
+    months.map(m => {
+      const total = catTrend.filter(c => c.month === m).reduce((s, c) => s + (c['支給合計'] || 0), 0);
+      return `<td class="num pay-value">${yen(total)}</td>`;
+    }).join('') + '</tr>'
+  );
+
+  document.getElementById('catTrendBody').innerHTML = bodyRows.join('');
+}
+
+// 初期化
+loadFolders();
+</script>
+</body>
+</html>

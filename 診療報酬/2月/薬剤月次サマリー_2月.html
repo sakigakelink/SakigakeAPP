@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>さきがけホスピタル 薬剤月次サマリー 2月度</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@media print{@page{size:A4 portrait;margin:6mm}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{padding:0!important;font-size:7px!important}.no-print{display:none!important}.summary-cards{gap:8px!important;margin-bottom:10px!important}.card{padding:10px!important}.card-value{font-size:18px!important}table{font-size:7.5px!important}th,td{padding:4px 5px!important}}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Inter','Noto Sans JP',sans-serif;font-size:11px;color:#1e293b;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);min-height:100vh;padding:20px}
+.container{max-width:1000px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:24px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}
+h1{font-size:22px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:12px}
+h1::before{content:'';width:5px;height:28px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:3px}
+.print-date{font-size:11px;color:#64748b}
+.btn-group{display:flex;gap:10px}
+.btn{padding:10px 20px;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;gap:6px}
+.btn-print{background:linear-gradient(135deg,#6366f1,#4f46e5)}
+.btn-print:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,0.4)}
+.btn-save{background:linear-gradient(135deg,#10b981,#059669)}
+.btn-save:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,0.4)}
+.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
+.card{background:#fff;border-radius:12px;padding:18px;position:relative;overflow:hidden;border:1px solid #e2e8f0;transition:transform 0.2s,box-shadow 0.2s}
+.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1)}
+.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}
+.card-revenue::before{background:linear-gradient(90deg,#3b82f6,#60a5fa)}
+.card-expense::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
+.card-profit::before{background:linear-gradient(90deg,#10b981,#34d399)}
+.card-margin::before{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}
+.card-label{font-size:11px;color:#64748b;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.card-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px}
+.card-revenue .card-icon{background:#dbeafe;color:#2563eb}
+.card-expense .card-icon{background:#fef3c7;color:#d97706}
+.card-profit .card-icon{background:#d1fae5;color:#059669}
+.card-margin .card-icon{background:#ede9fe;color:#7c3aed}
+.card-value{font-size:26px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-0.5px}
+.card-sub{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px}
+.card-period{color:#94a3b8;font-size:10px}
+table{width:100%;border-collapse:collapse;font-size:9px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)}
+thead th{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);color:#fff;padding:10px 8px;text-align:center;font-weight:600;letter-spacing:0.3px;position:relative}
+thead th::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,0.1)}
+th:first-child{text-align:left;padding-left:14px;min-width:200px;border-radius:8px 0 0 0}
+th:last-child{border-radius:0 8px 0 0}
+td{padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Inter',monospace;font-variant-numeric:tabular-nums;color:#334155}
+td:first-child{text-align:left;padding-left:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;color:#1e293b}
+tbody tr{background:#fff;transition:background 0.15s}
+tbody tr:nth-child(even){background:#fafbfc}
+tbody tr:hover{background:#f1f5f9}
+.indent{padding-left:28px!important;color:#64748b;font-weight:400!important}
+.indent2{padding-left:42px!important;color:#94a3b8;font-weight:400!important;font-size:8.5px}
+.section{background:linear-gradient(90deg,#eff6ff,#f8fafc)!important}
+.section td{font-weight:600}
+.section td:first-child{color:#1d4ed8}
+.subtotal{background:#f8fafc!important}
+.subtotal td{font-weight:600;color:#1e3a8a}
+.grand{background:linear-gradient(90deg,#ecfdf5,#f0fdf4)!important}
+.grand td{font-weight:700;color:#047857}
+.final{background:linear-gradient(90deg,#eff6ff,#dbeafe)!important}
+.final td{font-weight:700;color:#0f172a;font-size:10px}
+.negative{color:#dc2626!important}
+.pct{color:#94a3b8;font-size:7px;display:block;margin-top:2px}
+tbody tr:last-child td:first-child{border-radius:0 0 0 8px}
+tbody tr:last-child td:last-child{border-radius:0 0 8px 0}
+</style>
+</head>
+<body>
+<div class="container">
+
+<div class="header">
+  <h1>さきがけホスピタル 薬剤月次サマリー 2月度</h1>
+  <div class="btn-group no-print">
+    <button class="btn btn-save" onclick="saveHTML()">💾 HTMLを保存</button>
+    <button class="btn btn-print" onclick="window.print()">🖨️ 印刷 / PDF</button>
+  </div>
+  <div class="print-date">令和8年3月11日作成</div>
+</div>
+
+<div class="summary-cards">
+  <div class="card card-revenue">
+    <div class="card-label"><span class="card-icon">💊</span>入院薬剤費合計</div>
+    <div class="card-value">182万円</div>
+    <div class="card-sub"><span class="card-period">1,821,075円</span></div>
+  </div>
+  <div class="card card-expense">
+    <div class="card-label"><span class="card-icon">🧠</span>精神科薬剤</div>
+    <div class="card-value">101万円</div>
+    <div class="card-sub"><span class="card-period">1,012,958円 ／ 構成比 55.6%</span></div>
+  </div>
+  <div class="card card-profit">
+    <div class="card-label"><span class="card-icon">💉</span>品目数</div>
+    <div class="card-value">284</div>
+    <div class="card-sub"><span class="card-period">全302レコード</span></div>
+  </div>
+  <div class="card card-margin">
+    <div class="card-label"><span class="card-icon">📊</span>前月比</div>
+    <div class="card-value">-9.6%</div>
+    <div class="card-sub"><span class="card-period">前月 2,015,324円</span></div>
+  </div>
+</div>
+
+<table>
+<thead>
+  <tr>
+    <th>薬効分類</th>
+    <th>使用量</th>
+    <th>金額（円）</th>
+    <th>構成比</th>
+  </tr>
+</thead>
+<tbody>
+  <tr class="section"><td>抗精神病薬（非定型）</td><td></td><td>502,204<span class="pct">円</span></td><td>27.6%</td></tr>
+  <tr><td class="indent">[屯服] アリピプラゾール内用液分包６ｍｇ</td><td>12</td><td>789<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] アリピプラゾールＯＤ錠１２ｍｇ</td><td>427</td><td>9,566<span class="pct">円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">[内服] アリピプラゾールＯＤ錠２４ｍｇ</td><td>54</td><td>2,548<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] アリピプラゾールＯＤ錠３ｍｇ</td><td>84</td><td>513<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] アリピプラゾールＯＤ錠６ｍｇ</td><td>56</td><td>616<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] インヴェガ錠６ｍｇ</td><td>84</td><td>35,240<span class="pct">円</span></td><td>1.9%</td></tr>
+  <tr><td class="indent">[内服] エビリファイ内用液０．１％</td><td>15</td><td>495<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[屯服] エビリファイ内用液０．１％</td><td>7</td><td>231<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] エビリファイ錠１ｍｇ</td><td>59</td><td>650<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] エビリファイ錠３ｍｇ</td><td>38</td><td>1,294<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] エビリファイ錠６ｍｇ</td><td>35</td><td>2,277<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] オランザピン細粒１％</td><td>56</td><td>2,156<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] オランザピンＯＤ錠１０ｍｇ</td><td>1,138</td><td>34,650<span class="pct">円</span></td><td>1.9%</td></tr>
+  <tr><td class="indent">[内服] オランザピンＯＤ錠２．５ｍｇ</td><td>93</td><td>745<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] オランザピンＯＤ錠５ｍｇ</td><td>129</td><td>2,193<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] クエチアピン錠１００ｍｇ</td><td>140</td><td>3,080<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[屯服] クエチアピン錠１００ｍｇ</td><td>28</td><td>634<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] クエチアピン錠１２．５ｍｇ</td><td>72</td><td>720<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[屯服] クエチアピン錠１２．５ｍｇ</td><td>19</td><td>197<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] クエチアピン錠２００ｍｇ</td><td>252</td><td>10,584<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] クエチアピン錠２５ｍｇ</td><td>913</td><td>9,280<span class="pct">円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">[屯服] クエチアピン錠２５ｍｇ</td><td>50</td><td>520<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] クロザリル錠１００ｍｇ</td><td>280</td><td>64,847<span class="pct">円</span></td><td>3.6%</td></tr>
+  <tr><td class="indent">[内服] ジプレキサ錠１０ｍｇ</td><td>108</td><td>19,277<span class="pct">円</span></td><td>1.1%</td></tr>
+  <tr><td class="indent">[内服] ブロナンセリン錠４ｍｇ</td><td>268</td><td>4,824<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] ブロナンセリン錠８ｍｇ</td><td>574</td><td>18,368<span class="pct">円</span></td><td>1.0%</td></tr>
+  <tr><td class="indent">[内服] ラツーダ錠２０ｍｇ</td><td>78</td><td>12,403<span class="pct">円</span></td><td>0.7%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン内用液１ｍｇ／ｍＬ</td><td>592</td><td>16,051<span class="pct">円</span></td><td>0.9%</td></tr>
+  <tr><td class="indent">[屯服] リスペリドン内用液１ｍｇ／ｍＬ</td><td>89.5</td><td>2,438<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン細粒１％</td><td>2.8</td><td>140<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン錠０．５ｍｇ</td><td>105</td><td>1,058<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン錠１ｍｇ</td><td>135</td><td>1,351<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン錠２ｍｇ</td><td>652</td><td>6,715<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン１ｍｇ錠</td><td>234</td><td>2,404<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] リスペリドン２ｍｇ錠</td><td>1,554</td><td>15,958<span class="pct">円</span></td><td>0.9%</td></tr>
+  <tr><td class="indent">[内服] ルーラン錠４ｍｇ</td><td>7</td><td>67<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ルーラン錠８ｍｇ</td><td>28</td><td>504<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] レキサルティＯＤ錠１ｍｇ</td><td>400</td><td>96,471<span class="pct">円</span></td><td>5.3%</td></tr>
+  <tr><td class="indent">[内服] レキサルティＯＤ錠２ｍｇ</td><td>14</td><td>6,466<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] ロドピン錠２５ｍｇ</td><td>56</td><td>560<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ロドピン錠５０ｍｇ</td><td>364</td><td>6,832<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[外用] ロナセンテープ２０ｍｇ</td><td>66</td><td>15,114<span class="pct">円</span></td><td>0.8%</td></tr>
+  <tr><td class="indent">[外用] ロナセンテープ４０ｍｇ</td><td>213</td><td>91,378<span class="pct">円</span></td><td>5.0%</td></tr>
+  <tr class="section"><td>抗精神病薬（定型）</td><td></td><td>14,076<span class="pct">円</span></td><td>0.8%</td></tr>
+  <tr><td class="indent">[注射] セレネース注５ｍｇ ０．５％１ｍＬ</td><td>2</td><td>200<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] セレネース注５ｍｇ ０．５％１ｍＬ</td><td>7</td><td>700<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] セレネース錠１．５ｍｇ</td><td>28</td><td>252<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] セレネース錠３ｍｇ</td><td>535</td><td>5,491<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] ヒルナミン錠（２５ｍｇ）</td><td>28</td><td>140<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ヒルナミン錠（５０ｍｇ）</td><td>702</td><td>6,037<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] ヒルナミン錠（５ｍｇ）</td><td>92</td><td>515<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[屯服] ヒルナミン錠（５ｍｇ）</td><td>10</td><td>59<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ピレチア錠（２５ｍｇ）</td><td>75</td><td>417<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ブロムペリドール錠６ｍｇ</td><td>20</td><td>265<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>抗うつ薬</td><td></td><td>49,805<span class="pct">円</span></td><td>2.7%</td></tr>
+  <tr><td class="indent">[内服] イフェクサーＳＲカプセル７５ｍｇ</td><td>70</td><td>11,713<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] エスシタロプラム錠１０ｍｇ</td><td>88</td><td>4,537<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] セルトラリン錠２５ｍｇ</td><td>34</td><td>483<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] セルトラリン錠５０ｍｇ</td><td>56</td><td>1,400<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] デュロキセチンカプセル２０ｍｇ</td><td>56</td><td>1,428<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] デュロキセチンカプセル３０ｍｇ</td><td>49</td><td>1,694<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] トラゾドン塩酸塩錠２５ｍｇ</td><td>803</td><td>4,825<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[屯服] トラゾドン塩酸塩錠２５ｍｇ</td><td>55</td><td>332<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] トリンテリックス錠１０ｍｇ</td><td>56</td><td>9,044<span class="pct">円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">[内服] ミルタザピン錠１５ｍｇ</td><td>564</td><td>8,683<span class="pct">円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">[屯服] ミルタザピン錠１５ｍｇ</td><td>14</td><td>219<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ルボックス錠２５ ２５ｍｇ</td><td>74</td><td>1,039<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ルボックス錠５０ ５０ｍｇ</td><td>94</td><td>2,068<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] レクサプロ錠１０ｍｇ</td><td>24</td><td>2,340<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr class="section"><td>睡眠薬</td><td></td><td>250,753<span class="pct">円</span></td><td>13.8%</td></tr>
+  <tr><td class="indent">[内服] エスゾピクロン１ｍｇ錠</td><td>180</td><td>1,298<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[屯服] エスゾピクロン１ｍｇ錠</td><td>75</td><td>575<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] エスゾピクロン２ｍｇ錠</td><td>95</td><td>1,154<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ゾルピデム酒石酸塩錠１０ｍｇ</td><td>53</td><td>588<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ゾルピデム酒石酸塩錠５ｍｇ</td><td>78</td><td>794<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] デエビゴ錠２．５ｍｇ</td><td>373</td><td>16,449<span class="pct">円</span></td><td>0.9%</td></tr>
+  <tr><td class="indent">[屯服] デエビゴ錠２．５ｍｇ</td><td>69</td><td>3,097<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] デエビゴ錠５ｍｇ</td><td>2,230</td><td>158,420<span class="pct">円</span></td><td>8.7%</td></tr>
+  <tr><td class="indent">[屯服] デエビゴ錠５ｍｇ</td><td>35</td><td>2,493<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] フルニトラゼパム錠１ｍｇ</td><td>112</td><td>560<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] フルニトラゼパム錠２ｍｇ</td><td>172</td><td>1,032<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ブロチゾラム錠０．２５ｍｇ</td><td>463</td><td>4,636<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[屯服] ブロチゾラム錠０．２５ｍｇ</td><td>20</td><td>208<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ベルソムラ錠１５ｍｇ</td><td>384</td><td>34,582<span class="pct">円</span></td><td>1.9%</td></tr>
+  <tr><td class="indent">[内服] ベルソムラ錠２０ｍｇ</td><td>111</td><td>12,108<span class="pct">円</span></td><td>0.7%</td></tr>
+  <tr><td class="indent">[内服] ベンザリン錠１０ １０ｍｇ</td><td>257</td><td>3,088<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ベンザリン錠５ ５ｍｇ</td><td>98</td><td>717<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ラメルテオン錠８ｍｇ</td><td>309</td><td>6,874<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] ルネスタ錠２ｍｇ</td><td>45</td><td>2,080<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr class="section"><td>抗不安薬</td><td></td><td>4,851<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[屯服] アタラックス－Ｐカプセル２５ｍｇ</td><td>56</td><td>340<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] アルプラゾラム０．４ｍｇ錠</td><td>25</td><td>145<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] エチゾラム錠０．５ｍｇ</td><td>28</td><td>168<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] セディール錠１０ｍｇ</td><td>56</td><td>868<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] ホリゾン注射液１０ｍｇ</td><td>2</td><td>166<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] メイラックス錠２ｍｇ</td><td>28</td><td>420<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] レキソタン錠２ ２ｍｇ</td><td>84</td><td>504<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] レキソタン錠５ ５ｍｇ</td><td>76</td><td>532<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ワイパックス錠０．５ ０．５ｍｇ</td><td>230</td><td>1,388<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[屯服] ワイパックス錠０．５ ０．５ｍｇ</td><td>10</td><td>61<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ワイパックス錠１．０ １ｍｇ</td><td>35</td><td>210<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ２ｍｇセルシン錠</td><td>8</td><td>49<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>気分安定薬・抗てんかん薬</td><td></td><td>106,322<span class="pct">円</span></td><td>5.8%</td></tr>
+  <tr><td class="indent">[内服] アレビアチン散１０％</td><td>64.4</td><td>776<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] アレビアチン錠１００ｍｇ</td><td>112</td><td>1,400<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] アレビアチン錠２５ｍｇ</td><td>145</td><td>1,740<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ゾニサミドＯＤ錠２５ｍｇＴＲＥ</td><td>28</td><td>7,700<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[外用] ダイアップ坐剤１０ １０ｍｇ</td><td>8</td><td>528<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] テグレトール細粒５０％</td><td>22.4</td><td>476<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] テグレトール錠２００ｍｇ</td><td>372</td><td>2,796<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] デパケン細粒４０％</td><td>126</td><td>2,408<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] デパケンＲ錠１００ｍｇ</td><td>142</td><td>1,442<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] デパケンＲ錠２００ｍｇ</td><td>2,225</td><td>24,788<span class="pct">円</span></td><td>1.4%</td></tr>
+  <tr><td class="indent">[内服] フェノバール散１０％</td><td>18.2</td><td>137<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] フェノバール錠３０ｍｇ</td><td>2</td><td>20<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] ホストイン静注７５０ｍｇ １０ｍＬ</td><td>2</td><td>12,838<span class="pct">円</span></td><td>0.7%</td></tr>
+  <tr><td class="indent">[内服] ラモトリギン錠１００ｍｇ</td><td>102</td><td>2,913<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] リボトリール錠０．５ｍｇ</td><td>400</td><td>3,750<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] リボトリール錠１ｍｇ</td><td>443</td><td>4,470<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[点滴] レベチラセタム点滴静注５００ｍｇ</td><td>2</td><td>1,224<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] レベチラセタム錠５００ｍｇ</td><td>393</td><td>16,315<span class="pct">円</span></td><td>0.9%</td></tr>
+  <tr><td class="indent">[内服] レベチラセタムＤＳ５０％</td><td>168</td><td>10,696<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] 炭酸リチウム錠１００ｍｇ</td><td>261</td><td>2,295<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] 炭酸リチウム錠２００ｍｇ</td><td>612</td><td>7,610<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr class="section"><td>抗パーキンソン薬</td><td></td><td>12,380<span class="pct">円</span></td><td>0.7%</td></tr>
+  <tr><td class="indent">[内服] アキネトン錠１ｍｇ</td><td>117</td><td>663<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] アーテン錠（２ｍｇ）</td><td>281</td><td>2,531<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ビ・シフロール錠０．１２５ｍｇ</td><td>106</td><td>1,736<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ビ・シフロール錠０．５ｍｇ</td><td>56</td><td>3,416<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] メネシット配合錠１００</td><td>336</td><td>3,485<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[注射] 乳酸ビペリデン注５ｍｇ「ヨシトミ」 ０．</td><td>2</td><td>122<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] 乳酸ビペリデン注５ｍｇ「ヨシトミ」 ０．</td><td>7</td><td>427<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>ADHD治療薬</td><td></td><td>48,152<span class="pct">円</span></td><td>2.6%</td></tr>
+  <tr><td class="indent">[内服] アトモキセチン錠４０ｍｇ</td><td>54</td><td>3,492<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] インチュニブ錠１ｍｇ</td><td>112</td><td>44,660<span class="pct">円</span></td><td>2.5%</td></tr>
+  <tr class="section"><td>認知症治療薬</td><td></td><td>24,415<span class="pct">円</span></td><td>1.3%</td></tr>
+  <tr><td class="indent">[外用] イクセロンパッチ９ｍｇ</td><td>28</td><td>4,620<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] ドネペジル塩酸塩ＯＤ錠５ｍｇ</td><td>6</td><td>260<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] メマンチン塩酸塩錠１０ｍｇ</td><td>14</td><td>520<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] メマンチン塩酸塩錠２０ｍｇ</td><td>229</td><td>15,114<span class="pct">円</span></td><td>0.8%</td></tr>
+  <tr><td class="indent">[内服] メマンチン塩酸塩錠５ｍｇ</td><td>8</td><td>172<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] レミニールＯＤ錠４ｍｇ</td><td>26</td><td>1,335<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] レミニールＯＤ錠８ｍｇ</td><td>26</td><td>2,394<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr class="section"><td>消化器系薬</td><td></td><td>198,629<span class="pct">円</span></td><td>10.9%</td></tr>
+  <tr><td class="indent">[内服] アミティーザカプセル２４μｇ</td><td>289</td><td>27,930<span class="pct">円</span></td><td>1.5%</td></tr>
+  <tr><td class="indent">[内服] ウルソ錠１００ｍｇ</td><td>217</td><td>2,216<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] オメプラール錠１０ １０ｍｇ</td><td>111</td><td>2,340<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] オメプラール錠２０ ２０ｍｇ</td><td>112</td><td>3,696<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ガスコン錠４０ｍｇ</td><td>168</td><td>980<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[外用] グリセリン浣腸「オヲタ」６０ ５０％６０</td><td>5</td><td>620<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] グーフィス錠５ｍｇ</td><td>205</td><td>16,409<span class="pct">円</span></td><td>0.9%</td></tr>
+  <tr><td class="indent">[内服] センノシド錠１２ｍｇ</td><td>812</td><td>4,116<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] センノシド１２ｍｇ錠</td><td>1,130</td><td>5,790<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] タケキャブ錠２０ｍｇ</td><td>298</td><td>42,018<span class="pct">円</span></td><td>2.3%</td></tr>
+  <tr><td class="indent">[外用] テレミンソフト坐薬１０ｍｇ</td><td>20</td><td>418<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ネキシウムカプセル２０ｍｇ</td><td>37</td><td>2,185<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ビオスリー配合ＯＤ錠</td><td>290</td><td>1,845<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ピコスルファートナトリウム内用液０．７５</td><td>480</td><td>3,600<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ピコスルファートナトリウム錠２．５ｍｇ</td><td>1,196</td><td>7,181<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] ファモチジンＤ錠１０ｍｇ</td><td>277</td><td>2,778<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] プロマックＤ錠７５ ７５ｍｇ</td><td>919</td><td>14,246<span class="pct">円</span></td><td>0.8%</td></tr>
+  <tr><td class="indent">[内服] マグミット錠２５０ｍｇ</td><td>898</td><td>5,131<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[屯服] マグミット錠２５０ｍｇ</td><td>28</td><td>164<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] マグミット錠５００ｍｇ</td><td>2,095</td><td>11,642<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] モサプリドクエン酸塩錠５ｍｇ</td><td>168</td><td>1,736<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ラクツロース・シロップ６０％</td><td>2,570</td><td>17,733<span class="pct">円</span></td><td>1.0%</td></tr>
+  <tr><td class="indent">[内服] ランソプラゾールＯＤ錠１５ｍｇ</td><td>337</td><td>7,080<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] ランソプラゾールＯＤ錠３０ｍｇ</td><td>94</td><td>3,384<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] リパクレオンカプセル１５０ｍｇ</td><td>168</td><td>5,040<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] レバミピド錠１００ｍｇ</td><td>720</td><td>7,341<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] 酸化マグネシウム細粒８３％</td><td>67</td><td>538<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[屯服] Ｓ・Ｍ配合散</td><td>72.8</td><td>472<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>循環器系薬</td><td></td><td>145,444<span class="pct">円</span></td><td>8.0%</td></tr>
+  <tr><td class="indent">[内服] アジルバ錠２０ｍｇ</td><td>148</td><td>11,259<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] アムロジピン錠２．５ｍｇ</td><td>1,494</td><td>15,123<span class="pct">円</span></td><td>0.8%</td></tr>
+  <tr><td class="indent">[内服] エブランチルカプセル１５ｍｇ</td><td>56</td><td>868<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] エンレスト錠５０ｍｇ</td><td>289</td><td>17,558<span class="pct">円</span></td><td>1.0%</td></tr>
+  <tr><td class="indent">[内服] カンデサルタン錠４ｍｇ</td><td>702</td><td>10,573<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] サムスカＯＤ錠７．５ｍｇ</td><td>48</td><td>37,783<span class="pct">円</span></td><td>2.1%</td></tr>
+  <tr><td class="indent">[内服] シグマート錠５ｍｇ</td><td>84</td><td>644<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] シロスタゾール５０ｍｇ錠</td><td>83</td><td>832<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] スピロノラクトン錠２５ｍｇ</td><td>374</td><td>3,781<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ゼチーア錠１０ｍｇ</td><td>18</td><td>1,152<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ダイアート錠３０ｍｇ</td><td>34</td><td>344<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ニトロールＲカプセル２０ｍｇ</td><td>56</td><td>476<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ニフェジピンＣＲ錠２０ｍｇ</td><td>112</td><td>1,008<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] バイアスピリン錠１００ｍｇ</td><td>234</td><td>1,215<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] フロセミド細粒４％</td><td>28</td><td>756<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] フロセミド２０ｍｇ錠</td><td>14</td><td>88<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] プラビックス錠７５ｍｇ</td><td>84</td><td>4,872<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] メインテート錠０．６２５ｍｇ</td><td>50</td><td>519<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] メインテート錠２．５ｍｇ</td><td>44</td><td>632<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ラシックス錠２０ｍｇ</td><td>327</td><td>3,275<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] リクシアナ錠１５ｍｇ</td><td>118</td><td>26,490<span class="pct">円</span></td><td>1.5%</td></tr>
+  <tr><td class="indent">[内服] リバロ錠２ｍｇ</td><td>182</td><td>6,196<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr class="section"><td>糖尿病薬</td><td></td><td>96,510<span class="pct">円</span></td><td>5.3%</td></tr>
+  <tr><td class="indent">[内服] グルファスト錠１０ｍｇ</td><td>84</td><td>1,708<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ジャディアンス錠１０ｍｇ</td><td>78</td><td>12,948<span class="pct">円</span></td><td>0.7%</td></tr>
+  <tr><td class="indent">[内服] ジャヌビア錠５０ｍｇ</td><td>278</td><td>22,803<span class="pct">円</span></td><td>1.3%</td></tr>
+  <tr><td class="indent">[内服] トラゼンタ錠５ｍｇ</td><td>65</td><td>7,682<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[注射] トルリシティ皮下注０．７５ｍｇアテオス</td><td>12</td><td>32,988<span class="pct">円</span></td><td>1.8%</td></tr>
+  <tr><td class="indent">[注射] トレシーバ注 フレックスタッチ ３００単</td><td>1.1</td><td>2,044<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[注射] ヒューマログ注ミリオペン ３００単位</td><td>2.8</td><td>3,192<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] フォシーガ錠５ｍｇ</td><td>77</td><td>11,490<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[内服] ボグリボース錠０．２ｍｇ</td><td>126</td><td>1,302<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] メトグルコ錠２５０ｍｇ</td><td>34</td><td>353<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>漢方薬</td><td></td><td>48,241<span class="pct">円</span></td><td>2.6%</td></tr>
+  <tr><td class="indent">[内服] ツムラ大建中湯エキス顆粒（医療用）</td><td>1,120</td><td>15,288<span class="pct">円</span></td><td>0.8%</td></tr>
+  <tr><td class="indent">[内服] ツムラ大黄甘草湯エキス顆粒（医療用）</td><td>517.5</td><td>4,140<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ツムラ抑肝散エキス顆粒（医療用）</td><td>1,302.5</td><td>20,899<span class="pct">円</span></td><td>1.1%</td></tr>
+  <tr><td class="indent">[内服] ツムラ芍薬甘草湯エキス顆粒（医療用）</td><td>182.5</td><td>1,898<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[屯服] ツムラ芍薬甘草湯エキス顆粒（医療用）</td><td>17.5</td><td>182<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ツムラ葛根湯エキス顆粒（医療用）</td><td>285</td><td>3,818<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ツムラ補中益気湯エキス顆粒（医療用）</td><td>90</td><td>2,016<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr class="section"><td>輸液</td><td></td><td>69,010<span class="pct">円</span></td><td>3.8%</td></tr>
+  <tr><td class="indent">[点滴] アクチット輸液 ５００ｍＬ</td><td>4</td><td>1,364<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[点滴] ラクテックＧ輸液 ５００ｍＬ</td><td>83</td><td>18,924<span class="pct">円</span></td><td>1.0%</td></tr>
+  <tr><td class="indent">[点滴] 大塚生食注 １００ｍＬ</td><td>40</td><td>5,880<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[点滴] 大塚生食注 ５００ｍＬ</td><td>5</td><td>1,180<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[点滴] 大塚糖液５％ ５００ｍＬ</td><td>11</td><td>3,652<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[点滴] 大塚糖液５０％ ２０ｍＬ</td><td>61</td><td>6,100<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[点滴] 生理食塩液 １００ｍＬ</td><td>8</td><td>1,176<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[点滴] 生理食塩液 ５ｍＬ</td><td>111</td><td>11,100<span class="pct">円</span></td><td>0.6%</td></tr>
+  <tr><td class="indent">[点滴] 生食注シリンジ「ＮＰ」 １０ｍＬ</td><td>3</td><td>300<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] 生食注シリンジ「ＮＰ」 ２０ｍＬ</td><td>1</td><td>111<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] 生食注シリンジ「ＮＰ」 ５ｍＬ</td><td>5</td><td>500<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[点滴] ＫＮ３号輸液 ５００ｍＬ</td><td>79</td><td>18,723<span class="pct">円</span></td><td>1.0%</td></tr>
+  <tr class="section"><td>抗菌薬</td><td></td><td>50,019<span class="pct">円</span></td><td>2.7%</td></tr>
+  <tr><td class="indent">[内服] オーグメンチン配合錠２５０ＲＳ （３７５</td><td>168</td><td>7,673<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] ケフレックスカプセル２５０ｍｇ</td><td>9</td><td>283<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] サワシリンカプセル２５０ ２５０ｍｇ</td><td>180</td><td>2,749<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[点滴] スルバシリン静注用３ｇ</td><td>41</td><td>31,898<span class="pct">円</span></td><td>1.8%</td></tr>
+  <tr><td class="indent">[点滴] セフトリアキソンナトリウム静注用１ｇ</td><td>3</td><td>1,266<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] テルビナフィン塩酸塩１２５ｍｇ錠</td><td>35</td><td>1,102<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] バクトラミン配合錠</td><td>4</td><td>168<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] バルトレックス錠５００ ５００ｍｇ</td><td>30</td><td>4,362<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] レボフロキサシン錠２５０ｍｇ</td><td>14</td><td>518<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>皮膚科外用薬</td><td></td><td>30,504<span class="pct">円</span></td><td>1.7%</td></tr>
+  <tr><td class="indent">[外用] アラセナ－Ａ軟膏３％</td><td>5</td><td>664<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] アンテベート軟膏０．０５％</td><td>150</td><td>2,835<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[外用] エキザルベ</td><td>5</td><td>149<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] オイラックスクリーム１０％</td><td>50</td><td>290<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] オイラックスＨクリーム</td><td>15</td><td>216<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ケラチナミンコーワクリーム２０％</td><td>75</td><td>300<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ゲーベンクリーム１％</td><td>20</td><td>256<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ダイアコート軟膏０．０５％</td><td>100</td><td>1,090<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[外用] ニゾラールクリーム２％</td><td>50</td><td>800<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ニゾラールローション２％</td><td>40</td><td>884<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ヒルドイドソフト軟膏０．３％</td><td>75</td><td>1,365<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[外用] ヒルドイドローション０．３％</td><td>500</td><td>9,100<span class="pct">円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">[外用] ヘパリン類似物質ローション</td><td>100</td><td>300<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ヘパリン類似物質ローション０．３％</td><td>100</td><td>300<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ヘパリン類似物質油性クリーム０．３％</td><td>50</td><td>185<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ヘパリン類似物質油性クリーム０．３％</td><td>15</td><td>55<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ヘモレックス軟膏</td><td>226</td><td>4,761<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[外用] マイザー軟膏０．０５％</td><td>75</td><td>832<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ラミシールクリーム１％</td><td>40</td><td>740<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] リドメックスコーワローション０．３％</td><td>10</td><td>147<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] リンデロン－ＶＧ軟膏０．１２％</td><td>35</td><td>969<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[外用] レスタミンコーワクリーム１％</td><td>50</td><td>106<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ロコイド軟膏０．１％</td><td>185</td><td>2,754<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[外用] 亜鉛華軟膏</td><td>30</td><td>99<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] 白色ワセリン</td><td>515</td><td>1,071<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[外用] １０％サリチル酸ワセリン軟膏東豊</td><td>55</td><td>236<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="section"><td>その他</td><td></td><td>169,760<span class="pct">円</span></td><td>9.3%</td></tr>
+  <tr><td class="indent">[内服] アスパラカリウム錠３００ｍｇ</td><td>140</td><td>846<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] アボルブカプセル０．５ｍｇ</td><td>39</td><td>2,381<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[点滴] アリナミンＦ１０注 １０ｍｇ</td><td>22</td><td>1,342<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] アリミデックス錠１ｍｇ</td><td>56</td><td>7,896<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] アレロック錠５ ５ｍｇ</td><td>179</td><td>3,698<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] アロプリノール１００ｍｇ錠</td><td>84</td><td>672<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] イドメシンコーワゾル１％</td><td>30</td><td>105<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] オパルモン錠５μｇ</td><td>196</td><td>3,724<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] カロナール錠２００ ２００ｍｇ</td><td>465</td><td>3,071<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[屯服] カロナール錠２００ ２００ｍｇ</td><td>105</td><td>701<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[処置薬] キシロカインゼリー２％</td><td>45</td><td>279<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] コートリル錠１０ｍｇ</td><td>27</td><td>191<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] サンコバ点眼液０．０２％ ５ｍＬ</td><td>2</td><td>182<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ザイザル錠５ｍｇ</td><td>226</td><td>9,278<span class="pct">円</span></td><td>0.5%</td></tr>
+  <tr><td class="indent">[外用] ザジテン点眼液０．０５％ ３．４５ｍｇ５</td><td>1</td><td>273<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ザジテン点鼻液０．０５％ ６．０４８ｍｇ</td><td>1</td><td>408<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ジラゼプ塩酸塩５０ｍｇ錠</td><td>168</td><td>980<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[外用] スチックゼノールＡ</td><td>40</td><td>144<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] スピオルトレスピマット６０吸入</td><td>1</td><td>5,353<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] セレコックス錠１００ｍｇ</td><td>194</td><td>4,076<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] タムスロシン塩酸塩ＯＤ錠０．２ｍｇ</td><td>223</td><td>4,056<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[外用] タリビッド点眼液０．３％</td><td>10</td><td>1,074<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ダーブロック錠２ｍｇ</td><td>179</td><td>28,170<span class="pct">円</span></td><td>1.5%</td></tr>
+  <tr><td class="indent">[内服] チラーヂンＳ錠２５μｇ</td><td>565</td><td>5,807<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] テオドール錠１００ｍｇ</td><td>32</td><td>192<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] テルネリン錠１ｍｇ</td><td>28</td><td>224<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] ヒアレイン点眼液０．１％ ５ｍＬ</td><td>5</td><td>1,117<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[点滴] ビタメジン静注用</td><td>48</td><td>7,488<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] フェブキソスタット錠２０ｍｇ</td><td>157</td><td>1,597<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] フェロミア錠５０ｍｇ 鉄５０ｍｇ</td><td>514</td><td>3,087<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] フォリアミン錠 ５ｍｇ</td><td>165</td><td>1,651<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] プレドニン錠５ｍｇ</td><td>28</td><td>280<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ヘモリンガル舌下錠０．１８ｍｇ</td><td>84</td><td>1,456<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ベタニス錠５０ｍｇ</td><td>178</td><td>25,121<span class="pct">円</span></td><td>1.4%</td></tr>
+  <tr><td class="indent">[内服] ポリスチレンスルホン酸Ｃａ経口ゼリー２０</td><td>153</td><td>11,842<span class="pct">円</span></td><td>0.7%</td></tr>
+  <tr><td class="indent">[内服] ムコソルバン錠１５ｍｇ</td><td>58</td><td>445<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ムコダインシロップ５％</td><td>70</td><td>441<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] メチコバール錠５００μｇ ０．５ｍｇ</td><td>448</td><td>4,620<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[内服] メトトレキサート２ｍｇカプセル</td><td>16</td><td>792<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] メリスロン錠６ｍｇ</td><td>60</td><td>540<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] モーラステープ２０ｍｇ ７ｃｍ×１０ｃｍ</td><td>266</td><td>4,991<span class="pct">円</span></td><td>0.3%</td></tr>
+  <tr><td class="indent">[外用] モーラスパップ３０ｍｇ １０ｃｍ×１４ｃ</td><td>21</td><td>369<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ユベラＮカプセル１００ｍｇ</td><td>195</td><td>1,171<span class="pct">円</span></td><td>0.1%</td></tr>
+  <tr><td class="indent">[内服] ユリーフ錠４ｍｇ</td><td>227</td><td>6,502<span class="pct">円</span></td><td>0.4%</td></tr>
+  <tr><td class="indent">[内服] リセドロン酸Ｎａ錠１７．５ｍｇ</td><td>32</td><td>2,976<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] リリカカプセル２５ｍｇ</td><td>87</td><td>2,757<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ロイコン錠１０ｍｇ</td><td>101</td><td>590<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] ロカルトロールカプセル０．２５ ０．２５</td><td>406</td><td>3,299<span class="pct">円</span></td><td>0.2%</td></tr>
+  <tr><td class="indent">[内服] ロキソニン錠６０ｍｇ</td><td>70</td><td>725<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[屯服] 乳糖水和物</td><td>28</td><td>68<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[外用] 人工涙液マイティア点眼液 ５ｍＬ</td><td>3</td><td>268<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] 塩化ナトリウム</td><td>80</td><td>46<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr><td class="indent">[内服] 炭カル錠５００ｍｇ</td><td>66</td><td>398<span class="pct">円</span></td><td>0.0%</td></tr>
+  <tr class="grand"><td>合計</td><td></td><td>1,821,075<span class="pct">円</span></td><td>100.0%</td></tr>
+</tbody>
+</table>
+
+</div>
+
+<script>
+function saveHTML(){
+  const h=document.documentElement.outerHTML;
+  const b=new Blob([h],{type:'text/html;charset=utf-8'});
+  const u=URL.createObjectURL(b);
+  const a=document.createElement('a');
+  a.href=u;
+  a.download='薬剤月次サマリー_2月.html';
+  a.click();
+  URL.revokeObjectURL(u);
+}
+</script>
+</body>
+</html>
