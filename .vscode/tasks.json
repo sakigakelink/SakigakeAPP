@@ -1,0 +1,1 @@
+{"version": "2.0.0", "tasks": [{"label": "Start Claude Opus", "type": "shell", "command": "claude --model claude-opus-4-6", "presentation": {"reveal": "always", "panel": "new"}, "runOptions": {"runOn": "folderOpen"}}]} 
