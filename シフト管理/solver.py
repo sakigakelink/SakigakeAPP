@@ -411,10 +411,42 @@ class ShiftSolver:
                             f"{staff_name}: {day}日は前月引継ぎで{f_sh}のため{sh}希望は不可"
                         )
 
+        # チェック F: 同日に休み希望と勤務希望の重複
+        # {(staffId, day): set of shifts} を構築して矛盾検出
+        _wish_per_day = {}  # {(staffId, day): {"rest": set, "work": set}}
+        _rest_shifts_pre = {"off", "paid", "refresh"}
+        for w in self.wishes:
+            sid = w.get("staffId")
+            if self.staff_id_to_idx.get(sid) is None:
+                continue
+            wt = w.get("type")
+            sh = w.get("shift")
+            if wt != "assign" or not sh:
+                continue
+            for day in w.get("days", []):
+                if day < 1 or day > self.num_days:
+                    continue
+                key = (sid, day)
+                if key not in _wish_per_day:
+                    _wish_per_day[key] = {"rest": set(), "work": set()}
+                if sh in _rest_shifts_pre:
+                    _wish_per_day[key]["rest"].add(sh)
+                else:
+                    _wish_per_day[key]["work"].add(sh)
+        for (sid, day), kinds in _wish_per_day.items():
+            if kinds["rest"] and kinds["work"]:
+                sidx = self.staff_id_to_idx[sid]
+                staff_name = self.staff_list[sidx].get("name", sid)
+                rest_str = "/".join(sorted(kinds["rest"]))
+                work_str = "/".join(sorted(kinds["work"]))
+                wish_errors.append(
+                    f"{staff_name}: {day}日に休み希望({rest_str})と勤務希望({work_str})が重複"
+                )
+
         if wish_errors:
             msg = "以下の希望が不正です。修正してください:\n" + "\n".join(wish_errors)
             if log_queue:
-                log_queue.put({'type': 'log', 'msg': f'[事前チェックC/D/E] {msg}'})
+                log_queue.put({'type': 'log', 'msg': f'[事前チェックC/D/E/F] {msg}'})
             return {"status": "infeasible", "message": msg, "shifts": {}, "violations": []}
         # ─────────────────────────────────────────────────────────────────
 
@@ -986,11 +1018,6 @@ class ShiftSolver:
                 di = day - 1
                 if di < 0 or di >= self.num_days:
                     continue
-
-                # 同じ日にoff/refresh/paid希望がある場合、非off希望をスキップ（off優先）
-                if wt == "assign" and sh not in ("off", "refresh", "paid"):
-                    if sidx in kibou_yasumi_days and di in kibou_yasumi_days[sidx]:
-                        continue
 
                 if wt == "assign":
                     self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1)
@@ -1654,7 +1681,9 @@ class ShiftSolver:
         res["attempt"] = 1
 
         if res["status"].lower() not in ["optimal", "feasible"]:
-            debug_info = " / ".join(debug_log)
-            res["message"] = f"失敗: 解が見つかりません。職員数・公休日数・必要人数の設定を確認してください。[{debug_info}]"
+            # 事前チェックで設定済みのメッセージがあればそのまま使う
+            if not res.get("message"):
+                debug_info = " / ".join(debug_log)
+                res["message"] = f"失敗: 解が見つかりません。職員数・公休日数・必要人数の設定を確認してください。[{debug_info}]"
 
         return res

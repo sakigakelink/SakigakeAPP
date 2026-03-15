@@ -2186,14 +2186,6 @@
       ]
     },
     {
-      "staffId": "10060778",
-      "type": "assign",
-      "shift": "day",
-      "days": [
-        18
-      ]
-    },
-    {
       "staffId": "10060851",
       "type": "assign",
       "shift": "off",
@@ -2609,14 +2601,6 @@
       ]
     },
     {
-      "staffId": "10060710",
-      "type": "assign",
-      "shift": "day",
-      "days": [
-        18
-      ]
-    },
-    {
       "staffId": "10060949",
       "type": "assign",
       "shift": "off",
@@ -2744,7 +2728,6 @@
       "days": [
         2,
         3,
-        9,
         10,
         16,
         17,
