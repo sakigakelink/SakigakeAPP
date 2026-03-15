@@ -75,6 +75,8 @@ def evaluate_shift_quality(result, data):
     ward = data.get("config", {}).get("ward", "")
     wishes = data.get("wishes", [])
 
+    prev_month_data = data.get("prevMonthData", {})
+
     # --- 希望休み日をスタッフ別に収集 ---
     wish_off_days = {}  # staff_id -> set of day numbers
     for w in wishes:
@@ -134,9 +136,15 @@ def evaluate_shift_quality(result, data):
                 weekend_work += 1
         weekend_counts.append(weekend_work)
 
+        # 前月データ
+        prev_data = prev_month_data.get(sid, {})
+        prev_last = prev_data.get("lastDay", "")
+        prev_second = prev_data.get("secondLastDay", "")
+        prev_work = prev_data.get("consecutiveWork", 0)
+
         # 連続勤務: 5連勤/6連勤件数 + MAX
         max_consec = 0
-        cur_consec = 0
+        cur_consec = prev_work  # 月またぎ: 前月からの連勤を引き継ぎ
         for sh in shift_list:
             if sh and sh not in REST_SHIFTS:
                 cur_consec += 1
@@ -152,6 +160,16 @@ def evaluate_shift_quality(result, data):
         for d in range(num_days - 5):
             if all(shift_list[d+i] and shift_list[d+i] not in REST_SHIFTS for i in range(6)):
                 sp["consec_6"] += 1
+        # 月またぎ: 前月連勤 + 当月冒頭で5連勤/6連勤に達するケース
+        if prev_work >= 1:
+            days_needed_5 = 5 - prev_work
+            if 0 < days_needed_5 <= num_days:
+                if all(shift_list[i] and shift_list[i] not in REST_SHIFTS for i in range(days_needed_5)):
+                    sp["consec_5"] += 1
+            days_needed_6 = 6 - prev_work
+            if 0 < days_needed_6 <= num_days:
+                if all(shift_list[i] and shift_list[i] not in REST_SHIFTS for i in range(days_needed_6)):
+                    sp["consec_6"] += 1
 
         # --- 三交代専用ペナルティ ---
         if wt == "3kohtai":
@@ -161,18 +179,29 @@ def evaluate_shift_quality(result, data):
                     if next_sh not in REST_SHIFTS and next_sh != "shinya":
                         sp["shinya_no_rest"] += 1
 
+            # 月またぎ: shinya(前月末)→rest(day0)→shinya(day1)
+            if prev_last == "shinya" and num_days >= 2:
+                if shift_list[0] in REST_SHIFTS and shift_list[1] == "shinya":
+                    sp["scattered_night"] += 1
             for d in range(num_days - 2):
                 if (shift_list[d] == "shinya"
                         and shift_list[d + 1] in REST_SHIFTS
                         and shift_list[d + 2] == "shinya"):
                     sp["scattered_night"] += 1
 
+            # 月またぎ: junnya(前月末)→rest(day0)→shinya(day1)
+            if prev_last == "junnya" and num_days >= 2:
+                if shift_list[0] in REST_SHIFTS and shift_list[1] == "shinya":
+                    sp["junnya_off_shinya"] += 1
             for d in range(num_days - 2):
                 if (shift_list[d] == "junnya"
                         and shift_list[d + 1] in REST_SHIFTS
                         and shift_list[d + 2] == "shinya"):
                     sp["junnya_off_shinya"] += 1
 
+            # 月またぎ: day/late(前月末)→shinya(day0)
+            if prev_last in ("day", "late") and shift_list[0] == "shinya":
+                sp["day_to_shinya"] += 1
             for d in range(num_days - 1):
                 if shift_list[d] in ("day", "late") and shift_list[d + 1] == "shinya":
                     sp["day_to_shinya"] += 1
@@ -180,6 +209,25 @@ def evaluate_shift_quality(result, data):
         # --- 夜勤間隔（2交代/3交代共通） ---
         if wt not in ("day_only", "fixed"):
             night_days = [d for d in range(num_days) if shift_list[d] in NIGHT_SHIFTS]
+            # 月またぎ: 前月末の夜勤との間隔チェック
+            if wt == "2kohtai":
+                if prev_last == "night2":
+                    # 前月末night2は位置-1、当月の夜勤との間隔を計算
+                    for nd in night_days:
+                        gap = nd + 1  # 位置-1からの距離
+                        if 2 <= gap <= 3:
+                            sp["night_interval_close"] += 1
+                elif prev_second == "night2":
+                    # 前月secondLastがnight2は位置-2
+                    for nd in night_days:
+                        gap = nd + 2
+                        if 2 <= gap <= 3:
+                            sp["night_interval_close"] += 1
+            elif wt == "3kohtai":
+                # shinya→shinyaの連続のみ発生しうる（ハード制約による）
+                if prev_last == "shinya" and shift_list[0] == "shinya":
+                    sp["night_interval_close"] += 1
+            # 当月内の間隔チェック
             for i in range(1, len(night_days)):
                 gap = night_days[i] - night_days[i - 1]
                 if 2 <= gap <= 3:
@@ -189,7 +237,10 @@ def evaluate_shift_quality(result, data):
         staff_off_days = wish_off_days.get(sid, set())
         for off_day in staff_off_days:
             d_idx = off_day - 1
-            if d_idx > 0 and shift_list[d_idx - 1] == "junnya":
+            if d_idx == 0 and prev_last == "junnya":
+                # 月またぎ: day0が希望休で前月末がjunnya
+                sp["kibou_night"] += 1
+            elif d_idx > 0 and shift_list[d_idx - 1] == "junnya":
                 sp["kibou_night"] += 1
             if d_idx < num_days - 1 and shift_list[d_idx + 1] == "shinya":
                 sp["kibou_night"] += 1
@@ -204,6 +255,10 @@ def evaluate_shift_quality(result, data):
 
         # --- 好ローテーション（三交代: 深夜→休→準夜, 深夜→準夜→休） ---
         if wt == "3kohtai":
+            # 月またぎ: shinya(前月末)→rest(day0)→junnya(day1)
+            if prev_last == "shinya" and num_days >= 2:
+                if shift_list[0] in REST_SHIFTS and shift_list[1] == "junnya":
+                    sp["good_rotation"] += 1
             for d in range(num_days - 2):
                 if (shift_list[d] == "shinya"
                         and shift_list[d + 1] in REST_SHIFTS

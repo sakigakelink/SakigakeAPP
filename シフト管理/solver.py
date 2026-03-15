@@ -1118,6 +1118,23 @@ class ShiftSolver:
                 # 0日→15pt, 1日→10pt, 2日→6pt, 3日以上→3pt
                 rc = staff_refresh_days.get(s, 0)
                 scattered_w = 15 if rc == 0 else (10 if rc == 1 else (6 if rc == 2 else 3))
+
+                # 月またぎ: shinya(前月末)→rest(day0)→shinya(day1)
+                staff_id = self.staff_list[s]["id"]
+                if staff_id in self.prev_month_data and self.num_days >= 2:
+                    prev_last = self.prev_month_data[staff_id].get("lastDay", "")
+                    if prev_last == "shinya":
+                        sc_boundary = self.model.NewBoolVar(f"scattered_shinya_boundary_{s}")
+                        self.model.AddBoolAnd([
+                            is_rest[s, 0],
+                            self.shifts[(s, 1, SHIFT_IDX["shinya"])]
+                        ]).OnlyEnforceIf(sc_boundary)
+                        self.model.AddBoolOr([
+                            is_work[s, 0],
+                            self.shifts[(s, 1, SHIFT_IDX["shinya"])].Not()
+                        ]).OnlyEnforceIf(sc_boundary.Not())
+                        scattered_night_penalty += sc_boundary * scattered_w
+
                 for d in range(self.num_days - 2):
                     # 深夜→単体休み（off/refresh/paid）→深夜 の散発パターン
                     scattered = self.model.NewBoolVar(f"scattered_shinya_{s}_{d}")
@@ -1143,6 +1160,26 @@ class ShiftSolver:
             # 0日→50pt, 1日→35pt, 2日→25pt, 3日以上→12pt
             rc = staff_refresh_days.get(s, 0)
             base_penalty = 50 if rc == 0 else (35 if rc == 1 else (25 if rc == 2 else 12))
+
+            # 月またぎ: junnya(前月末)→rest(day0)→shinya(day1)
+            staff_id = self.staff_list[s]["id"]
+            if staff_id in self.prev_month_data and self.num_days >= 2:
+                prev_last = self.prev_month_data[staff_id].get("lastDay", "")
+                if prev_last == "junnya":
+                    jos_boundary = self.model.NewBoolVar(f"junnya_off_shinya_boundary_{s}")
+                    self.model.AddBoolAnd([
+                        is_rest[s, 0],
+                        self.shifts[(s, 1, SHIFT_IDX["shinya"])]
+                    ]).OnlyEnforceIf(jos_boundary)
+                    self.model.AddBoolOr([
+                        is_work[s, 0],
+                        self.shifts[(s, 1, SHIFT_IDX["shinya"])].Not()
+                    ]).OnlyEnforceIf(jos_boundary.Not())
+                    if s in kibou_yasumi_days and 0 in kibou_yasumi_days[s]:
+                        junnya_off_shinya_penalty += jos_boundary * (base_penalty + 50)
+                    else:
+                        junnya_off_shinya_penalty += jos_boundary * base_penalty
+
             for d in range(self.num_days - 2):
                 # junnya(d) → 休(d+1) → shinya(d+2)
                 pattern = self.model.NewBoolVar(f"junnya_off_shinya_{s}_{d}")
@@ -1174,7 +1211,14 @@ class ShiftSolver:
             for ky_day in kibou_yasumi_days[s]:
                 # 希望休み前日が準夜（せっかくの休みの前夜が遅くまで勤務）
                 prev_day = ky_day - 1
-                if prev_day >= 0:
+                if prev_day < 0:
+                    # 月またぎ: day0が希望休で前月末がjunnyaならペナルティ
+                    staff_id = self.staff_list[s]["id"]
+                    if staff_id in self.prev_month_data:
+                        prev_last = self.prev_month_data[staff_id].get("lastDay", "")
+                        if prev_last == "junnya":
+                            kibou_night_penalty += 10
+                elif prev_day >= 0:
                     junnya_before = self.model.NewBoolVar(f"kibou_junnya_before_{s}_{ky_day}")
                     self.model.Add(
                         self.shifts[(s, prev_day, SHIFT_IDX["junnya"])] == 1
@@ -1202,6 +1246,14 @@ class ShiftSolver:
             wt = self.staff_list[s].get("workType", "2kohtai")
             if wt != "3kohtai":
                 continue
+
+            # 月またぎ: day/late(前月末)→shinya(day0)
+            staff_id = self.staff_list[s]["id"]
+            if staff_id in self.prev_month_data:
+                prev_last = self.prev_month_data[staff_id].get("lastDay", "")
+                if prev_last in ("day", "late"):
+                    day_shinya_penalty += self.shifts[(s, 0, SHIFT_IDX["shinya"])] * 25
+
             for d in range(self.num_days - 1):
                 # day/late(d) → shinya(d+1)
                 is_day_shift = self.model.NewBoolVar(f"is_day_shift_{s}_{d}")
@@ -1236,6 +1288,22 @@ class ShiftSolver:
             # 0日→15pt, 1日→10pt, 2日→6pt, 3日以上→3pt
             rc = staff_refresh_days.get(s, 0)
             bonus_w = 15 if rc == 0 else (10 if rc == 1 else (6 if rc == 2 else 3))
+
+            # 月またぎ: shinya(前月末)→rest(day0)→junnya(day1)
+            staff_id = self.staff_list[s]["id"]
+            if staff_id in self.prev_month_data and self.num_days >= 2:
+                prev_last = self.prev_month_data[staff_id].get("lastDay", "")
+                if prev_last == "shinya":
+                    gr_boundary = self.model.NewBoolVar(f"good_rot_boundary_{s}")
+                    self.model.AddBoolAnd([
+                        is_rest[s, 0],
+                        self.shifts[(s, 1, SHIFT_IDX["junnya"])]
+                    ]).OnlyEnforceIf(gr_boundary)
+                    self.model.AddBoolOr([
+                        is_work[s, 0],
+                        self.shifts[(s, 1, SHIFT_IDX["junnya"])].Not()
+                    ]).OnlyEnforceIf(gr_boundary.Not())
+                    good_rotation_bonus += gr_boundary * bonus_w
 
             for d in range(self.num_days - 2):
                 # 深夜(d) → 休(d+1) → 準夜(d+2)：体内リズムに沿った逆回転
@@ -1274,6 +1342,24 @@ class ShiftSolver:
                 continue
 
             if wt == "2kohtai":
+                # 月またぎ: 前月末night2との間隔チェック
+                staff_id = self.staff_list[s]["id"]
+                if staff_id in self.prev_month_data:
+                    prev_data = self.prev_month_data[staff_id]
+                    prev_last = prev_data.get("lastDay", "")
+                    prev_second = prev_data.get("secondLastDay", "")
+                    if prev_last == "night2":
+                        # day0=ake(強制), day1にnight2なら間隔2→30pt
+                        if self.num_days >= 2:
+                            night_interval_penalty += self.shifts[(s, 1, SHIFT_IDX["night2"])] * 30
+                        # day2にnight2なら間隔3→10pt
+                        if self.num_days >= 3:
+                            night_interval_penalty += self.shifts[(s, 2, SHIFT_IDX["night2"])] * 10
+                    elif prev_second == "night2":
+                        # secondLast=night2→last=ake→day0=rest(強制), day1にnight2なら間隔3→10pt
+                        if self.num_days >= 2:
+                            night_interval_penalty += self.shifts[(s, 1, SHIFT_IDX["night2"])] * 10
+
                 for d in range(self.num_days - 2):
                     close_night = self.model.NewBoolVar(f"close_night2_{s}_{d}")
                     self.model.AddBoolAnd([
@@ -1299,6 +1385,14 @@ class ShiftSolver:
                     night_interval_penalty += close_night2 * 10
 
             elif wt == "3kohtai":
+                # 月またぎ: 前月末shinya→当月day0 shinyaの連続夜勤チェック
+                staff_id = self.staff_list[s]["id"]
+                if staff_id in self.prev_month_data:
+                    prev_last = self.prev_month_data[staff_id].get("lastDay", "")
+                    # shinya→shinyaのみ発生しうる（ハード制約でshinya→junya/junnya→shinyaは不可）
+                    if prev_last == "shinya":
+                        night_interval_penalty += self.shifts[(s, 0, SHIFT_IDX["shinya"])] * 20
+
                 night_shifts = ["junnya", "shinya"]
                 for d in range(self.num_days - 1):
                     for ns1 in night_shifts:
