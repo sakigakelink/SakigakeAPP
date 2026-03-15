@@ -232,6 +232,110 @@ class ShiftSolver:
                 count += 1
         return count
 
+    def _diagnose_infeasible(self):
+        """infeasible時の原因候補を分析して返す"""
+        hints = []
+        rest_shifts = {"off", "paid", "refresh"}
+        night_shifts_2k = {"night2"}
+        night_shifts_3k = {"junnya", "shinya"}
+
+        req_day_wd = self.config.get("reqDayWeekday", 7)
+        req_day_hol = self.config.get("reqDayHoliday", 5)
+        req_j = self.config.get("reqJunnya", 2)
+        req_s = self.config.get("reqShinya", 2)
+        req_late = self.config.get("reqLate", 1)
+        req_night_total = req_j + req_s
+
+        # 希望休マップ: {(staffId, day): shift}
+        wish_off = {}  # day -> set of staffId
+        for w in self.wishes:
+            if w.get("type") == "assign" and w.get("shift") in rest_shifts:
+                for d in w.get("days", []):
+                    if 1 <= d <= self.num_days:
+                        wish_off.setdefault(d, set()).add(w["staffId"])
+
+        # 前月引継ぎによる強制休: {day -> set of staffId}
+        forced_off = {}
+        consec_high = []  # 前月から4連勤以上のスタッフ
+        for s in self.staff_list:
+            sid = s["id"]
+            prev = self.prev_month_data.get(sid, {})
+            last_day = prev.get("lastDay", "")
+            consec = prev.get("consecutiveWork", 0)
+            wt = s.get("workType", "2kohtai")
+            if last_day == "night2":
+                forced_off.setdefault(1, set()).add(sid)  # ake
+                if wt == "2kohtai":
+                    forced_off.setdefault(2, set()).add(sid)  # off
+            elif last_day == "ake":
+                forced_off.setdefault(1, set()).add(sid)  # off
+            if consec >= 4:
+                consec_high.append(s.get("name", sid))
+
+        # 夜勤不可スタッフID
+        day_only_ids = {s["id"] for s in self.staff_list if s.get("workType") == "day_only"}
+        fixed_ids = {s["id"] for s in self.staff_list if s.get("workType") == "fixed"}
+
+        # 診断1: 日別人員不足
+        shortage_days = []
+        for d in range(1, self.num_days + 1):
+            dt = date(self.year, self.month, d)
+            is_hol = dt.weekday() == 6 or f"{self.year}-{self.month}-{d}" in HOLIDAYS
+            req_day = req_day_hol if is_hol else req_day_wd
+            total_required = req_day + req_late + req_night_total
+
+            unavail = set()
+            unavail.update(wish_off.get(d, set()))
+            unavail.update(forced_off.get(d, set()))
+            available = sum(1 for s in self.staff_list
+                           if s["id"] not in unavail and s["id"] not in fixed_ids)
+            if available < total_required:
+                shortage_days.append(
+                    f"{d}日: 出勤可能{available}人 < 必要{total_required}人"
+                    f"（日勤{req_day}+遅出{req_late}+夜勤{req_night_total}）"
+                )
+
+        if shortage_days:
+            if len(shortage_days) <= 3:
+                hints.append("人員不足の日あり:\n" + "\n".join(shortage_days))
+            else:
+                hints.append(f"人員不足の日が{len(shortage_days)}日あり（例: {shortage_days[0]}）")
+
+        # 診断2: 夜勤余裕ゼロ日
+        night_tight = []
+        for d in range(1, self.num_days + 1):
+            unavail = set()
+            unavail.update(wish_off.get(d, set()))
+            unavail.update(forced_off.get(d, set()))
+            night_capable = sum(1 for s in self.staff_list
+                                if s["id"] not in unavail
+                                and s["id"] not in fixed_ids
+                                and s["id"] not in day_only_ids)
+            if night_capable <= req_night_total:
+                night_tight.append(f"{d}日: 夜勤可能{night_capable}人 ≤ 必要{req_night_total}枠")
+
+        if night_tight:
+            if len(night_tight) <= 3:
+                hints.append("夜勤余裕が極めて少ない日あり:\n" + "\n".join(night_tight))
+            else:
+                hints.append(f"夜勤余裕ゼロの日が{len(night_tight)}日あり（例: {night_tight[0]}）")
+
+        # 診断3: 前月引継ぎ集中
+        forced_day1 = len(forced_off.get(1, set()))
+        forced_day2 = len(forced_off.get(2, set()))
+        total_staff = self.num_staff
+        if forced_day1 > 0 and forced_day1 >= total_staff * 0.3:
+            hints.append(f"1日: 前月夜勤者{forced_day1}人が強制休（ake/off）→ 出勤可能人数が減少")
+
+        # 診断4: 連勤上限との干渉
+        if len(consec_high) >= 2:
+            names = "・".join(consec_high[:3])
+            if len(consec_high) > 3:
+                names += f"等{len(consec_high)}人"
+            hints.append(f"{names}が前月から4連勤以上 → 月初に休み必須で人員不足の可能性")
+
+        return hints
+
     def _solve_core(self, log_queue=None, timeout=15):
         # モデル再作成 (毎回新しいモデルで解く)
         self.model = cp_model.CpModel()
@@ -1665,7 +1769,11 @@ class ShiftSolver:
                 }
         else:
             result["status"] = "infeasible"
-            result["message"] = "解が見つかりません。制約を緩和してください。"
+            hints = self._diagnose_infeasible()
+            if hints:
+                result["message"] = "解が見つかりません。\n【原因候補】\n" + "\n".join("・" + h for h in hints)
+            else:
+                result["message"] = "解が見つかりません。職員数・公休日数・必要人数の設定を確認してください。"
             return result
 
         # ソルバー対象職員のシフトを取得

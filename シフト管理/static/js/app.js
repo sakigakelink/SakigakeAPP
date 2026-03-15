@@ -2389,8 +2389,20 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             }
         } else {
             progress.style.display = "none";
-            log.style.display = "flex";
-            addLog("失敗: " + (r.message || "解なし") + " (" + finalTime + "秒)", "error");
+            var msg = r.message || "解なし";
+            if (msg.indexOf("\n") >= 0) {
+                // 複数行メッセージ（診断付き）→ ブロック表示
+                log.style.display = "block";
+                var div = document.createElement("div");
+                div.className = "log-error";
+                div.style.whiteSpace = "pre-wrap";
+                div.style.lineHeight = "1.6";
+                div.textContent = "失敗: " + msg + " (" + finalTime + "秒)";
+                log.appendChild(div);
+            } else {
+                log.style.display = "flex";
+                addLog("失敗: " + msg + " (" + finalTime + "秒)", "error");
+            }
         }
         btn.disabled = false;
         btn.textContent = "生成開始";
