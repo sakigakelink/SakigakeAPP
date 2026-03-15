@@ -1667,7 +1667,7 @@ class ShiftSolver:
 
         # 複数seed試行でobj最小化（solveMode別: quick=1回, balanced=3回, quality=5回）
         solve_mode = self.config.get("solveMode", "quick")
-        seeds = [42, 123, 456, 789, 1024]
+        seeds = [7, 31, 97, 313, 1009]
         num_trials = {"quick": 1, "balanced": 3, "quality": 5}
         n = num_trials.get(solve_mode, 1)
 
