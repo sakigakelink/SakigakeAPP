@@ -1,8 +1,9 @@
-"""Regression test - 全病棟テスト（希望なし＋希望あり）"""
+"""Regression test - 全病棟テスト（希望なし＋希望あり）＋品質評価"""
 import sys, os, json, time
 sys.path.insert(0, os.path.dirname(__file__))
 from solver import ShiftSolver
 from validation import employee_to_frontend
+from shift_quality import evaluate_shift_quality, format_quality
 
 with open('shared/employees.json', 'r', encoding='utf-8') as f:
     all_emps = json.load(f)
@@ -39,6 +40,8 @@ def run_test(label, data):
     if st.lower() not in ['optimal','feasible']:
         print(f"  {result.get('message','')[:200]}")
     else:
+        q = evaluate_shift_quality(result, data)
+        print(f"  品質: {format_quality(q)}")
         for nm, info in result.get('stats',{}).get('nightPerStaff',{}).items():
             if '専従' in info: print(f"  {nm}: {info}")
     return ok

@@ -608,32 +608,7 @@ def register_routes(app, BACKUP_DIR):
         export_data["dailyStats"] = daily_stats
 
         # ========== 公平性・負担評価指標 ==========
-        def calculate_gini(values):
-            """ジニ係数を計算（0=完全平等, 1=完全不平等）"""
-            if not values or len(values) < 2:
-                return 0.0
-            values = sorted(values)
-            n = len(values)
-            total = sum(values)
-            if total == 0:
-                return 0.0
-            cumsum = 0
-            gini_sum = 0
-            for i, v in enumerate(values):
-                cumsum += v
-                gini_sum += (2 * (i + 1) - n - 1) * v
-            return gini_sum / (n * total)
-
-        def calculate_cv(values):
-            """変動係数 (CV) を計算（標準偏差/平均）"""
-            if not values or len(values) < 2:
-                return 0.0
-            mean = sum(values) / len(values)
-            if mean == 0:
-                return 0.0
-            variance = sum((v - mean) ** 2 for v in values) / len(values)
-            std = variance ** 0.5
-            return std / mean
+        from shift_quality import calculate_gini, calculate_cv, evaluate_gini_grade
 
         # 夜勤回数リスト（夜勤対象者のみ）
         night_counts = []
@@ -679,17 +654,10 @@ def register_routes(app, BACKUP_DIR):
             "nightShiftRange": (max(night_counts) - min(night_counts)) if night_counts else 0,
         }
 
-        # 評価コメント生成
-        def evaluate_gini(g):
-            if g < 0.1: return "優秀"
-            elif g < 0.2: return "良好"
-            elif g < 0.3: return "普通"
-            else: return "要改善"
-
         fairness_metrics["評価"] = {
-            "夜勤公平性": evaluate_gini(fairness_metrics["nightShiftGini"]),
-            "週末公平性": evaluate_gini(fairness_metrics["weekendGini"]),
-            "遅出公平性": evaluate_gini(fairness_metrics["lateShiftGini"]),
+            "夜勤公平性": evaluate_gini_grade(fairness_metrics["nightShiftGini"]),
+            "週末公平性": evaluate_gini_grade(fairness_metrics["weekendGini"]),
+            "遅出公平性": evaluate_gini_grade(fairness_metrics["lateShiftGini"]),
         }
 
         export_data["fairnessMetrics"] = fairness_metrics
