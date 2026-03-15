@@ -1512,7 +1512,7 @@ function render() {
         var hardPatternDays = [];
         var noConsecutiveRest = false;
         if (wt !== "day_only" && wt !== "fixed") {
-            var loadResult = calculatePersonalLoad(s.id, D.shifts[sk], days, wt, Y, M, wishMap);
+            var loadResult = calculatePersonalLoad(s.id, D.shifts[sk], days, wt, Y, M, wishMap, getPrevMonthStaffData(s.id, Y, M, W));
             var issueDays = loadResult.issueDays || {};
             nightIntervalIssues = issueDays.nightInterval || [];
             hardPatternDays = issueDays.hardPatterns || [];
@@ -4418,7 +4418,7 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
             var wt = s.workType || "2kohtai";
             if (wt === "fixed" || wt === "day_only") continue;
 
-            var ps = calculatePersonalLoad(s.id, shifts, days, wt, year, month, wishMap);
+            var ps = calculatePersonalLoad(s.id, shifts, days, wt, year, month, wishMap, getPrevMonthStaffData(s.id, year, month, W));
             personalScores[s.id] = {
                 name: s.name,
                 score: ps.score,
@@ -4548,7 +4548,31 @@ var PENALTY_KEYS = [
     "day_to_shinya", "kibou_night", "junnya_shinya_balance"
 ];
 
-function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, wishes) {
+// 前月データからスタッフ別の引き継ぎ情報を取得
+function getPrevMonthStaffData(staffId, year, month, wardId) {
+    var prevY = year, prevM = month - 1;
+    if (prevM < 1) { prevM = 12; prevY--; }
+    var prevDays = new Date(prevY, prevM, 0).getDate();
+    var prevSk = prevY + "-" + prevM + "-" + wardId;
+    var prevShifts = D.shifts[prevSk] || {};
+
+    var lastDay = prevShifts[staffId + "-" + prevDays] || "";
+    var secondLastDay = prevDays >= 2 ? (prevShifts[staffId + "-" + (prevDays - 1)] || "") : "";
+
+    // 前月末からの連勤数
+    var consecutiveWork = 0;
+    for (var k = 0; k < 10; k++) {
+        var pd = prevDays - k;
+        if (pd < 1) break;
+        var psh = prevShifts[staffId + "-" + pd] || "";
+        if (psh && psh !== "off" && psh !== "paid" && psh !== "ake" && psh !== "refresh") consecutiveWork++;
+        else break;
+    }
+
+    return { lastDay: lastDay, secondLastDay: secondLastDay, consecutiveWork: consecutiveWork };
+}
+
+function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, wishes, prevData) {
     var REST_TYPES = ["off", "paid", "refresh"];
     var NIGHT_TYPES = ["night2", "junnya", "shinya"];
 
@@ -4574,6 +4598,11 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
         good_rotation: 0
     };
 
+    // 前月データ
+    var prevLast = (prevData && prevData.lastDay) || "";
+    var prevSecond = (prevData && prevData.secondLastDay) || "";
+    var prevWork = (prevData && prevData.consecutiveWork) || 0;
+
     // 5連勤/6連勤を窓で検出
     for (var d = 0; d <= numDays - 5; d++) {
         var all5 = true;
@@ -4589,6 +4618,21 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
         }
         if (all6) p.consec_6++;
     }
+    // 月またぎ: 前月連勤 + 当月冒頭で5連勤/6連勤に達するケース
+    if (prevWork >= 1) {
+        var dn5 = 5 - prevWork;
+        if (dn5 > 0 && dn5 <= numDays) {
+            var ok5 = true;
+            for (var i = 0; i < dn5; i++) { if (!shiftList[i] || REST_TYPES.indexOf(shiftList[i]) >= 0) { ok5 = false; break; } }
+            if (ok5) p.consec_5++;
+        }
+        var dn6 = 6 - prevWork;
+        if (dn6 > 0 && dn6 <= numDays) {
+            var ok6 = true;
+            for (var i = 0; i < dn6; i++) { if (!shiftList[i] || REST_TYPES.indexOf(shiftList[i]) >= 0) { ok6 = false; break; } }
+            if (ok6) p.consec_6++;
+        }
+    }
 
     // 三交代専用
     if (workType === "3kohtai") {
@@ -4601,6 +4645,9 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
             // 日深転換
             if ((shiftList[d] === "day" || shiftList[d] === "late") && shiftList[d + 1] === "shinya") p.day_to_shinya++;
         }
+        // 月またぎ: day/late(前月末)→shinya(day0)
+        if ((prevLast === "day" || prevLast === "late") && shiftList[0] === "shinya") p.day_to_shinya++;
+
         for (var d = 0; d < numDays - 2; d++) {
             // 散発夜勤: 深夜→休→深夜
             if (shiftList[d] === "shinya" && REST_TYPES.indexOf(shiftList[d+1]) >= 0 && shiftList[d+2] === "shinya") p.scattered_night++;
@@ -4610,11 +4657,35 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
             if (shiftList[d] === "shinya" && REST_TYPES.indexOf(shiftList[d+1]) >= 0 && shiftList[d+2] === "junnya") p.good_rotation++;
             if (shiftList[d] === "shinya" && shiftList[d+1] === "junnya" && REST_TYPES.indexOf(shiftList[d+2]) >= 0) p.good_rotation++;
         }
+        // 月またぎ: shinya(前月末)→rest(day0)→shinya(day1)
+        if (prevLast === "shinya" && numDays >= 2 && REST_TYPES.indexOf(shiftList[0]) >= 0 && shiftList[1] === "shinya") p.scattered_night++;
+        // 月またぎ: junnya(前月末)→rest(day0)→shinya(day1)
+        if (prevLast === "junnya" && numDays >= 2 && REST_TYPES.indexOf(shiftList[0]) >= 0 && shiftList[1] === "shinya") p.junnya_off_shinya++;
+        // 月またぎ: shinya(前月末)→rest(day0)→junnya(day1) 好ローテ
+        if (prevLast === "shinya" && numDays >= 2 && REST_TYPES.indexOf(shiftList[0]) >= 0 && shiftList[1] === "junnya") p.good_rotation++;
+
         // 準深バランス
         p.junnya_shinya_balance = Math.abs(junyaCount - shinyaCount);
     }
 
     // 夜勤間隔（2交代/3交代共通）
+    // 月またぎ: 前月末の夜勤との間隔チェック
+    if (workType === "2kohtai") {
+        if (prevLast === "night2") {
+            for (var ni = 0; ni < nightDays.length; ni++) {
+                var gap = nightDays[ni] + 1;
+                if (gap >= 2 && gap <= 3) p.night_interval_close++;
+            }
+        } else if (prevSecond === "night2") {
+            for (var ni = 0; ni < nightDays.length; ni++) {
+                var gap = nightDays[ni] + 2;
+                if (gap >= 2 && gap <= 3) p.night_interval_close++;
+            }
+        }
+    } else if (workType === "3kohtai") {
+        if (prevLast === "shinya" && shiftList[0] === "shinya") p.night_interval_close++;
+    }
+    // 当月内の間隔チェック
     for (var i = 1; i < nightDays.length; i++) {
         var gap = nightDays[i] - nightDays[i - 1];
         if (gap >= 2 && gap <= 3) p.night_interval_close++;
@@ -4622,15 +4693,15 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
 
     // 希望休前後の夜勤
     if (wishes && typeof wishes === "object") {
-        // wishes = staffOffDays map from calculateFairnessMetrics
-        // キー形式: staffId-day -> "off" etc.  ここでは off/refresh のみ対象
         for (var key in wishes) {
             if (key.indexOf(staffId + "-") !== 0) continue;
             var wType = wishes[key];
             if (wType !== "off" && wType !== "paid" && wType !== "refresh") continue;
             var offDay = parseInt(key.split("-")[1]);
             var dIdx = offDay - 1;
-            if (dIdx > 0 && shiftList[dIdx - 1] === "junnya") p.kibou_night++;
+            // 月またぎ: day0が希望休で前月末がjunnya
+            if (dIdx === 0 && prevLast === "junnya") p.kibou_night++;
+            else if (dIdx > 0 && shiftList[dIdx - 1] === "junnya") p.kibou_night++;
             if (dIdx < numDays - 1 && shiftList[dIdx + 1] === "shinya") p.kibou_night++;
         }
     }
@@ -4643,6 +4714,14 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
 
     // 問題日の収集（シフト表のアンダーライン表示用）
     var nightIntervalIssueDays = [];
+    // 月またぎ: 前月末の夜勤が近い場合、当月冒頭をマーク
+    if (workType === "2kohtai" && prevLast === "night2") {
+        for (var ni = 0; ni < nightDays.length; ni++) {
+            if (nightDays[ni] + 1 >= 2 && nightDays[ni] + 1 <= 3) nightIntervalIssueDays.push(nightDays[ni] + 1);
+        }
+    } else if (workType === "3kohtai" && prevLast === "shinya" && shiftList[0] === "shinya") {
+        nightIntervalIssueDays.push(1);
+    }
     for (var i = 1; i < nightDays.length; i++) {
         var gap = nightDays[i] - nightDays[i - 1];
         if (gap >= 2 && gap <= 3) {
@@ -4898,7 +4977,7 @@ function calculateVersionMetrics(shifts) {
         var wt = s.workType || "2kohtai";
         if (wt === "fixed" || wt === "day_only") continue; // 固定・日勤のみは除外
 
-        var ps = calculatePersonalLoad(s.id, shifts, days, wt, Y, M, wishMap);
+        var ps = calculatePersonalLoad(s.id, shifts, days, wt, Y, M, wishMap, getPrevMonthStaffData(s.id, Y, M, W));
         personalScores[s.id] = {
             name: s.name,
             score: ps.score,
