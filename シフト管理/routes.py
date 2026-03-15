@@ -179,24 +179,6 @@ def _safe_internal_error(e, context=""):
 def register_routes(app, BACKUP_DIR):
     """Flaskアプリにルートを登録"""
 
-    @app.route("/extract-wishes")
-    def extract_wishes_page():
-        """一時的なデバッグ用: localStorageからwishesを抽出してバックアップAPIに送信"""
-        return Response('''<html><body><h2 id="status">Extracting wishes...</h2>
-<script>
-var d = localStorage.getItem("sakigakeData");
-var st = document.getElementById("status");
-if (d) {
-  st.textContent = "Found data (" + d.length + " chars), sending backup...";
-  fetch("/api/backup", {method:"POST", headers:{"Content-Type":"application/json"}, body: d})
-  .then(function(r){return r.json()})
-  .then(function(j){st.textContent = "Done! " + JSON.stringify(j)})
-  .catch(function(e){st.textContent = "Error: " + e})
-} else {
-  st.textContent = "No sakigakeData in localStorage!";
-}
-</script></body></html>''', content_type='text/html')
-
     @app.route("/solve", methods=["POST"])
     def solve_route():
         try:
