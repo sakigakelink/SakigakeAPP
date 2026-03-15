@@ -119,8 +119,55 @@ function loadWardSettingsFromServer() {
 }
 
 
+function cleanupOldData() {
+    // 12ヶ月以上前のシフト・希望データを自動削除してlocalStorage容量を節約
+    var now = new Date();
+    var cutoffY = now.getFullYear();
+    var cutoffM = now.getMonth() + 1 - 12; // 12ヶ月前
+    if (cutoffM <= 0) { cutoffM += 12; cutoffY--; }
+    var cleaned = 0;
+    // D.shifts: キー形式 "YYYY-M-wardId"
+    if (D.shifts) {
+        for (var k in D.shifts) {
+            var p = k.split("-");
+            var ky = parseInt(p[0]), km = parseInt(p[1]);
+            if (ky && km && (ky < cutoffY || (ky === cutoffY && km < cutoffM))) {
+                delete D.shifts[k];
+                cleaned++;
+            }
+        }
+    }
+    // D.wishes: キー形式 "YYYY-M"
+    if (D.wishes) {
+        for (var k in D.wishes) {
+            var p = k.split("-");
+            var ky = parseInt(p[0]), km = parseInt(p[1]);
+            if (ky && km && (ky < cutoffY || (ky === cutoffY && km < cutoffM))) {
+                delete D.wishes[k];
+                cleaned++;
+            }
+        }
+    }
+    // D.dayHours: キー形式 "YYYY-M-wardId-staffId-day"
+    if (D.dayHours) {
+        for (var k in D.dayHours) {
+            var p = k.split("-");
+            var ky = parseInt(p[0]), km = parseInt(p[1]);
+            if (ky && km && (ky < cutoffY || (ky === cutoffY && km < cutoffM))) {
+                delete D.dayHours[k];
+                cleaned++;
+            }
+        }
+    }
+    if (cleaned > 0) {
+        console.log("古いデータ " + cleaned + "件を削除しました（12ヶ月以上前）");
+        save();
+    }
+}
+
 function init() {
     load();
+    cleanupOldData();
     // ページロード時に自動バックアップ（サーバーにデータを同期）
     setTimeout(backupToServer, 1000);
 
@@ -217,9 +264,31 @@ function load() {
         try {
             D = JSON.parse(s);
         } catch (e) {
-            console.error("LocalStorageデータ破損 - 初期状態で起動:", e);
-            alert("保存データが破損していたため初期状態で起動します。バックアップから復元してください。");
-            D = { staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} };
+            console.error("LocalStorageデータ破損 - サーバーバックアップから自動復元を試行:", e);
+            // サーバーバックアップから自動復元
+            try {
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", "/api/backup/load", false); // 同期リクエスト
+                xhr.send();
+                if (xhr.status === 200) {
+                    var res = JSON.parse(xhr.responseText);
+                    if (res.status === "success" && res.data) {
+                        D = res.data;
+                        localStorage.setItem("sakigakeData", JSON.stringify(D));
+                        alert("保存データが破損していたためサーバーバックアップから復元しました（" + (res.timestamp || "不明") + "時点）");
+                    } else {
+                        D = { staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} };
+                        alert("保存データが破損しており、バックアップも見つかりませんでした。初期状態で起動します。");
+                    }
+                } else {
+                    D = { staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} };
+                    alert("保存データが破損していたため初期状態で起動します。");
+                }
+            } catch (e2) {
+                console.error("バックアップ復元失敗:", e2);
+                D = { staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} };
+                alert("保存データが破損していたため初期状態で起動します。");
+            }
         }
     }
     if (!D.dayHours) D.dayHours = {};
@@ -227,7 +296,16 @@ function load() {
 
 var backupTimer = null;
 function save() {
-    localStorage.setItem("sakigakeData", JSON.stringify(D));
+    var json = JSON.stringify(D);
+    if (json.length > 4 * 1024 * 1024) {
+        console.warn("データサイズ警告: " + (json.length / 1024 / 1024).toFixed(1) + "MB");
+    }
+    try {
+        localStorage.setItem("sakigakeData", json);
+    } catch (e) {
+        console.error("localStorage書き込み失敗:", e);
+        alert("保存容量超過: ブラウザのストレージ上限に達しました。不要な月のデータを削除してください。");
+    }
 
     // デバウンス付き自動バックアップ（3秒後）
     if (backupTimer) clearTimeout(backupTimer);

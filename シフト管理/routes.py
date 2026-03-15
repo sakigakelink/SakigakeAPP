@@ -48,6 +48,16 @@ SHIFT_ABBR = {
 _REST_TYPES = {"off", "paid", "refresh"}  # akeは夜勤の一部であり休日ではない
 
 
+def atomic_json_write(filepath, data):
+    """アトミック書き込み: 一時ファイルに書き込み後リネーム（クラッシュ安全）"""
+    tmp = filepath + ".tmp"
+    with open(tmp, 'w', encoding='utf-8') as f:
+        pyjson.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, filepath)
+
+
 def _supplement_transfer_prevdata(staff_list, ward_code, year, month, prev_month_data):
     """異動職員の前月引継ぎデータを旧病棟の確定シフトから補完する。
 
@@ -362,13 +372,15 @@ def register_routes(app, BACKUP_DIR):
 
             # タイムスタンプ付きファイルに保存
             backup_file = os.path.join(BACKUP_DIR, f"backup_{timestamp}.json")
-            with open(backup_file, "w", encoding="utf-8") as f:
-                pyjson.dump(data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(backup_file, data)
 
             # 最新版を上書き保存
             latest_file = os.path.join(BACKUP_DIR, "backup_latest.json")
-            with open(latest_file, "w", encoding="utf-8") as f:
-                pyjson.dump(data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(latest_file, data)
+
+            # 書き込み検証（最新バックアップが正しく読めることを確認）
+            with open(latest_file, 'r', encoding='utf-8') as f:
+                pyjson.load(f)  # JSONDecodeErrorなら例外→エラー応答
 
             # 古いバックアップを削除（最新10件のみ保持）
             files = sorted([f for f in os.listdir(BACKUP_DIR) if f.startswith("backup_") and f != "backup_latest.json"], reverse=True)
@@ -472,8 +484,7 @@ def register_routes(app, BACKUP_DIR):
                     return jsonify({"status": "error", "message": e.message}), 400
                 existing[ward_id] = settings
 
-            with open(SETTINGS_FILE, "w", encoding="utf-8") as f:
-                pyjson.dump(existing, f, ensure_ascii=False, indent=2)
+            atomic_json_write(SETTINGS_FILE, existing)
 
             return jsonify({"status": "success"})
         except (OSError, IOError, pyjson.JSONDecodeError) as e:
@@ -1170,8 +1181,7 @@ def register_routes(app, BACKUP_DIR):
 
             os.makedirs(os.path.dirname(employees_path), exist_ok=True)
 
-            with open(employees_path, 'w', encoding='utf-8') as f:
-                pyjson.dump(converted_staff, f, ensure_ascii=False, indent=2)
+            atomic_json_write(employees_path, converted_staff)
 
             # 病棟別集計
             ward_counts = {}
@@ -1305,8 +1315,7 @@ def register_routes(app, BACKUP_DIR):
 
             # 保存
             os.makedirs(os.path.dirname(filepath), exist_ok=True)
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({'status': 'success', 'name': name})
 
@@ -1346,8 +1355,7 @@ def register_routes(app, BACKUP_DIR):
 
             shift_data['selectedDraft'] = name
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({'status': 'success', 'selectedDraft': name})
 
@@ -1390,8 +1398,7 @@ def register_routes(app, BACKUP_DIR):
             backup_dir = os.path.join(os.path.dirname(__file__), 'shifts', ward_id, 'backup')
             os.makedirs(backup_dir, exist_ok=True)
             backup_path = os.path.join(backup_dir, f"{year}-{month:02d}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
-            with open(backup_path, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(backup_path, shift_data)
 
             # 確定
             shift_data['status'] = 'confirmed'
@@ -1404,8 +1411,7 @@ def register_routes(app, BACKUP_DIR):
             if day_hours and isinstance(day_hours, dict) and len(day_hours) > 0:
                 shift_data['confirmed']['dayHours'] = day_hours
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({
                 'status': 'success',
@@ -1481,8 +1487,7 @@ def register_routes(app, BACKUP_DIR):
                     'reason': reason
                 })
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({'status': 'success', 'changesApplied': len(changes)})
 
@@ -1530,8 +1535,7 @@ def register_routes(app, BACKUP_DIR):
 
             del shift_data['drafts'][name]
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({'status': 'success'})
 
@@ -1719,8 +1723,7 @@ def register_routes(app, BACKUP_DIR):
             if not found:
                 return jsonify({'status': 'error', 'message': '職員が見つかりません'}), 404
 
-            with open(employees_path, 'w', encoding='utf-8') as f:
-                pyjson.dump(employees, f, ensure_ascii=False, indent=2)
+            atomic_json_write(employees_path, employees)
 
             return jsonify({
                 'status': 'success',
@@ -1848,8 +1851,7 @@ def register_routes(app, BACKUP_DIR):
                 shift_data['actual']['dayHours'] = copy.deepcopy(shift_data['confirmed']['dayHours'])
             shift_data['status'] = 'actual'
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({
                 'status': 'success',
@@ -1990,8 +1992,7 @@ def register_routes(app, BACKUP_DIR):
 
             actual['lastUpdatedAt'] = datetime.now().isoformat()
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({
                 'status': 'success',
@@ -2037,8 +2038,7 @@ def register_routes(app, BACKUP_DIR):
             actual['finalizedAt'] = datetime.now().isoformat()
             shift_data['status'] = 'finalized'
 
-            with open(filepath, 'w', encoding='utf-8') as f:
-                pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+            atomic_json_write(filepath, shift_data)
 
             return jsonify({
                 'status': 'success',
@@ -2132,8 +2132,7 @@ def register_routes(app, BACKUP_DIR):
                             "shifts": v_staff_shifts
                         }
 
-                with open(filepath, 'w', encoding='utf-8') as f:
-                    pyjson.dump(shift_data, f, ensure_ascii=False, indent=2)
+                atomic_json_write(filepath, shift_data)
 
                 migrated_months += 1
 
