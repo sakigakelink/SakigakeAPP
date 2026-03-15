@@ -8,6 +8,8 @@ with open('shared/employees.json', 'r', encoding='utf-8') as f:
     all_emps = json.load(f)
 with open('shared/ward_settings.json', 'r', encoding='utf-8') as f:
     ws = json.load(f)
+with open('shared/wishes_data.json', 'r', encoding='utf-8') as f:
+    all_wishes = json.load(f)
 
 # 二病棟のスタッフ
 w_emps = [e for e in all_emps if e.get('ward') == 'nibyoutou']
@@ -23,13 +25,14 @@ data = {
     'year': 2026, 'month': 4,
     'staff': sp,
     'config': cfg,
-    'wishes': [],
+    'wishes': all_wishes.get('2026-4', []),
     'prevMonthData': {}
 }
 
 print(f'二病棟 2026年4月 テスト')
 print(f'スタッフ数: {len(sp)}')
 print(f'設定: 日勤={cfg["reqDayWeekday"]}人, 準夜={cfg["reqJunnya"]}人, 深夜={cfg["reqShinya"]}人, 遅番={cfg["reqLate"]}人')
+print(f'希望数: {len(data["wishes"])}件')
 print('ソルバー実行中...')
 sys.stdout.flush()
 
