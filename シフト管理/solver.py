@@ -1813,6 +1813,34 @@ class ShiftSolver:
                     "type": f"{si['type']}人数不足({shortage_val}名)"
                 })
 
+        # 希望逸脱チェック
+        _rest_shifts = {"off", "paid", "refresh"}
+        for w in self.wishes:
+            if w.get("type") != "assign":
+                continue
+            sid = w.get("staffId")
+            sidx = self.staff_id_to_idx.get(sid)
+            if sidx is None:
+                continue
+            sh = w.get("shift")
+            staff_name = self.staff_list[sidx].get("name", sid)
+            for day in w.get("days", []):
+                if day < 1 or day > self.num_days:
+                    continue
+                key = f"{sid}-{day}"
+                actual = result["shifts"].get(key, "")
+                if actual == sh:
+                    continue
+                # 休み系同士は逸脱とみなさない（off希望→paid等はOK）
+                if sh in _rest_shifts and actual in _rest_shifts:
+                    continue
+                violations.append({
+                    "name": staff_name,
+                    "staffId": sid,
+                    "day": day,
+                    "type": f"希望{sh}→実際{actual}",
+                })
+
         result["violations"] = violations
 
         # 公休数デバッグ検証（off + paid が monthlyOff と一致すべき）

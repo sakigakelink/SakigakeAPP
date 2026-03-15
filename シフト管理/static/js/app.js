@@ -1806,7 +1806,20 @@ function render() {
                 var compVal = compareDraftShifts[s.id + "-" + d] || "";
                 if (compVal !== sh) diffCls = " cell-diff";
             }
-            html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\">" + cellContent + "</td>";
+            // 制約違反ハイライト
+            var violCls = "";
+            var violTip = "";
+            if (window._lastViolations) {
+                for (var vi = 0; vi < window._lastViolations.length; vi++) {
+                    var vv = window._lastViolations[vi];
+                    if (vv.staffId === s.id && vv.day === d) {
+                        violCls = " cell-violation";
+                        violTip = vv.type;
+                        break;
+                    }
+                }
+            }
+            html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + (violTip ? " title=\"" + escHtml(violTip) + "\"" : "") + ">" + cellContent + "</td>";
         }
         html += "<td>" + dc + "</td><td>" + nc + "</td><td>" + oc + "</td></tr>";
     }
@@ -1962,6 +1975,52 @@ function checkFixedStaffComplete() {
     btn.textContent = "生成開始";
 }
 
+function getShiftReason(staffId, day) {
+    var sk = Y + "-" + M + "-" + W;
+    var wk = Y + "-" + M;
+    var shift = D.shifts[sk] ? (D.shifts[sk][staffId + "-" + day] || "") : "";
+    var reasons = [];
+    // 1. 希望チェック
+    var wishes = D.wishes[wk] || [];
+    for (var i = 0; i < wishes.length; i++) {
+        var w = wishes[i];
+        if (w.staffId === staffId && w.type === "assign" && w.days && w.days.indexOf(day) >= 0) {
+            if (w.shift === shift) reasons.push("✅ 希望通り（" + w.shift + "）");
+            else reasons.push("⚠ 希望" + w.shift + "→" + shift);
+        }
+    }
+    // 2. 前月引継ぎチェック（day 1-2）
+    if (day <= 2) {
+        var co = D.carryOver ? D.carryOver[Y + "-" + M + "-" + W] : null;
+        if (co) {
+            for (var ci = 0; ci < co.length; ci++) {
+                if (co[ci].staffId === staffId) {
+                    var lastDay = co[ci].lastDayShift || "";
+                    if (lastDay === "night2" || lastDay === "junnya" || lastDay === "shinya") {
+                        if (day === 1 && shift === "ake") reasons.push("前月夜勤→明け（自動）");
+                        if (day === 2 && shift === "off") reasons.push("夜勤明け翌日→休み（自動）");
+                    }
+                    break;
+                }
+            }
+        }
+    }
+    // 3. 固定シフトチェック
+    var staff = null;
+    for (var i = 0; i < D.staff.length; i++) { if (D.staff[i].id === staffId) { staff = D.staff[i]; break; } }
+    if (staff && staff.workType === "fixed") reasons.push("固定シフト職員");
+    // 4. violations チェック
+    if (window._lastViolations) {
+        for (var i = 0; i < window._lastViolations.length; i++) {
+            var v = window._lastViolations[i];
+            if (v.staffId === staffId && v.day === day) reasons.push("⚠ " + v.type);
+        }
+    }
+    // 5. デフォルト
+    if (reasons.length === 0 && shift) reasons.push("ソルバーによる自動割当");
+    return reasons;
+}
+
 function openShift(id, d) {
     sel = { id: id, d: d };
     sel._actualMode = ACTUAL_MODE; // 実績モードかどうかを記録
@@ -1970,6 +2029,16 @@ function openShift(id, d) {
         if (D.staff[i].id === id) { s = D.staff[i]; break; }
     }
     document.getElementById("shiftModalTitle").textContent = s.name + " - " + M + "/" + d + (ACTUAL_MODE ? " [実績]" : "");
+    // シフト理由表示
+    var reasonEl = document.getElementById("shiftReasonInfo");
+    if (reasonEl) {
+        var reasons = getShiftReason(id, d);
+        if (reasons.length > 0) {
+            reasonEl.innerHTML = "<div style='padding:.5rem;background:var(--bg2);border-radius:4px;font-size:.8rem;margin-bottom:.5rem;border-left:3px solid var(--blue)'>" + reasons.join("<br>") + "</div>";
+        } else {
+            reasonEl.innerHTML = "";
+        }
+    }
     // 日勤時間数パネルを初期状態で非表示
     var dhWrap = document.getElementById("dayHoursWrap");
     if (dhWrap) {
@@ -2467,10 +2536,19 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
                 }
             }
 
+            window._lastViolations = r.violations || [];
             if (r.violations && r.violations.length > 0) {
-                addLog("⚠ 希望逸脱 " + r.violations.length + "件", "error");
+                addLog("\u26A0 \u5E0C\u671B\u9038\u8131 " + r.violations.length + "\u4EF6", "error");
+                var shown = Math.min(r.violations.length, 10);
+                for (var vi = 0; vi < shown; vi++) {
+                    var v = r.violations[vi];
+                    addLog("  " + v.name + " " + v.day + "\u65E5: " + v.type, "error");
+                }
+                if (r.violations.length > shown) {
+                    addLog("  ...\u4ED6" + (r.violations.length - shown) + "\u4EF6", "error");
+                }
             } else {
-                addLog("希望はすべて反映", "success");
+                addLog("\u5E0C\u671B\u306F\u3059\u3079\u3066\u53CD\u6620", "success");
             }
 
             // 公休デバッグ情報（コンソールのみ、UIには非表示）
@@ -4720,6 +4798,58 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
         html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #6366f1"><b>✨ 希望</b><br>達成率: ' + wishSatisfaction.toFixed(0) + '%<br><span style="font-size:.75rem">達成' + wishMet + '件 / 登録' + wishTotal + '件</span></div>';
 
         grid.innerHTML = html;
+
+        // ===== 公平性バーチャート =====
+        var chartEl = document.getElementById("metricsChart");
+        if (chartEl) {
+            var ch = "";
+            // 夜勤分布バー
+            var maxNight = Math.max.apply(null, nightCounts.concat([1]));
+            ch += "<div style='margin-bottom:.8rem'><b style='font-size:.8rem'>🌙 夜勤回数分布</b>";
+            for (var ci = 0; ci < staff.length; ci++) {
+                var cs = staff[ci];
+                if (cs.workType === "fixed" || cs.workType === "day_only") continue;
+                var nc = nightCounts[ci] || 0;
+                var pct = (nc / maxNight * 100).toFixed(0);
+                ch += "<div style='display:flex;align-items:center;gap:.3rem;font-size:.75rem'>"
+                    + "<span style='width:4.5em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escHtml(cs.name) + "</span>"
+                    + "<div style='flex:1;background:var(--bg3);border-radius:3px;height:14px'>"
+                    + "<div style='width:" + pct + "%;background:#8b5cf6;border-radius:3px;height:100%;min-width:1px'></div></div>"
+                    + "<span style='width:2em;text-align:right'>" + nc + "</span></div>";
+            }
+            ch += "</div>";
+            // 週末休み率分布バー
+            ch += "<div style='margin-bottom:.8rem'><b style='font-size:.8rem'>📅 週末休み率分布</b>";
+            for (var ci = 0; ci < staff.length; ci++) {
+                var cs = staff[ci];
+                if (cs.workType === "fixed") continue;
+                var wr = weekendOffRatios[ci] || 0;
+                ch += "<div style='display:flex;align-items:center;gap:.3rem;font-size:.75rem'>"
+                    + "<span style='width:4.5em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escHtml(cs.name) + "</span>"
+                    + "<div style='flex:1;background:var(--bg3);border-radius:3px;height:14px'>"
+                    + "<div style='width:" + wr.toFixed(0) + "%;background:#3b82f6;border-radius:3px;height:100%;min-width:1px'></div></div>"
+                    + "<span style='width:3em;text-align:right'>" + wr.toFixed(0) + "%</span></div>";
+            }
+            ch += "</div>";
+            // 遅出分布バー（2病棟のみ）
+            if (W === "2") {
+                var maxLate = Math.max.apply(null, lateCounts.concat([1]));
+                ch += "<div><b style='font-size:.8rem'>🌆 遅出回数分布</b>";
+                for (var ci = 0; ci < staff.length; ci++) {
+                    var cs = staff[ci];
+                    if (cs.workType === "fixed" || cs.workType === "day_only") continue;
+                    var lc = lateCounts[ci] || 0;
+                    var lpct = (lc / maxLate * 100).toFixed(0);
+                    ch += "<div style='display:flex;align-items:center;gap:.3rem;font-size:.75rem'>"
+                        + "<span style='width:4.5em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escHtml(cs.name) + "</span>"
+                        + "<div style='flex:1;background:var(--bg3);border-radius:3px;height:14px'>"
+                        + "<div style='width:" + lpct + "%;background:#f59e0b;border-radius:3px;height:100%;min-width:1px'></div></div>"
+                        + "<span style='width:2em;text-align:right'>" + lc + "</span></div>";
+                }
+                ch += "</div>";
+            }
+            chartEl.innerHTML = ch;
+        }
 
         // ===== 個人負荷スコア計算・表示 (v2カテゴリ対応) =====
         // 希望データをキー形式に変換
