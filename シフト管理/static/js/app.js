@@ -119,6 +119,8 @@ function loadWardSettingsFromServer() {
 
 function init() {
     load();
+    // ページロード時に自動バックアップ（サーバーにデータを同期）
+    setTimeout(backupToServer, 1000);
 
     if (D.staff && D.staff.length > 0) {
         // LocalStorageに職員データあり → バックエンドとマージ（バックエンドにしかない職員を取り込む）
