@@ -12,6 +12,24 @@ export function saveWardSettings() {
         reqLate: parseInt(document.getElementById("reqLate").value) || 1,
         maxLate: parseInt(document.getElementById("maxLate").value) || 4
     };
+    // 曜日別日勤人数
+    var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    var KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
+    var dayStaffByDay = {}, minQualifiedByDay = {}, minAideByDay = {};
+    for (var i = 0; i < DAYS.length; i++) {
+        var ds = document.getElementById("dayStaff" + DAYS[i]).value;
+        var qv = document.getElementById("minQual" + DAYS[i]).value;
+        var av = document.getElementById("minAide" + DAYS[i]).value;
+        dayStaffByDay[KEYS[i]] = ds !== "" ? parseInt(ds) : null;
+        minQualifiedByDay[KEYS[i]] = qv !== "" ? parseInt(qv) : null;
+        minAideByDay[KEYS[i]] = av !== "" ? parseInt(av) : null;
+    }
+    settings.dayStaffByDay = dayStaffByDay;
+    settings.minQualifiedByDay = minQualifiedByDay;
+    settings.minAideByDay = minAideByDay;
+    // hidden reqDayWeekday/reqDayHoliday を曜日別から自動算出（後方互換）
+    settings.reqDayWeekday = dayStaffByDay.mon != null ? dayStaffByDay.mon : settings.reqDayWeekday;
+    settings.reqDayHoliday = dayStaffByDay.sun != null ? dayStaffByDay.sun : settings.reqDayHoliday;
     D.wardSettings[W] = settings;
     save();
 
@@ -54,6 +72,23 @@ export function loadWardSettings() {
     var mlw = document.getElementById("maxLateWrap");
     if (rlw) rlw.style.display = hideLate ? "none" : "";
     if (mlw) mlw.style.display = hideLate ? "none" : "";
+    // 曜日別日勤人数テーブル
+    var dsbd = s.dayStaffByDay || {};
+    var mq = s.minQualifiedByDay || {};
+    var ma = s.minAideByDay || {};
+    var weekdayDefault = s.reqDayWeekday || 7;
+    var holidayDefault = s.reqDayHoliday || 5;
+    var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    var KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
+    for (var i = 0; i < DAYS.length; i++) {
+        var def = (i <= 4) ? weekdayDefault : holidayDefault;
+        var dsEl = document.getElementById("dayStaff" + DAYS[i]);
+        var qEl = document.getElementById("minQual" + DAYS[i]);
+        var aEl = document.getElementById("minAide" + DAYS[i]);
+        if (dsEl) dsEl.value = dsbd[KEYS[i]] != null ? dsbd[KEYS[i]] : def;
+        if (qEl) qEl.value = mq[KEYS[i]] != null ? mq[KEYS[i]] : "";
+        if (aEl) aEl.value = ma[KEYS[i]] != null ? ma[KEYS[i]] : "";
+    }
     // 公休日数は月で決まるため、読込後に上書き
     var mo = document.getElementById("monthlyOff");
     if (mo) {

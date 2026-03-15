@@ -148,20 +148,59 @@
 <div class="ward-tabs" id="staffWardTabs"></div>
 <div class="staff-list" id="staffList"></div>
 
-<!-- 人員配置設定パネル -->
+<!-- 日勤人数設定（曜日別） -->
 <div class="card" style="margin-top:1rem">
-<div class="card-header">
-<span>人員配置設定（病棟別）</span>
+<div class="card-header"><span>日勤人数設定（病棟別・曜日別）</span></div>
+<div style="padding:1rem;overflow-x:auto">
+<table style="width:100%;text-align:center;font-size:.85rem;border-collapse:collapse">
+<thead>
+<tr>
+<th style="text-align:left;padding:.3rem .5rem"></th>
+<th style="padding:.3rem">月</th><th style="padding:.3rem">火</th><th style="padding:.3rem">水</th><th style="padding:.3rem">木</th><th style="padding:.3rem">金</th><th style="padding:.3rem">土</th><th style="padding:.3rem">日祝</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td style="text-align:left;padding:.3rem .5rem;white-space:nowrap;font-weight:600">全体</td>
+<td><input type="number" id="dayStaffMon" min="0" max="20" class="input-field mini-input"></td>
+<td><input type="number" id="dayStaffTue" min="0" max="20" class="input-field mini-input"></td>
+<td><input type="number" id="dayStaffWed" min="0" max="20" class="input-field mini-input"></td>
+<td><input type="number" id="dayStaffThu" min="0" max="20" class="input-field mini-input"></td>
+<td><input type="number" id="dayStaffFri" min="0" max="20" class="input-field mini-input"></td>
+<td><input type="number" id="dayStaffSat" min="0" max="20" class="input-field mini-input"></td>
+<td><input type="number" id="dayStaffSun" min="0" max="20" class="input-field mini-input"></td>
+</tr>
+<tr>
+<td style="text-align:left;padding:.3rem .5rem;white-space:nowrap;font-size:.8rem">看護師・准看</td>
+<td><input type="number" id="minQualMon" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minQualTue" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minQualWed" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minQualThu" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minQualFri" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minQualSat" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minQualSun" min="0" max="10" class="input-field mini-input"></td>
+</tr>
+<tr>
+<td style="text-align:left;padding:.3rem .5rem;white-space:nowrap;font-size:.8rem">看護補助者</td>
+<td><input type="number" id="minAideMon" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minAideTue" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minAideWed" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minAideThu" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minAideFri" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minAideSat" min="0" max="10" class="input-field mini-input"></td>
+<td><input type="number" id="minAideSun" min="0" max="10" class="input-field mini-input"></td>
+</tr>
+</tbody>
+</table>
+<p style="font-size:.75rem;color:var(--text3);margin:.5rem 0 0">空欄 = 制限なし</p>
 </div>
+</div>
+<!-- 夜勤・遅出・公休設定 -->
+<div class="card" style="margin-top:1rem">
+<div class="card-header"><span>夜勤・その他設定（病棟別）</span></div>
 <div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem">
-<div>
-<label style="font-size:.8rem;color:var(--text2)">日勤（平日）</label>
-<input type="number" id="reqDayWeekday" value="7" min="1" max="20" class="input-field" style="width:100%">
-</div>
-<div>
-<label style="font-size:.8rem;color:var(--text2)">日勤（土日祝）</label>
-<input type="number" id="reqDayHoliday" value="5" min="1" max="20" class="input-field" style="width:100%">
-</div>
+<input type="hidden" id="reqDayWeekday" value="7">
+<input type="hidden" id="reqDayHoliday" value="5">
 <div>
 <label style="font-size:.8rem;color:var(--text2)">準夜帯</label>
 <input type="number" id="reqJunnya" value="2" min="1" max="10" class="input-field" style="width:100%">
@@ -181,7 +220,8 @@
 <div>
 <label style="font-size:.8rem;color:var(--text2)">公休日数</label>
 <input type="number" id="monthlyOff" value="9" min="6" max="12" class="input-field" style="width:100%" disabled title="月により自動設定">
-</div></div>
+</div>
+</div>
 </div>
 </div>
 

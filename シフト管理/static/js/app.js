@@ -235,6 +235,15 @@ function bindEvents() {
         var el = document.getElementById(settingIds[i]);
         if (el) el.addEventListener("change", saveWardSettings);
     }
+    // 曜日別日勤人数テーブル
+    var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+    var prefixes = ["dayStaff", "minQual", "minAide"];
+    for (var p = 0; p < prefixes.length; p++) {
+        for (var d = 0; d < DAYS.length; d++) {
+            var el2 = document.getElementById(prefixes[p] + DAYS[d]);
+            if (el2) el2.addEventListener("change", saveWardSettings);
+        }
+    }
 }
 
 function setupWardTabs() {

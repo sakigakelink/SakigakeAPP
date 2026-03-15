@@ -346,6 +346,34 @@ def validate_ward_settings(settings):
                 raise ValidationError(f"{label}({key})は {lo}〜{hi} の範囲で指定してください（現在値: {val}）", key)
             validated[key] = val
 
+    # 曜日別日勤人数（辞書型フィールド）
+    valid_days = {"mon", "tue", "wed", "thu", "fri", "sat", "sun"}
+    day_map_rules = {
+        "dayStaffByDay": 20,
+        "minQualifiedByDay": 10,
+        "minAideByDay": 10,
+    }
+    for key, hi in day_map_rules.items():
+        if key in settings:
+            day_map = settings[key]
+            if not isinstance(day_map, dict):
+                raise ValidationError(f"{key} は辞書である必要があります", key)
+            validated_map = {}
+            for day_key, val in day_map.items():
+                if day_key not in valid_days:
+                    continue
+                if val is None:
+                    validated_map[day_key] = None
+                else:
+                    try:
+                        v = int(val)
+                    except (ValueError, TypeError):
+                        raise ValidationError(f"{key}.{day_key} は整数またはnullである必要があります", key)
+                    if v < 0 or v > hi:
+                        raise ValidationError(f"{key}.{day_key} は0〜{hi}の範囲で指定してください", key)
+                    validated_map[day_key] = v
+            validated[key] = validated_map
+
     return validated
 
 

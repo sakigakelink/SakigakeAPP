@@ -759,9 +759,11 @@ class ShiftSolver:
             fixed_shinya_counts.append(shinya_count)
             fixed_late_counts.append(late_count)
 
-        # 日勤の必要人数
+        # 日勤の必要人数（曜日別 or フォールバック）
         req_day_weekday = self.config.get("reqDayWeekday", 7)
         req_day_holiday = self.config.get("reqDayHoliday", 5)
+        day_staff_by_day = self.config.get("dayStaffByDay", {})
+        WD_KEYS_SHORT = ["mon", "tue", "wed", "thu", "fri", "sat"]
 
         staff_shortage_info = []
 
@@ -776,22 +778,26 @@ class ShiftSolver:
             is_sun = (dt_obj.weekday() == 6)
             is_hol = (dt_year, dt_month, dt_day) in HOLIDAYS
 
-            target = req_day_weekday
             is_holiday_target = False
             weekday = dt_obj.weekday()
 
             if is_sun or is_hol:
-                target = req_day_holiday
                 is_holiday_target = True
+                ds_val = day_staff_by_day.get("sun")
+                target = ds_val if ds_val is not None else req_day_holiday
             else:
-                # dayAdjustment が設定されている場合はそれを使用
-                # weekday: 0=月, 1=火, 2=水, 3=木, 4=金, 5=土
-                day_adj = self.config.get("dayAdjustment", {})
-                if day_adj.get("enabled") and weekday < 6:
-                    _wd_keys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-                    target += day_adj.get(_wd_keys[weekday], 0)
-                elif is_wed:
-                    target -= 1
+                ds_val = day_staff_by_day.get(WD_KEYS_SHORT[weekday]) if weekday < 6 else None
+                if ds_val is not None:
+                    target = ds_val
+                else:
+                    # フォールバック: dayAdjustment or デフォルト
+                    target = req_day_weekday
+                    day_adj = self.config.get("dayAdjustment", {})
+                    if day_adj.get("enabled") and weekday < 6:
+                        _wd_keys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                        target += day_adj.get(_wd_keys[weekday], 0)
+                    elif is_wed:
+                        target -= 1
 
             # 固定シフト職員の分を引く
             adjusted_target = target - fixed_day_counts[d]
@@ -854,13 +860,25 @@ class ShiftSolver:
                 self.model.Add(sum(jk_shinya) <= 1)
 
             # --- 有資格者(nurse+junkango)の日勤最低人数（ハード制約） ---
-            qs_config = self.ward_engine_config.get("qualifiedStaffMinimum", {})
-            if qs_config.get("enabled") and qualified_indices:
-                WD_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-                if is_sun or is_hol:
-                    min_q = qs_config.get("day", {}).get("sunday_holiday")
+            # UI設定優先、なければengine config.jsonからフォールバック
+            ui_min_qual = self.config.get("minQualifiedByDay", {})
+            if qualified_indices:
+                if ui_min_qual:
+                    if is_sun or is_hol:
+                        min_q = ui_min_qual.get("sun")
+                    else:
+                        min_q = ui_min_qual.get(WD_KEYS_SHORT[weekday]) if weekday < 6 else None
                 else:
-                    min_q = qs_config.get("day", {}).get(WD_KEYS[weekday])
+                    # フォールバック: engine config
+                    qs_config = self.ward_engine_config.get("qualifiedStaffMinimum", {})
+                    if qs_config.get("enabled"):
+                        _WD_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                        if is_sun or is_hol:
+                            min_q = qs_config.get("day", {}).get("sunday_holiday")
+                        else:
+                            min_q = qs_config.get("day", {}).get(_WD_KEYS[weekday]) if weekday < 6 else None
+                    else:
+                        min_q = None
 
                 if min_q is not None:
                     q_day = [self.shifts[(qi, d, SHIFT_IDX["day"])]
@@ -910,6 +928,18 @@ class ShiftSolver:
                 na_ake = [self.shifts[(na_idx, d, SHIFT_IDX["ake"])]
                           for na_idx in nurseaide_indices]
                 self.model.Add(sum(na_shinya) + sum(na_ake) <= max_na_shinya)
+
+            # --- 看護補助者の日勤最低人数（ハード制約、UI設定） ---
+            ui_min_aide = self.config.get("minAideByDay", {})
+            if ui_min_aide and nurseaide_indices:
+                if is_sun or is_hol:
+                    min_a = ui_min_aide.get("sun")
+                else:
+                    min_a = ui_min_aide.get(WD_KEYS_SHORT[weekday]) if weekday < 6 else None
+                if min_a is not None and min_a > 0:
+                    a_day = [self.shifts[(ai, d, SHIFT_IDX["day"])]
+                             for ai in nurseaide_indices]
+                    self.model.Add(sum(a_day) >= min_a)
 
         # 夜勤制約: nightRestrictionはforbidden_mapで処理済み
 

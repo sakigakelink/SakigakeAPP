@@ -463,17 +463,35 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
                 fixedPattern: s.fixedPattern || null
             };
         }),
-        config: {
-            ward: W,
-            reqDayWeekday: parseInt(document.getElementById("reqDayWeekday").value) || 7,
-            reqDayHoliday: parseInt(document.getElementById("reqDayHoliday").value) || 5,
-            reqJunnya: parseInt(document.getElementById("reqJunnya").value) || 2,
-            reqShinya: parseInt(document.getElementById("reqShinya").value) || 2,
-            reqLate: (W === "1" || W === "3") ? 0 : (parseInt(document.getElementById("reqLate").value) || 1),
-            maxLate: (W === "1" || W === "3") ? 0 : (parseInt(document.getElementById("maxLate").value) || 4),
-            monthlyOff: getMonthlyOff(M),
-            seed: seed
-        },
+        config: (function() {
+            var cfg = {
+                ward: W,
+                reqDayWeekday: parseInt(document.getElementById("reqDayWeekday").value) || 7,
+                reqDayHoliday: parseInt(document.getElementById("reqDayHoliday").value) || 5,
+                reqJunnya: parseInt(document.getElementById("reqJunnya").value) || 2,
+                reqShinya: parseInt(document.getElementById("reqShinya").value) || 2,
+                reqLate: (W === "1" || W === "3") ? 0 : (parseInt(document.getElementById("reqLate").value) || 1),
+                maxLate: (W === "1" || W === "3") ? 0 : (parseInt(document.getElementById("maxLate").value) || 4),
+                monthlyOff: getMonthlyOff(M),
+                seed: seed
+            };
+            // 曜日別日勤人数
+            var DAYS = ["Mon","Tue","Wed","Thu","Fri","Sat","Sun"];
+            var KEYS = ["mon","tue","wed","thu","fri","sat","sun"];
+            var dayStaffByDay = {}, minQualifiedByDay = {}, minAideByDay = {};
+            for (var i = 0; i < DAYS.length; i++) {
+                var ds = document.getElementById("dayStaff" + DAYS[i]).value;
+                var qv = document.getElementById("minQual" + DAYS[i]).value;
+                var av = document.getElementById("minAide" + DAYS[i]).value;
+                dayStaffByDay[KEYS[i]] = ds !== "" ? parseInt(ds) : null;
+                minQualifiedByDay[KEYS[i]] = qv !== "" ? parseInt(qv) : null;
+                minAideByDay[KEYS[i]] = av !== "" ? parseInt(av) : null;
+            }
+            cfg.dayStaffByDay = dayStaffByDay;
+            cfg.minQualifiedByDay = minQualifiedByDay;
+            cfg.minAideByDay = minAideByDay;
+            return cfg;
+        })(),
         wishes: D.wishes[wk] || [],
         prevMonthData: prevMonthData,
         fixedShifts: fixedShifts
