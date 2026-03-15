@@ -354,6 +354,7 @@ class ShiftSolver:
         self.shifts = {}
         self.violations = []
         ward = str(self.config.get("ward", "1"))
+        shift_restrictions = self.ward_engine_config.get("shiftRestrictions", {})
         staff_shortage_penalty = 0  # ソフト制約のペナルティ累積
 
         # minNight自動計算結果をログ出力
@@ -581,7 +582,7 @@ class ShiftSolver:
                 forbidden = {SHIFT_IDX["night2"], SHIFT_IDX["ake"]}
             elif wt == "night_only":
                 forbidden = {SHIFT_IDX["day"], SHIFT_IDX["late"], SHIFT_IDX["junnya"], SHIFT_IDX["shinya"]}
-            if ward in ("1", "3"):
+            if not shift_restrictions.get("late", True):
                 forbidden.add(SHIFT_IDX["late"])
             restriction = si.get("nightRestriction", None)
             if restriction == "junnya_only":
@@ -823,102 +824,99 @@ class ShiftSolver:
             adjusted_req = max(0, req_s - fixed_shinya_counts[d])
             self.model.Add(sum(sw) == adjusted_req)
 
-        # 一病棟専用制約
-        if ward == "1":
-            nurseaide_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurseaide"]
-            num_nurseaide = len(nurseaide_indices)
-            # 准看護師（junkango）のインデックス: 准看護師2人での夜勤禁止
-            junkango_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "junkango"]
-            num_junkango = len(junkango_indices)
-            # 正看護師（nurse）のインデックス
-            nurse_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurse"]
-            # 有資格者（nurse+junkango）のインデックス
-            qualified_indices = [i for i, st in enumerate(self.staff_list)
-                                 if st.get("type") in ("nurse", "junkango")]
+        # --- 職種別制約（config駆動、全病棟共通フレームワーク） ---
+        nurseaide_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurseaide"]
+        num_nurseaide = len(nurseaide_indices)
+        junkango_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "junkango"]
+        num_junkango = len(junkango_indices)
+        nurse_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurse"]
+        qualified_indices = [i for i, st in enumerate(self.staff_list)
+                             if st.get("type") in ("nurse", "junkango")]
 
-            for d in range(self.num_days):
-                dt_obj = date(self.year, self.month, d + 1)
-                weekday = dt_obj.weekday()
-                is_hol = (self.year, self.month, d + 1) in HOLIDAYS
-                is_sun = (weekday == 6)
+        for d in range(self.num_days):
+            dt_obj = date(self.year, self.month, d + 1)
+            weekday = dt_obj.weekday()
+            is_hol = (self.year, self.month, d + 1) in HOLIDAYS
+            is_sun = (weekday == 6)
 
-                # 准看護師2人での夜勤禁止（看護師+准看護師はOK）
-                if num_junkango >= 2:
-                    jk_junnya = []
-                    for jk_idx in junkango_indices:
-                        jk_junnya.append(self.shifts[(jk_idx, d, SHIFT_IDX["junnya"])])
-                        jk_junnya.append(self.shifts[(jk_idx, d, SHIFT_IDX["night2"])])
-                    self.model.Add(sum(jk_junnya) <= 1)
+            # 准看護師2人での夜勤禁止（看護師+准看護師はOK）
+            if num_junkango >= 2:
+                jk_junnya = []
+                for jk_idx in junkango_indices:
+                    jk_junnya.append(self.shifts[(jk_idx, d, SHIFT_IDX["junnya"])])
+                    jk_junnya.append(self.shifts[(jk_idx, d, SHIFT_IDX["night2"])])
+                self.model.Add(sum(jk_junnya) <= 1)
 
-                    jk_shinya = []
-                    for jk_idx in junkango_indices:
-                        jk_shinya.append(self.shifts[(jk_idx, d, SHIFT_IDX["shinya"])])
-                        jk_shinya.append(self.shifts[(jk_idx, d, SHIFT_IDX["ake"])])
-                    self.model.Add(sum(jk_shinya) <= 1)
+                jk_shinya = []
+                for jk_idx in junkango_indices:
+                    jk_shinya.append(self.shifts[(jk_idx, d, SHIFT_IDX["shinya"])])
+                    jk_shinya.append(self.shifts[(jk_idx, d, SHIFT_IDX["ake"])])
+                self.model.Add(sum(jk_shinya) <= 1)
 
-                # --- 有資格者(nurse+junkango)の日勤最低人数（ハード制約） ---
-                qs_config = self.ward_engine_config.get("qualifiedStaffMinimum", {})
-                if qs_config.get("enabled") and qualified_indices:
-                    WD_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-                    if is_sun or is_hol:
-                        min_q = qs_config.get("day", {}).get("sunday_holiday")
-                    else:
-                        min_q = qs_config.get("day", {}).get(WD_KEYS[weekday])
+            # --- 有資格者(nurse+junkango)の日勤最低人数（ハード制約） ---
+            qs_config = self.ward_engine_config.get("qualifiedStaffMinimum", {})
+            if qs_config.get("enabled") and qualified_indices:
+                WD_KEYS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
+                if is_sun or is_hol:
+                    min_q = qs_config.get("day", {}).get("sunday_holiday")
+                else:
+                    min_q = qs_config.get("day", {}).get(WD_KEYS[weekday])
 
-                    if min_q is not None:
-                        q_day = [self.shifts[(qi, d, SHIFT_IDX["day"])]
-                                 for qi in qualified_indices]
-                        self.model.Add(sum(q_day) >= min_q)
+                if min_q is not None:
+                    q_day = [self.shifts[(qi, d, SHIFT_IDX["day"])]
+                             for qi in qualified_indices]
+                    self.model.Add(sum(q_day) >= min_q)
 
-                # --- 全時間帯で正看護師(nurse)が最低1名（ハード制約） ---
-                nm_config = self.ward_engine_config.get("nurseMinimumPerBand", {})
-                if nm_config.get("enabled") and nurse_indices:
-                    min_nurse_day = nm_config.get("day", 1)
-                    min_nurse_junnya = nm_config.get("junnya", 1)
-                    min_nurse_shinya = nm_config.get("shinya", 1)
+            # --- 全時間帯で正看護師(nurse)が最低1名（ハード制約） ---
+            nm_config = self.ward_engine_config.get("nurseMinimumPerBand", {})
+            if nm_config.get("enabled") and nurse_indices:
+                min_nurse_day = nm_config.get("day", 1)
+                min_nurse_junnya = nm_config.get("junnya", 1)
+                min_nurse_shinya = nm_config.get("shinya", 1)
 
-                    # 日勤帯
-                    n_day = [self.shifts[(ni, d, SHIFT_IDX["day"])]
-                             for ni in nurse_indices]
-                    self.model.Add(sum(n_day) >= min_nurse_day)
+                # 日勤帯
+                n_day = [self.shifts[(ni, d, SHIFT_IDX["day"])]
+                         for ni in nurse_indices]
+                self.model.Add(sum(n_day) >= min_nurse_day)
 
-                    # 準夜帯 (junnya + night2)
-                    n_junnya = [self.shifts[(ni, d, SHIFT_IDX["junnya"])]
-                                for ni in nurse_indices]
-                    n_night2 = [self.shifts[(ni, d, SHIFT_IDX["night2"])]
-                                for ni in nurse_indices]
-                    self.model.Add(sum(n_junnya) + sum(n_night2) >= min_nurse_junnya)
+                # 準夜帯 (junnya + night2)
+                n_junnya = [self.shifts[(ni, d, SHIFT_IDX["junnya"])]
+                            for ni in nurse_indices]
+                n_night2 = [self.shifts[(ni, d, SHIFT_IDX["night2"])]
+                            for ni in nurse_indices]
+                self.model.Add(sum(n_junnya) + sum(n_night2) >= min_nurse_junnya)
 
-                    # 深夜帯 (shinya + ake)
-                    n_shinya = [self.shifts[(ni, d, SHIFT_IDX["shinya"])]
-                                for ni in nurse_indices]
-                    n_ake = [self.shifts[(ni, d, SHIFT_IDX["ake"])]
-                             for ni in nurse_indices]
-                    self.model.Add(sum(n_shinya) + sum(n_ake) >= min_nurse_shinya)
+                # 深夜帯 (shinya + ake)
+                n_shinya = [self.shifts[(ni, d, SHIFT_IDX["shinya"])]
+                            for ni in nurse_indices]
+                n_ake = [self.shifts[(ni, d, SHIFT_IDX["ake"])]
+                         for ni in nurse_indices]
+                self.model.Add(sum(n_shinya) + sum(n_ake) >= min_nurse_shinya)
 
-                # --- 看護補助者の夜勤人数制限（ハード制約） ---
-                na_night_config = self.ward_engine_config.get("nurseAideNightLimits", {})
-                if na_night_config.get("enabled") and num_nurseaide > 0:
-                    max_na_junnya = na_night_config.get("maxJunnya", 1)
-                    max_na_shinya = na_night_config.get("maxShinya", 1)
+            # --- 看護補助者の夜勤人数制限（ハード制約） ---
+            na_night_config = self.ward_engine_config.get("nurseAideNightLimits", {})
+            if na_night_config.get("enabled") and num_nurseaide > 0:
+                max_na_junnya = na_night_config.get("maxJunnya", 1)
+                max_na_shinya = na_night_config.get("maxShinya", 1)
 
-                    na_junnya = [self.shifts[(na_idx, d, SHIFT_IDX["junnya"])]
-                                 for na_idx in nurseaide_indices]
-                    na_night2 = [self.shifts[(na_idx, d, SHIFT_IDX["night2"])]
-                                 for na_idx in nurseaide_indices]
-                    self.model.Add(sum(na_junnya) + sum(na_night2) <= max_na_junnya)
+                na_junnya = [self.shifts[(na_idx, d, SHIFT_IDX["junnya"])]
+                             for na_idx in nurseaide_indices]
+                na_night2 = [self.shifts[(na_idx, d, SHIFT_IDX["night2"])]
+                             for na_idx in nurseaide_indices]
+                self.model.Add(sum(na_junnya) + sum(na_night2) <= max_na_junnya)
 
-                    na_shinya = [self.shifts[(na_idx, d, SHIFT_IDX["shinya"])]
-                                 for na_idx in nurseaide_indices]
-                    na_ake = [self.shifts[(na_idx, d, SHIFT_IDX["ake"])]
-                              for na_idx in nurseaide_indices]
-                    self.model.Add(sum(na_shinya) + sum(na_ake) <= max_na_shinya)
+                na_shinya = [self.shifts[(na_idx, d, SHIFT_IDX["shinya"])]
+                             for na_idx in nurseaide_indices]
+                na_ake = [self.shifts[(na_idx, d, SHIFT_IDX["ake"])]
+                          for na_idx in nurseaide_indices]
+                self.model.Add(sum(na_shinya) + sum(na_ake) <= max_na_shinya)
 
         # 夜勤制約: nightRestrictionはforbidden_mapで処理済み
 
-        # 遅出は二病棟のみ（一・三病棟はforbidden_mapで処理済み）
-        if ward == "2":
-            req_late = self.config.get("reqLate", 1)
+        # 遅出制約（shiftRestrictions.late == true の病棟のみ）
+        late_config = self.ward_engine_config.get("lateShift", {})
+        if shift_restrictions.get("late", True):
+            req_late = self.config.get("reqLate", late_config.get("reqPerDay", 1))
             for d in range(self.num_days):
                 lw = [self.shifts[(s,d,SHIFT_IDX["late"])] for s in range(self.num_staff)]
                 adjusted_req = max(0, req_late - fixed_late_counts[d])
@@ -931,9 +929,9 @@ class ShiftSolver:
             work_type = si.get("workType", "2kohtai")
             max_night = si.get("maxNight", 5)
 
-            # 遅出上限（二病棟のみ）
-            if ward == "2":
-                max_late = self.config.get("maxLate", 4)
+            # 遅出上限（lateシフト有効な病棟のみ）
+            if shift_restrictions.get("late", True):
+                max_late = self.config.get("maxLate", late_config.get("maxPerStaff", 4))
                 late_list = [self.shifts[(s,d,SHIFT_IDX["late"])] for d in range(self.num_days)]
                 self.model.Add(sum(late_list) <= max_late)
 
@@ -1622,25 +1620,27 @@ class ShiftSolver:
                 self.model.AddBoolOr([w.Not() for w in work_6days]).OnlyEnforceIf(all_6_work.Not())
                 consecutive_work_penalty += all_6_work * 300
 
-        # 遅出均等化（二病棟のみ）
+        # 遅出均等化（lateシフト有効な病棟のみ）
         late_equalization_penalty = 0
-        if ward == "2":
-            late_counts = []
-            for s in range(self.num_staff):
-                wt = self.staff_list[s].get("workType", "2kohtai")
-                if wt == "day_only" or wt == "night_only":
-                    continue
-                late_cnt = self.model.NewIntVar(0, self.num_days, f"late_cnt_{s}")
-                self.model.Add(late_cnt == sum(self.shifts[(s,d,SHIFT_IDX["late"])] for d in range(self.num_days)))
-                late_counts.append(late_cnt)
-            if len(late_counts) >= 2:
-                late_max = self.model.NewIntVar(0, self.num_days, "late_max")
-                late_min = self.model.NewIntVar(0, self.num_days, "late_min")
-                self.model.AddMaxEquality(late_max, late_counts)
-                self.model.AddMinEquality(late_min, late_counts)
-                late_diff = self.model.NewIntVar(0, self.num_days, "late_diff")
-                self.model.Add(late_diff == late_max - late_min)
-                late_equalization_penalty = late_diff * 20
+        if shift_restrictions.get("late", True):
+            eq_weight = late_config.get("equalizationPenalty", 20)
+            if eq_weight > 0:
+                late_counts = []
+                for s in range(self.num_staff):
+                    wt = self.staff_list[s].get("workType", "2kohtai")
+                    if wt == "day_only" or wt == "night_only":
+                        continue
+                    late_cnt = self.model.NewIntVar(0, self.num_days, f"late_cnt_{s}")
+                    self.model.Add(late_cnt == sum(self.shifts[(s,d,SHIFT_IDX["late"])] for d in range(self.num_days)))
+                    late_counts.append(late_cnt)
+                if len(late_counts) >= 2:
+                    late_max = self.model.NewIntVar(0, self.num_days, "late_max")
+                    late_min = self.model.NewIntVar(0, self.num_days, "late_min")
+                    self.model.AddMaxEquality(late_max, late_counts)
+                    self.model.AddMinEquality(late_min, late_counts)
+                    late_diff = self.model.NewIntVar(0, self.num_days, "late_diff")
+                    self.model.Add(late_diff == late_max - late_min)
+                    late_equalization_penalty = late_diff * eq_weight
 
         # 人員不足ペナルティ（希望は全てハード制約のためペナルティ項なし）
         total_violation = self.model.NewIntVar(0, 10000000, "total_vio")

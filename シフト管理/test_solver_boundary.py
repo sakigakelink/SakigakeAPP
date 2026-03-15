@@ -286,3 +286,75 @@ class TestWard1QualifiedStaffConstraints:
             na_shinya = sum(1 for sid in aide_ids
                            if shifts.get(f"{sid}-{d}") in ("shinya", "ake"))
             assert na_shinya <= 1, f"4/{d}: 深夜帯にnurseaide {na_shinya}名（最大1名）"
+
+
+class TestConfigDriven:
+    """solver.pyに病棟ハードコードが残っていないことを検証"""
+
+    def test_no_ward_hardcode(self):
+        """solver.pyソースに ward == / ward in のハードコードが存在しないことを検証"""
+        solver_path = os.path.join(os.path.dirname(__file__), "solver.py")
+        with open(solver_path, encoding="utf-8") as f:
+            source = f.read()
+        # ward == "1", ward == "2", ward in ("1", ...) 等のパターンを検出
+        import re
+        matches = re.findall(r'ward\s*==\s*["\']|ward\s+in\s*\(', source)
+        assert len(matches) == 0, f"solver.pyに病棟ハードコードが残っています: {matches}"
+
+    def test_config_driven_late_forbidden(self):
+        """late=false の病棟(1病棟)でlateシフトが生成されないことを検証"""
+        staff = []
+        for i in range(15):
+            staff.append({
+                "id": f"n{i}", "name": f"看護師{i}", "workType": "3kohtai",
+                "type": "nurse", "maxNight": 5,
+            })
+        data = {
+            "year": 2026, "month": 4,
+            "staff": staff,
+            "config": {
+                "ward": "1",
+                "reqDayWeekday": 4, "reqDayHoliday": 3,
+                "reqJunnya": 1, "reqShinya": 1,
+                "monthlyOff": 9,
+            },
+            "wishes": [],
+            "prevMonthData": {},
+        }
+        result = ShiftSolver(data).solve()
+        assert result["status"].lower() in ("optimal", "feasible"), f"解なし: {result.get('message')}"
+        shifts = result["shifts"]
+        late_count = sum(1 for v in shifts.values() if v == "late")
+        assert late_count == 0, f"1病棟でlateシフトが{late_count}件生成された"
+
+    def test_config_driven_late_enabled(self):
+        """late=true の病棟(2病棟)で遅出制約が正しく適用されることを検証"""
+        staff = []
+        for i in range(15):
+            staff.append({
+                "id": f"n{i}", "name": f"看護師{i}", "workType": "2kohtai",
+                "type": "nurse", "maxNight": 5,
+            })
+        data = {
+            "year": 2026, "month": 4,
+            "staff": staff,
+            "config": {
+                "ward": "2",
+                "reqDayWeekday": 7, "reqDayHoliday": 5,
+                "reqJunnya": 2, "reqShinya": 2,
+                "reqLate": 1, "maxLate": 4,
+                "monthlyOff": 9,
+            },
+            "wishes": [],
+            "prevMonthData": {},
+        }
+        result = ShiftSolver(data).solve()
+        assert result["status"].lower() in ("optimal", "feasible"), f"解なし: {result.get('message')}"
+        shifts = result["shifts"]
+        late_count = sum(1 for v in shifts.values() if v == "late")
+        assert late_count > 0, "2病棟でlateシフトが生成されていない"
+        # 各スタッフの遅出が maxLate 以下
+        for s in staff:
+            sid = s["id"]
+            s_late = sum(1 for d in range(1, 31) if shifts.get(f"{sid}-{d}") == "late")
+            assert s_late <= 4, f"{sid}のlateが{s_late}回（上限4）"

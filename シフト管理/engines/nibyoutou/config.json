@@ -21,5 +21,13 @@
     "thursday": 1,
     "friday": 0,
     "saturday": -1
+  },
+  "shiftRestrictions": {
+    "late": true
+  },
+  "lateShift": {
+    "reqPerDay": 1,
+    "maxPerStaff": 4,
+    "equalizationPenalty": 20
   }
 }

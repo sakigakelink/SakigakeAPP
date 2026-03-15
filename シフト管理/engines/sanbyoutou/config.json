@@ -1,4 +1,7 @@
 {
   "ward_id": "sanbyoutou",
-  "ward_name": "3病棟"
+  "ward_name": "3病棟",
+  "shiftRestrictions": {
+    "late": false
+  }
 }
