@@ -1532,14 +1532,8 @@ class ShiftSolver:
         num_cores = os.cpu_count() or 4
         solver.parameters.num_search_workers = num_cores
 
-        # タイムアウト設定（3段階: quick=15秒, balanced=45秒, quality=90秒）
-        solve_mode = self.config.get("solveMode", "quick")
-        if solve_mode == "quality":
-            solver.parameters.max_time_in_seconds = 90
-        elif solve_mode == "balanced":
-            solver.parameters.max_time_in_seconds = 45
-        else:
-            solver.parameters.max_time_in_seconds = 15
+        # タイムアウト: 各試行15秒固定（試行回数はsolve()で制御）
+        solver.parameters.max_time_in_seconds = 15
 
         seed = self.config.get("seed", 0)
         if seed > 0:
@@ -1671,17 +1665,45 @@ class ShiftSolver:
         cfg = self.config
         debug_log.append(f"Config: ward={cfg.get('ward')}, reqLate={cfg.get('reqLate')}, reqJ={cfg.get('reqJunnya')}, reqS={cfg.get('reqShinya')}, monthlyOff={cfg.get('monthlyOff')}")
 
-        # 制約緩和なし: 厳密解法のみ（カスケード廃止）
-        if log_queue:
-            log_queue.put({'type': 'log', 'msg': '厳密解法で実行中（制約緩和なし）'})
+        # 複数seed試行でobj最小化（solveMode別: quick=1回, balanced=3回, quality=5回）
+        solve_mode = self.config.get("solveMode", "quick")
+        seeds = [42, 123, 456, 789, 1024]
+        num_trials = {"quick": 1, "balanced": 3, "quality": 5}
+        n = num_trials.get(solve_mode, 1)
 
-        res = self._solve_core(log_queue=log_queue)
-        debug_log.append(f"試行1(厳密): {res['status']}")
+        best_res = None
+        best_obj = None
+        for i, seed in enumerate(seeds[:n]):
+            self.config["seed"] = seed
+            if log_queue:
+                log_queue.put({'type': 'log', 'msg': f'試行{i+1}/{n} (seed={seed})'})
+
+            res = self._solve_core(log_queue=log_queue)
+            status = res["status"].lower()
+            debug_log.append(f"試行{i+1}(seed={seed}): {res['status']}")
+
+            if status in ["optimal", "feasible"]:
+                obj = res.get("optimization_score", {}).get("objective_value")
+                if best_res is None or (obj is not None and (best_obj is None or obj < best_obj)):
+                    best_res = res
+                    best_obj = obj
+                    best_attempt = i + 1
+                if status == "optimal":
+                    break  # 最適解確定、これ以上改善しない
+            else:
+                # infeasible/事前チェックエラーは即return
+                if res.get("message"):
+                    res["debug_log"] = debug_log
+                    res["attempt"] = i + 1
+                    return res
+                if best_res is None:
+                    best_res = res
+
+        res = best_res
         res["debug_log"] = debug_log
-        res["attempt"] = 1
+        res["attempt"] = best_attempt if best_obj is not None else n
 
         if res["status"].lower() not in ["optimal", "feasible"]:
-            # 事前チェックで設定済みのメッセージがあればそのまま使う
             if not res.get("message"):
                 debug_info = " / ".join(debug_log)
                 res["message"] = f"失敗: 解が見つかりません。職員数・公休日数・必要人数の設定を確認してください。[{debug_info}]"
