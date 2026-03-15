@@ -17,6 +17,7 @@ from routes import register_routes
 # Flaskアプリ初期化
 app = Flask(__name__)
 app.config['TEMPLATES_AUTO_RELOAD'] = True
+app.config['SEND_FILE_MAX_AGE_DEFAULT'] = 0
 CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000"])
 
 # バックアップディレクトリ
