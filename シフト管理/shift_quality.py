@@ -10,6 +10,28 @@ from utils import HOLIDAYS
 REST_SHIFTS = {"off", "paid", "refresh"}
 NIGHT_SHIFTS = {"night2", "junnya", "shinya"}
 
+# 個人スコア計算用の重み（100点満点からの減点/加点）
+PENALTY_WEIGHTS = {
+    "consec_5": -5,
+    "consec_6": -10,
+    "night_interval_close": -3,
+    "shinya_no_rest": -4,
+    "scattered_night": -5,
+    "junnya_off_shinya": -4,
+    "day_to_shinya": -5,
+    "kibou_night": -3,
+    "junnya_shinya_balance": -2,
+    "good_rotation": 3,  # ボーナス（加点）
+}
+
+
+def calculate_personal_score(penalties):
+    """個人ペナルティ件数から100点満点スコアを計算"""
+    score = 100
+    for key, weight in PENALTY_WEIGHTS.items():
+        score += penalties.get(key, 0) * weight
+    return max(0, min(100, score))
+
 
 def calculate_gini(values):
     """ジニ係数を計算（0=完全平等, 1=完全不平等）"""
@@ -54,7 +76,7 @@ def evaluate_shift_quality(result, data):
         data: ソルバーに渡した入力データ (year, month, staff, config, wishes)
 
     Returns:
-        dict: 品質スコアカード（公平性指標 + objペナルティ内訳件数）
+        dict: 品質スコアカード（公平性指標 + objペナルティ内訳件数 + per_staff）
     """
     shifts = result.get("shifts", {})
     staff_list = data.get("staff", [])
@@ -77,18 +99,7 @@ def evaluate_shift_quality(result, data):
     weekend_counts = []
     late_counts = []
     consecutive_maxes = []
-
-    # ペナルティ内訳カウンタ
-    consec_5_count = 0
-    consec_6_count = 0
-    night_interval_close_count = 0
-    shinya_no_rest_count = 0
-    scattered_night_count = 0
-    junnya_off_shinya_count = 0
-    day_to_shinya_count = 0
-    kibou_night_count = 0
-    junnya_shinya_balance_total = 0
-    good_rotation_count = 0
+    per_staff = []
 
     for s in staff_list:
         sid = s["id"]
@@ -98,6 +109,23 @@ def evaluate_shift_quality(result, data):
             continue
 
         shift_list = [shifts.get(f"{sid}-{d}", "") for d in range(1, num_days + 1)]
+
+        # 個人別ペナルティカウンタ
+        sp = {
+            "id": sid,
+            "name": s.get("name", sid),
+            "workType": wt,
+            "consec_5": 0,
+            "consec_6": 0,
+            "night_interval_close": 0,
+            "shinya_no_rest": 0,
+            "scattered_night": 0,
+            "junnya_off_shinya": 0,
+            "day_to_shinya": 0,
+            "kibou_night": 0,
+            "junnya_shinya_balance": 0,
+            "good_rotation": 0,
+        }
 
         # 夜勤カウント（夜勤対象者のみ）
         if wt not in ("day_only", "fixed"):
@@ -131,57 +159,51 @@ def evaluate_shift_quality(result, data):
         # 5連勤/6連勤を窓で検出
         for d in range(num_days - 4):
             if all(shift_list[d+i] and shift_list[d+i] not in REST_SHIFTS for i in range(5)):
-                consec_5_count += 1
+                sp["consec_5"] += 1
         for d in range(num_days - 5):
             if all(shift_list[d+i] and shift_list[d+i] not in REST_SHIFTS for i in range(6)):
-                consec_6_count += 1
+                sp["consec_6"] += 1
 
         # --- 三交代専用ペナルティ ---
         if wt == "3kohtai":
             for d in range(num_days - 1):
-                # 深夜後に休みなし（翌日が休みでも深夜でもない）
                 if shift_list[d] == "shinya":
                     next_sh = shift_list[d + 1]
                     if next_sh not in REST_SHIFTS and next_sh != "shinya":
-                        shinya_no_rest_count += 1
+                        sp["shinya_no_rest"] += 1
 
-            # 散発夜勤: 深夜→休→深夜
             for d in range(num_days - 2):
                 if (shift_list[d] == "shinya"
                         and shift_list[d + 1] in REST_SHIFTS
                         and shift_list[d + 2] == "shinya"):
-                    scattered_night_count += 1
+                    sp["scattered_night"] += 1
 
-            # 準夜→休→深夜
             for d in range(num_days - 2):
                 if (shift_list[d] == "junnya"
                         and shift_list[d + 1] in REST_SHIFTS
                         and shift_list[d + 2] == "shinya"):
-                    junnya_off_shinya_count += 1
+                    sp["junnya_off_shinya"] += 1
 
-            # 日勤帯→翌深夜
             for d in range(num_days - 1):
                 if shift_list[d] in ("day", "late") and shift_list[d + 1] == "shinya":
-                    day_to_shinya_count += 1
+                    sp["day_to_shinya"] += 1
 
         # --- 夜勤間隔（2交代/3交代共通） ---
         if wt not in ("day_only", "fixed"):
             night_days = [d for d in range(num_days) if shift_list[d] in NIGHT_SHIFTS]
             for i in range(1, len(night_days)):
                 gap = night_days[i] - night_days[i - 1]
-                if 2 <= gap <= 3:  # 間隔2-3日 = 近接
-                    night_interval_close_count += 1
+                if 2 <= gap <= 3:
+                    sp["night_interval_close"] += 1
 
         # --- 希望休前後の夜勤 ---
         staff_off_days = wish_off_days.get(sid, set())
         for off_day in staff_off_days:
-            d_idx = off_day - 1  # 0-indexed
-            # 希望休の前日が準夜
+            d_idx = off_day - 1
             if d_idx > 0 and shift_list[d_idx - 1] == "junnya":
-                kibou_night_count += 1
-            # 希望休の翌日が深夜
+                sp["kibou_night"] += 1
             if d_idx < num_days - 1 and shift_list[d_idx + 1] == "shinya":
-                kibou_night_count += 1
+                sp["kibou_night"] += 1
 
         # --- 準夜深夜バランス（三交代、junnya_only/shinya_only除外） ---
         if wt == "3kohtai":
@@ -189,7 +211,7 @@ def evaluate_shift_quality(result, data):
             if restriction not in ("junnya_only", "shinya_only"):
                 junnya_cnt = sum(1 for sh in shift_list if sh == "junnya")
                 shinya_cnt = sum(1 for sh in shift_list if sh == "shinya")
-                junnya_shinya_balance_total += abs(junnya_cnt - shinya_cnt)
+                sp["junnya_shinya_balance"] = abs(junnya_cnt - shinya_cnt)
 
         # --- 好ローテーション（三交代: 深夜→休→準夜, 深夜→準夜→休） ---
         if wt == "3kohtai":
@@ -197,11 +219,27 @@ def evaluate_shift_quality(result, data):
                 if (shift_list[d] == "shinya"
                         and shift_list[d + 1] in REST_SHIFTS
                         and shift_list[d + 2] == "junnya"):
-                    good_rotation_count += 1
+                    sp["good_rotation"] += 1
                 if (shift_list[d] == "shinya"
                         and shift_list[d + 1] == "junnya"
                         and shift_list[d + 2] in REST_SHIFTS):
-                    good_rotation_count += 1
+                    sp["good_rotation"] += 1
+
+        # スコア計算
+        sp["score"] = calculate_personal_score(sp)
+        per_staff.append(sp)
+
+    # --- 病棟全体の集計（per_staffから合算） ---
+    consec_5_count = sum(s["consec_5"] for s in per_staff)
+    consec_6_count = sum(s["consec_6"] for s in per_staff)
+    night_interval_close_count = sum(s["night_interval_close"] for s in per_staff)
+    shinya_no_rest_count = sum(s["shinya_no_rest"] for s in per_staff)
+    scattered_night_count = sum(s["scattered_night"] for s in per_staff)
+    junnya_off_shinya_count = sum(s["junnya_off_shinya"] for s in per_staff)
+    day_to_shinya_count = sum(s["day_to_shinya"] for s in per_staff)
+    kibou_night_count = sum(s["kibou_night"] for s in per_staff)
+    junnya_shinya_balance_total = sum(s["junnya_shinya_balance"] for s in per_staff)
+    good_rotation_count = sum(s["good_rotation"] for s in per_staff)
 
     # --- 公平性指標 ---
     night_gini = round(calculate_gini(night_counts), 4) if night_counts else 0
@@ -246,6 +284,8 @@ def evaluate_shift_quality(result, data):
         "kibou_night": kibou_night_count,
         "junnya_shinya_balance": junnya_shinya_balance_total,
         "good_rotation": good_rotation_count,
+        # 個人別
+        "per_staff": per_staff,
     }
 
 
@@ -275,5 +315,14 @@ def format_quality(q):
     ]
     if q.get("late_range", 0) > 0:
         line2_parts.append(f"遅出差={q['late_range']}")
+
+    # 個人スコアサマリー
+    per_staff = q.get("per_staff", [])
+    if per_staff:
+        scores = [s["score"] for s in per_staff]
+        avg = sum(scores) / len(scores)
+        worst = min(per_staff, key=lambda s: s["score"])
+        line2_parts.append(f"個人平均={avg:.0f}点")
+        line2_parts.append(f"最低={worst['name']}{worst['score']}点")
 
     return " ".join(line1_parts) + "\n    内訳: " + " ".join(line2_parts)

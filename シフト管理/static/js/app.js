@@ -4422,8 +4422,7 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
             personalScores[s.id] = {
                 name: s.name,
                 score: ps.score,
-                categories: ps.categories,
-                details: ps.details,
+                penalties: ps.penalties,
                 issues: getPersonalIssues(ps)
             };
             personalScoreValues.push(ps.score);
@@ -4450,7 +4449,7 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
 
             // ワースト3
             var worstStaff = Object.keys(personalScores)
-                .map(function(id) { return { id: id, name: personalScores[id].name, score: personalScores[id].score, categories: personalScores[id].categories, issues: personalScores[id].issues }; })
+                .map(function(id) { return { id: id, name: personalScores[id].name, score: personalScores[id].score, penalties: personalScores[id].penalties, issues: personalScores[id].issues }; })
                 .sort(function(a, b) { return a.score - b.score; })
                 .slice(0, 3);
 
@@ -4460,12 +4459,11 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
             personalHtml += '<div style="display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap">';
             personalHtml += '<div style="background:rgba(255,255,255,0.1);padding:.6rem 1rem;border-radius:6px"><span style="font-size:.8rem;opacity:.7">平均スコア</span><br><strong style="font-size:1.3rem">' + avgPersonal.toFixed(0) + '</strong><span style="font-size:.8rem">点</span></div>';
             personalHtml += '<div style="background:rgba(239,68,68,0.2);padding:.6rem 1rem;border-radius:6px"><span style="font-size:.8rem;opacity:.7">最低スコア</span><br><strong style="font-size:1.3rem;color:#fca5a5">' + minPersonal + '</strong><span style="font-size:.8rem">点</span></div>';
-            personalHtml += '<div style="background:rgba(255,255,255,0.05);padding:.6rem 1rem;border-radius:6px;flex:1;min-width:200px"><span style="font-size:.75rem;opacity:.6">カテゴリ: 夜=夜勤(30) 連=連勤(25) リ=リズム(20) 週=週末(15) 希=希望(10)</span></div>';
             personalHtml += '</div>';
 
             // ワースト3（要注意者）
             if (worstStaff.length > 0) {
-                personalHtml += '<div style="margin-bottom:1rem"><div style="font-weight:600;color:#fca5a5;margin-bottom:.5rem">⚠ 要注意スタッフ</div>';
+                personalHtml += '<div style="margin-bottom:1rem"><div style="font-weight:600;color:#fca5a5;margin-bottom:.5rem">要注意スタッフ</div>';
                 personalHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.5rem">';
                 for (var wi = 0; wi < worstStaff.length; wi++) {
                     var ws = worstStaff[wi];
@@ -4474,9 +4472,7 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
                     personalHtml += '<div style="border-left:3px solid ' + color + ';padding:.5rem .8rem;background:' + bgColor + ';border-radius:4px">';
                     personalHtml += '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">';
                     personalHtml += '<strong>' + ws.name + '</strong> <span style="color:' + color + ';font-weight:bold;font-size:1.1rem">' + ws.score + '点</span>';
-                    if (ws.categories) {
-                        personalHtml += renderCategoryBars(ws.categories);
-                    }
+                    personalHtml += ' ' + renderPenaltySummary(ws.penalties);
                     personalHtml += '</div>';
                     if (ws.issues.length > 0) {
                         personalHtml += '<div style="font-size:.8rem;color:#fca5a5">' + ws.issues.join(" / ") + '</div>';
@@ -4490,17 +4486,15 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
             personalHtml += '<div><div style="font-weight:600;margin-bottom:.5rem;opacity:.8">全スタッフ</div>';
             personalHtml += '<div style="display:flex;flex-wrap:wrap;gap:.4rem;font-size:.8rem">';
             var sortedPersonal = Object.keys(personalScores)
-                .map(function(id) { return { name: personalScores[id].name, score: personalScores[id].score, categories: personalScores[id].categories }; })
+                .map(function(id) { return { name: personalScores[id].name, score: personalScores[id].score, penalties: personalScores[id].penalties }; })
                 .sort(function(a, b) { return a.score - b.score; });
             for (var pi = 0; pi < sortedPersonal.length; pi++) {
-                var p = sortedPersonal[pi];
-                var bgColor = p.score >= 80 ? "rgba(16,185,129,0.25)" : p.score >= 60 ? "rgba(251,191,36,0.25)" : "rgba(248,113,113,0.25)";
-                var textColor = p.score >= 80 ? "#6ee7b7" : p.score >= 60 ? "#fcd34d" : "#fca5a5";
+                var sp = sortedPersonal[pi];
+                var bgColor = sp.score >= 80 ? "rgba(16,185,129,0.25)" : sp.score >= 60 ? "rgba(251,191,36,0.25)" : "rgba(248,113,113,0.25)";
+                var textColor = sp.score >= 80 ? "#6ee7b7" : sp.score >= 60 ? "#fcd34d" : "#fca5a5";
                 personalHtml += '<div style="background:' + bgColor + ';padding:.3rem .6rem;border-radius:4px;display:flex;align-items:center;gap:.4rem">';
-                personalHtml += '<span style="color:' + textColor + '">' + p.name + ' <strong>' + p.score + '</strong></span>';
-                if (p.categories) {
-                    personalHtml += renderCategoryBars(p.categories);
-                }
+                personalHtml += '<span style="color:' + textColor + '">' + sp.name + ' <strong>' + sp.score + '</strong></span>';
+                personalHtml += ' ' + renderPenaltySummary(sp.penalties);
                 personalHtml += '</div>';
             }
             personalHtml += '</div></div>';
@@ -4545,355 +4539,162 @@ function calculateMetrics(year, month, shifts) {
     return calculateVersionMetrics(shifts);
 }
 
-// ========== 個人負荷スコア計算 v2 (カテゴリ別評価) ==========
-// カテゴリ配点: 夜勤負荷30点, 連勤・休日配置25点, 勤務リズム20点, 週末・祝日15点, 希望達成10点
+// ========== 個人負荷スコア計算（obj準拠・Python shift_quality.py と同一ロジック） ==========
+// ペナルティ重み（shift_quality.py の PENALTY_WEIGHTS と同一）
+var PENALTY_WEIGHTS = {
+    consec_5: -5, consec_6: -10, night_interval_close: -3,
+    shinya_no_rest: -4, scattered_night: -5, junnya_off_shinya: -4,
+    day_to_shinya: -5, kibou_night: -3, junnya_shinya_balance: -2,
+    good_rotation: 3
+};
+
 function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, wishes) {
     var REST_TYPES = ["off", "paid", "refresh"];
     var NIGHT_TYPES = ["night2", "junnya", "shinya"];
-    var ACTUAL_REST = ["off", "paid", "refresh"]; // akeは夜勤の一部であり休日ではない
 
-    // カテゴリ別スコア (満点からの減点方式)
-    var categories = {
-        nightLoad: { max: 30, score: 30, details: {} },      // 夜勤負荷
-        consecutive: { max: 25, score: 25, details: {} },    // 連勤・休日配置
-        rhythm: { max: 20, score: 20, details: {} },         // 勤務リズム
-        weekend: { max: 15, score: 15, details: {} },        // 週末・祝日負荷
-        wishes: { max: 10, score: 10, details: {} }          // 希望達成
-    };
-
-    // ========== 基礎データ収集 ==========
-    var nightDays = [];
-    var nightCount = 0;
-    var junyaCount = 0, shinyaCount = 0;
     var shiftList = [];
+    var junyaCount = 0, shinyaCount = 0;
+    var nightDays = [];  // 0-indexed
 
     for (var d = 1; d <= numDays; d++) {
         var sh = shifts[staffId + "-" + d] || "";
         shiftList.push(sh);
         if (NIGHT_TYPES.indexOf(sh) >= 0) {
-            nightCount++;
-            nightDays.push(d);
+            nightDays.push(d - 1);
             if (sh === "junnya") junyaCount++;
             if (sh === "shinya") shinyaCount++;
         }
     }
 
-    // ========== 1. 夜勤負荷 (30点満点) ==========
-    var cat1 = categories.nightLoad;
-
-    // 1a. 夜勤回数の適正範囲 (最大-10点)
-    var idealMin = 0, idealMax = 0;
-    if (workType === "2kohtai") { idealMin = 3; idealMax = 5; }
-    else if (workType === "3kohtai") { idealMin = 6; idealMax = 10; }
-    else if (workType === "night_only") { idealMin = 8; idealMax = 12; }
-
-    if (nightCount < idealMin) {
-        cat1.score -= Math.min(10, (idealMin - nightCount) * 3);
-    } else if (nightCount > idealMax) {
-        cat1.score -= Math.min(10, (nightCount - idealMax) * 4);
-    }
-    cat1.details.nightCount = nightCount;
-    cat1.details.idealRange = idealMin + "-" + idealMax;
-
-    // 1b. 夜勤間隔 (最大-12点、三交代は準夜連続が正常なため軽減)
-    var intervals = [];
-    var nightIntervalIssueDays = [];  // 問題のある夜勤日
-    for (var i = 1; i < nightDays.length; i++) {
-        var gap = nightDays[i] - nightDays[i - 1];
-        intervals.push(gap);
-        if (gap <= 2) {
-            nightIntervalIssueDays.push(nightDays[i - 1]);
-            nightIntervalIssueDays.push(nightDays[i]);
-        }
-    }
-    var minInterval = intervals.length ? Math.min.apply(null, intervals) : 999;
-
-    if (workType === "3kohtai") {
-        // 三交代: 準夜連続は正常パターンなので軽減
-        if (minInterval < 2) cat1.score -= 4;          // 連続夜勤（準夜連続は許容）
-        else if (minInterval === 2) cat1.score -= 2;   // 1日空き
-    } else {
-        if (minInterval < 2) cat1.score -= 12;         // 連続夜勤
-        else if (minInterval === 2) cat1.score -= 6;   // 1日空き
-        else if (minInterval === 3) cat1.score -= 2;   // 2日空き
-    }
-    cat1.details.minInterval = minInterval !== 999 ? minInterval : null;
-    cat1.details.issueDays = nightIntervalIssueDays;
-
-    // 1c. 準夜・深夜バランス（三交代のみ、最大-4点）
-    if (workType === "3kohtai" && nightCount > 0) {
-        var balance = Math.abs(junyaCount - shinyaCount);
-        if (balance >= 4) cat1.score -= 4;
-        else if (balance >= 3) cat1.score -= 2;
-        cat1.details.junyaCount = junyaCount;
-        cat1.details.shinyaCount = shinyaCount;
-    }
-    cat1.score = Math.max(0, cat1.score);
-
-    // ========== 2. 連勤・休日配置 (25点満点) ==========
-    var cat2 = categories.consecutive;
-
-    // 2a. 連勤パターン分析
-    var runs = [];
-    var current = 0;
-    for (var d = 0; d < numDays; d++) {
-        var sh = shiftList[d];
-        if (sh && ACTUAL_REST.indexOf(sh) < 0) {
-            current++;
-        } else {
-            if (current > 0) runs.push(current);
-            current = 0;
-        }
-    }
-    if (current > 0) runs.push(current);
-
-    var maxConsecutive = runs.length ? Math.max.apply(null, runs) : 0;
-
-    // 連勤ペナルティ (最大-15点)
-    if (maxConsecutive >= 6) cat2.score -= 15;
-    else if (maxConsecutive === 5) cat2.score -= 10;
-    else if (maxConsecutive === 4) cat2.score -= 3;
-    cat2.details.maxConsecutive = maxConsecutive;
-
-    // 2b. 休日間隔 (最大-10点)
-    var restGaps = [];
-    var lastRest = 0;
-    for (var d = 0; d < numDays; d++) {
-        if (REST_TYPES.indexOf(shiftList[d]) >= 0) {
-            if (lastRest > 0) restGaps.push(d + 1 - lastRest);
-            lastRest = d + 1;
-        }
-    }
-    var maxGap = restGaps.length ? Math.max.apply(null, restGaps) : numDays;
-
-    if (maxGap >= 7) cat2.score -= 10;
-    else if (maxGap >= 6) cat2.score -= 6;
-    else if (maxGap >= 5) cat2.score -= 3;
-    cat2.details.maxRestGap = maxGap;
-
-    // 2c. 連休の有無
-    var consecutiveRestCount = 0;
-    for (var d = 0; d < numDays - 1; d++) {
-        if (REST_TYPES.indexOf(shiftList[d]) >= 0 && REST_TYPES.indexOf(shiftList[d + 1]) >= 0) {
-            consecutiveRestCount++;
-        }
-    }
-    if (consecutiveRestCount === 0) cat2.score -= 5;
-    cat2.details.consecutiveRests = consecutiveRestCount;
-    cat2.score = Math.max(0, cat2.score);
-
-    // ========== 3. 勤務リズム (20点満点) ==========
-    var cat3 = categories.rhythm;
-    var hardPatterns = [];
-
-    for (var d = 0; d < numDays - 1; d++) {
-        var sh1 = shiftList[d];
-        var sh2 = shiftList[d + 1];
-
-        // 明け→出勤（休みでない）
-        if (sh1 === "ake" && sh2 && REST_TYPES.indexOf(sh2) < 0 && sh2 !== "ake") {
-            hardPatterns.push({ day: d + 1, type: "ake_work", penalty: (workType === "3kohtai") ? 2 : 4 });
-        }
-        // 深夜→準夜（逆循環）- 三交代では発生しやすい
-        if (sh1 === "shinya" && sh2 === "junnya") {
-            hardPatterns.push({ day: d + 1, type: "reverse_shinya_junya", penalty: (workType === "3kohtai") ? 2 : 5 });
-        }
-        // 遅出→日勤
-        if (sh1 === "late" && sh2 === "day") {
-            hardPatterns.push({ day: d + 1, type: "late_day", penalty: 2 });
-        }
-    }
-
-    var rhythmPenalty = 0;
-    for (var i = 0; i < hardPatterns.length; i++) {
-        rhythmPenalty += hardPatterns[i].penalty;
-    }
-    cat3.score -= Math.min(20, rhythmPenalty);
-    cat3.details.hardPatterns = hardPatterns;
-    cat3.details.hardPatternCount = hardPatterns.length;
-    cat3.score = Math.max(0, cat3.score);
-
-    // ========== 4. 週末・祝日負荷 (15点満点) ==========
-    var cat4 = categories.weekend;
-    var weekendWork = 0;
-    var holidayWork = 0;
-    var totalWeekends = 0;
-    var totalHolidays = 0;
-    var weekendPairs = []; // 土日ペアをカウント
-
-    for (var d = 1; d <= numDays; d++) {
-        var dt = new Date(year, month - 1, d);
-        var wd = dt.getDay();
-        var holidayKey = year + "-" + month + "-" + d;
-        var isHoliday = HOLIDAYS[holidayKey];
-        var isWeekend = (wd === 0 || wd === 6);
-        var sh = shiftList[d - 1];
-        var isWork = sh && ACTUAL_REST.indexOf(sh) < 0;
-
-        if (isWeekend) {
-            totalWeekends++;
-            if (isWork) weekendWork++;
-        }
-        if (isHoliday && !isWeekend) {
-            totalHolidays++;
-            if (isWork) holidayWork++;
-        }
-
-        // 土曜→日曜のペア
-        if (wd === 6 && d < numDays) {
-            var shSat = shiftList[d - 1];
-            var shSun = shiftList[d];
-            var satWork = shSat && ACTUAL_REST.indexOf(shSat) < 0;
-            var sunWork = shSun && ACTUAL_REST.indexOf(shSun) < 0;
-            weekendPairs.push({ day: d, satWork: satWork, sunWork: sunWork });
-        }
-    }
-
-    // 週末出勤率ペナルティ (最大-10点)
-    var weekendRate = totalWeekends > 0 ? weekendWork / totalWeekends : 0;
-    if (weekendRate > 0.7) cat4.score -= 10;
-    else if (weekendRate > 0.6) cat4.score -= 6;
-    else if (weekendRate > 0.5) cat4.score -= 3;
-
-    // 連続週末出勤ペナルティ (最大-5点)
-    var consecutiveWeekendWork = 0;
-    for (var i = 0; i < weekendPairs.length; i++) {
-        if (weekendPairs[i].satWork && weekendPairs[i].sunWork) {
-            consecutiveWeekendWork++;
-        }
-    }
-    if (consecutiveWeekendWork >= 2) cat4.score -= 5;
-    else if (consecutiveWeekendWork === 1) cat4.score -= 2;
-
-    cat4.details.weekendWork = weekendWork;
-    cat4.details.totalWeekends = totalWeekends;
-    cat4.details.holidayWork = holidayWork;
-    cat4.details.totalHolidays = totalHolidays;
-    cat4.details.weekendRate = Math.round(weekendRate * 100);
-    cat4.score = Math.max(0, cat4.score);
-
-    // ========== 5. 希望達成 (10点満点) ==========
-    var cat5 = categories.wishes;
-    var wishTotal = 0;
-    var wishMet = 0;
-
-    if (wishes && typeof wishes === "object") {
-        for (var key in wishes) {
-            if (key.indexOf(staffId + "-") === 0) {
-                wishTotal++;
-                var wishDay = parseInt(key.split("-")[1]);
-                var wishType = wishes[key];
-                var actualShift = shiftList[wishDay - 1] || "";
-
-                // 希望と実際の勤務を比較
-                if (wishType === "off" && REST_TYPES.indexOf(actualShift) >= 0) wishMet++;
-                else if (wishType === "day" && actualShift === "day") wishMet++;
-                else if (wishType === "night2" && actualShift === "night2") wishMet++;
-                else if (wishType === "junnya" && actualShift === "junnya") wishMet++;
-                else if (wishType === "shinya" && actualShift === "shinya") wishMet++;
-                else if (wishType === "late" && actualShift === "late") wishMet++;
-                else if (wishType === "paid" && actualShift === "paid") wishMet++;
-                else if (wishType === "refresh" && actualShift === "refresh") wishMet++;
-            }
-        }
-    }
-
-    if (wishTotal > 0) {
-        var wishRate = wishMet / wishTotal;
-        if (wishRate < 0.5) cat5.score -= 10;
-        else if (wishRate < 0.7) cat5.score -= 6;
-        else if (wishRate < 0.9) cat5.score -= 3;
-        cat5.details.wishMet = wishMet;
-        cat5.details.wishTotal = wishTotal;
-        cat5.details.wishRate = Math.round(wishRate * 100);
-    } else {
-        cat5.details.wishTotal = 0;
-    }
-    cat5.score = Math.max(0, cat5.score);
-
-    // ========== 合計スコア計算 ==========
-    var totalScore = cat1.score + cat2.score + cat3.score + cat4.score + cat5.score;
-
-    // 問題日の収集
-    var issueDays = {
-        nightInterval: nightIntervalIssueDays,  // 夜勤間隔問題
-        hardPatterns: hardPatterns.map(function(p) { return p.day; }),  // きつい連続
-        noConsecutiveRest: consecutiveRestCount === 0  // 連休なしフラグ
+    // ペナルティ件数
+    var p = {
+        consec_5: 0, consec_6: 0, night_interval_close: 0,
+        shinya_no_rest: 0, scattered_night: 0, junnya_off_shinya: 0,
+        day_to_shinya: 0, kibou_night: 0, junnya_shinya_balance: 0,
+        good_rotation: 0
     };
 
+    // 5連勤/6連勤を窓で検出
+    for (var d = 0; d <= numDays - 5; d++) {
+        var all5 = true;
+        for (var i = 0; i < 5; i++) {
+            if (!shiftList[d+i] || REST_TYPES.indexOf(shiftList[d+i]) >= 0) { all5 = false; break; }
+        }
+        if (all5) p.consec_5++;
+    }
+    for (var d = 0; d <= numDays - 6; d++) {
+        var all6 = true;
+        for (var i = 0; i < 6; i++) {
+            if (!shiftList[d+i] || REST_TYPES.indexOf(shiftList[d+i]) >= 0) { all6 = false; break; }
+        }
+        if (all6) p.consec_6++;
+    }
+
+    // 三交代専用
+    if (workType === "3kohtai") {
+        for (var d = 0; d < numDays - 1; d++) {
+            // 深夜後無休
+            if (shiftList[d] === "shinya") {
+                var next = shiftList[d + 1];
+                if (REST_TYPES.indexOf(next) < 0 && next !== "shinya") p.shinya_no_rest++;
+            }
+            // 日深転換
+            if ((shiftList[d] === "day" || shiftList[d] === "late") && shiftList[d + 1] === "shinya") p.day_to_shinya++;
+        }
+        for (var d = 0; d < numDays - 2; d++) {
+            // 散発夜勤: 深夜→休→深夜
+            if (shiftList[d] === "shinya" && REST_TYPES.indexOf(shiftList[d+1]) >= 0 && shiftList[d+2] === "shinya") p.scattered_night++;
+            // 準深切替: 準夜→休→深夜
+            if (shiftList[d] === "junnya" && REST_TYPES.indexOf(shiftList[d+1]) >= 0 && shiftList[d+2] === "shinya") p.junnya_off_shinya++;
+            // 好ローテ: 深夜→休→準夜, 深夜→準夜→休
+            if (shiftList[d] === "shinya" && REST_TYPES.indexOf(shiftList[d+1]) >= 0 && shiftList[d+2] === "junnya") p.good_rotation++;
+            if (shiftList[d] === "shinya" && shiftList[d+1] === "junnya" && REST_TYPES.indexOf(shiftList[d+2]) >= 0) p.good_rotation++;
+        }
+        // 準深バランス
+        p.junnya_shinya_balance = Math.abs(junyaCount - shinyaCount);
+    }
+
+    // 夜勤間隔（2交代/3交代共通）
+    for (var i = 1; i < nightDays.length; i++) {
+        var gap = nightDays[i] - nightDays[i - 1];
+        if (gap >= 2 && gap <= 3) p.night_interval_close++;
+    }
+
+    // 希望休前後の夜勤
+    if (wishes && typeof wishes === "object") {
+        // wishes = staffOffDays map from calculateFairnessMetrics
+        // キー形式: staffId-day -> "off" etc.  ここでは off/refresh のみ対象
+        for (var key in wishes) {
+            if (key.indexOf(staffId + "-") !== 0) continue;
+            var wType = wishes[key];
+            if (wType !== "off" && wType !== "paid" && wType !== "refresh") continue;
+            var offDay = parseInt(key.split("-")[1]);
+            var dIdx = offDay - 1;
+            if (dIdx > 0 && shiftList[dIdx - 1] === "junnya") p.kibou_night++;
+            if (dIdx < numDays - 1 && shiftList[dIdx + 1] === "shinya") p.kibou_night++;
+        }
+    }
+
+    // スコア計算（100点満点、Python側と同一重み）
+    var score = 100;
+    for (var key in PENALTY_WEIGHTS) {
+        score += (p[key] || 0) * PENALTY_WEIGHTS[key];
+    }
+    score = Math.max(0, Math.min(100, score));
+
+    // 問題日の収集（シフト表のアンダーライン表示用）
+    var nightIntervalIssueDays = [];
+    for (var i = 1; i < nightDays.length; i++) {
+        var gap = nightDays[i] - nightDays[i - 1];
+        if (gap >= 2 && gap <= 3) {
+            nightIntervalIssueDays.push(nightDays[i - 1] + 1);  // 1-indexed
+            nightIntervalIssueDays.push(nightDays[i] + 1);
+        }
+    }
+
     return {
-        score: totalScore,
-        categories: categories,
-        issueDays: issueDays,
-        details: {
-            // 旧API互換
-            nightCount: { value: nightCount, ideal: idealMin + "-" + idealMax },
-            nightInterval: minInterval !== 999 ? minInterval : null,
-            maxConsecutive: maxConsecutive,
-            avgConsecutive: runs.length ? Math.round(runs.reduce(function(a, b) { return a + b; }, 0) / runs.length * 10) / 10 : 0,
-            hardPatterns: hardPatterns.length,
-            maxDaysWithoutRest: maxGap,
-            consecutiveRests: consecutiveRestCount,
-            weekendWork: { count: weekendWork, total: totalWeekends }
+        score: score,
+        penalties: p,
+        issueDays: {
+            nightInterval: nightIntervalIssueDays,
+            hardPatterns: [],
+            noConsecutiveRest: false
         }
     };
 }
 
 function getPersonalIssues(result) {
     var issues = [];
-    var details = result.details || {};
-    var cats = result.categories || {};
+    var p = result.penalties || {};
 
-    // 旧API互換 + 新カテゴリ情報
-    if (details.maxConsecutive >= 5) issues.push("連勤" + details.maxConsecutive + "日");
-    if (details.maxDaysWithoutRest >= 6) issues.push("休みなし" + details.maxDaysWithoutRest + "日");
-    if (details.nightInterval && details.nightInterval < 3) issues.push("夜勤間隔" + details.nightInterval + "日");
-    if (details.hardPatterns > 0) issues.push("きつい連続" + details.hardPatterns + "回");
-    if (details.consecutiveRests === 0) issues.push("連休なし");
-
-    // カテゴリ別の重大問題
-    if (cats.nightLoad && cats.nightLoad.score <= cats.nightLoad.max * 0.3) {
-        issues.push("夜勤負荷高");
-    }
-    if (cats.rhythm && cats.rhythm.score <= cats.rhythm.max * 0.3) {
-        issues.push("リズム悪");
-    }
-    if (cats.weekend && cats.weekend.score <= cats.weekend.max * 0.3) {
-        issues.push("週末負担大");
-    }
-    if (cats.wishes && cats.wishes.details && cats.wishes.details.wishRate < 50) {
-        issues.push("希望未達" + cats.wishes.details.wishRate + "%");
-    }
+    if (p.consec_6 > 0) issues.push("6連勤" + p.consec_6);
+    else if (p.consec_5 > 0) issues.push("5連勤" + p.consec_5);
+    if (p.night_interval_close > 0) issues.push("夜勤近接" + p.night_interval_close);
+    if (p.shinya_no_rest > 0) issues.push("深夜後無休" + p.shinya_no_rest);
+    if (p.scattered_night > 0) issues.push("散発夜勤" + p.scattered_night);
+    if (p.day_to_shinya > 0) issues.push("日深転換" + p.day_to_shinya);
+    if (p.junnya_off_shinya > 0) issues.push("準深切替" + p.junnya_off_shinya);
+    if (p.kibou_night > 0) issues.push("希望前後夜勤" + p.kibou_night);
+    if (p.junnya_shinya_balance >= 3) issues.push("準深差" + p.junnya_shinya_balance);
 
     return issues;
 }
 
-// カテゴリバー表示用HTML生成
-function renderCategoryBars(categories) {
-    var html = '<div class="category-bars" style="display:flex;gap:4px;align-items:center">';
-    var catNames = {
-        nightLoad: { label: "夜勤", color: "#8b5cf6" },
-        consecutive: { label: "連勤", color: "#3b82f6" },
-        rhythm: { label: "リズム", color: "#10b981" },
-        weekend: { label: "週末", color: "#f59e0b" },
-        wishes: { label: "希望", color: "#ec4899" }
-    };
-
-    for (var key in catNames) {
-        if (categories[key]) {
-            var cat = categories[key];
-            var info = catNames[key];
-            var pct = Math.round((cat.score / cat.max) * 100);
-            var barColor = pct >= 80 ? info.color : pct >= 50 ? "#f59e0b" : "#ef4444";
-            html += '<div style="display:flex;flex-direction:column;align-items:center;width:32px" title="' + info.label + ': ' + cat.score + '/' + cat.max + '">';
-            html += '<div style="font-size:9px;color:var(--text2)">' + info.label.charAt(0) + '</div>';
-            html += '<div style="width:100%;height:4px;background:var(--bg3);border-radius:2px;overflow:hidden">';
-            html += '<div style="width:' + pct + '%;height:100%;background:' + barColor + '"></div>';
-            html += '</div></div>';
-        }
-    }
-    html += '</div>';
-    return html;
+// ペナルティ件数のコンパクト表示
+function renderPenaltySummary(penalties) {
+    var items = [];
+    if (penalties.consec_5) items.push("5連" + penalties.consec_5);
+    if (penalties.consec_6) items.push("6連" + penalties.consec_6);
+    if (penalties.night_interval_close) items.push("近接" + penalties.night_interval_close);
+    if (penalties.shinya_no_rest) items.push("無休" + penalties.shinya_no_rest);
+    if (penalties.scattered_night) items.push("散発" + penalties.scattered_night);
+    if (penalties.junnya_off_shinya) items.push("準深" + penalties.junnya_off_shinya);
+    if (penalties.day_to_shinya) items.push("日深" + penalties.day_to_shinya);
+    if (penalties.kibou_night) items.push("希望" + penalties.kibou_night);
+    if (penalties.junnya_shinya_balance) items.push("差" + penalties.junnya_shinya_balance);
+    if (penalties.good_rotation) items.push("好" + penalties.good_rotation);
+    if (items.length === 0) return '<span style="color:#6ee7b7;font-size:.7rem">問題なし</span>';
+    return '<span style="font-size:.7rem;color:#94a3b8">' + items.join(" ") + '</span>';
 }
 
 function calculateVersionMetrics(shifts) {
@@ -5102,8 +4903,7 @@ function calculateVersionMetrics(shifts) {
         personalScores[s.id] = {
             name: s.name,
             score: ps.score,
-            categories: ps.categories,
-            details: ps.details,
+            penalties: ps.penalties,
             issues: getPersonalIssues(ps)
         };
         personalScoreValues.push(ps.score);
