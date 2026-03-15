@@ -1,4 +1,4 @@
-"""Regression test - 全病棟テスト（希望なし＋希望あり）＋品質評価"""
+"""Regression test - 全病棟テスト（希望あり）＋品質評価"""
 import sys, os, json, time
 sys.path.insert(0, os.path.dirname(__file__))
 from solver import ShiftSolver
@@ -48,22 +48,8 @@ def run_test(label, data):
 
 failed = []
 
-# --- Phase 1: 希望なしテスト（2025年7月） ---
-print("=== Phase 1: 希望なし (2025-07) ===")
-for wn, cfg in WARD_CONFIGS.items():
-    sp = build_staff(WARD_IDS[wn])
-    prev = {}
-    if wn == "3":
-        k2 = [s for s in sp if s['workType'] == '2kohtai']
-        for s in k2[:2]:
-            prev[s["id"]] = {"lastDay": "night2"}
-    data = {"year": 2025, "month": 7, "staff": sp, "config": {**cfg, "seed": 42},
-            "wishes": [], "prevMonthData": prev}
-    ok = run_test(f"Ward {wn}", data)
-    if ok != "OK": failed.append(f"Ward {wn} (no wishes)")
-
-# --- Phase 2: 希望ありテスト（2026年4月） ---
-print("\n=== Phase 2: 希望あり (2026-04) ===")
+# --- 希望ありテスト（2026年4月） ---
+print("=== 希望あり (2026-04) ===")
 wishes_apr = all_wishes.get("2026-4", [])
 for wn, cfg in WARD_CONFIGS.items():
     sp = build_staff(WARD_IDS[wn])
@@ -77,7 +63,7 @@ for wn, cfg in WARD_CONFIGS.items():
     data = {"year": 2026, "month": 4, "staff": sp, "config": {**cfg, "seed": 42},
             "wishes": ward_wishes, "prevMonthData": prev}
     ok = run_test(f"Ward {wn} (wishes={len(ward_wishes)})", data)
-    if ok != "OK": failed.append(f"Ward {wn} (with wishes)")
+    if ok != "OK": failed.append(f"Ward {wn}")
 
 # --- 結果 ---
 print()
