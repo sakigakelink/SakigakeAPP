@@ -4444,34 +4444,35 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
                 personalContext.textContent = year + "年" + month + "月 / " + wardName + " / " + draftInfo;
             }
 
-            var minPersonal = Math.min.apply(null, personalScoreValues);
+            var maxPersonal = Math.max.apply(null, personalScoreValues);
             var avgPersonal = personalScoreValues.reduce(function(a, b) { return a + b; }, 0) / personalScoreValues.length;
 
-            // ワースト3
+            // ワースト3（ペナルティ多い順）
             var worstStaff = Object.keys(personalScores)
                 .map(function(id) { return { id: id, name: personalScores[id].name, score: personalScores[id].score, penalties: personalScores[id].penalties, issues: personalScores[id].issues }; })
-                .sort(function(a, b) { return a.score - b.score; })
+                .sort(function(a, b) { return b.score - a.score; })
                 .slice(0, 3);
 
             var personalHtml = '';
 
             // サマリー
             personalHtml += '<div style="display:flex;gap:1.5rem;margin-bottom:1rem;flex-wrap:wrap">';
-            personalHtml += '<div style="background:rgba(255,255,255,0.1);padding:.6rem 1rem;border-radius:6px"><span style="font-size:.8rem;opacity:.7">平均スコア</span><br><strong style="font-size:1.3rem">' + avgPersonal.toFixed(0) + '</strong><span style="font-size:.8rem">点</span></div>';
-            personalHtml += '<div style="background:rgba(239,68,68,0.2);padding:.6rem 1rem;border-radius:6px"><span style="font-size:.8rem;opacity:.7">最低スコア</span><br><strong style="font-size:1.3rem;color:#fca5a5">' + minPersonal + '</strong><span style="font-size:.8rem">点</span></div>';
+            personalHtml += '<div style="background:rgba(255,255,255,0.1);padding:.6rem 1rem;border-radius:6px"><span style="font-size:.8rem;opacity:.7">平均ペナルティ</span><br><strong style="font-size:1.3rem">' + avgPersonal.toFixed(1) + '</strong><span style="font-size:.8rem">件</span></div>';
+            personalHtml += '<div style="background:rgba(239,68,68,0.2);padding:.6rem 1rem;border-radius:6px"><span style="font-size:.8rem;opacity:.7">最多ペナルティ</span><br><strong style="font-size:1.3rem;color:#fca5a5">' + maxPersonal + '</strong><span style="font-size:.8rem">件</span></div>';
             personalHtml += '</div>';
 
-            // ワースト3（要注意者）
-            if (worstStaff.length > 0) {
+            // ワースト3（要注意者）— ペナルティ0のスタッフは除外
+            var worstWithPenalties = worstStaff.filter(function(ws) { return ws.score > 0; });
+            if (worstWithPenalties.length > 0) {
                 personalHtml += '<div style="margin-bottom:1rem"><div style="font-weight:600;color:#fca5a5;margin-bottom:.5rem">要注意スタッフ</div>';
                 personalHtml += '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:.5rem">';
-                for (var wi = 0; wi < worstStaff.length; wi++) {
-                    var ws = worstStaff[wi];
-                    var color = ws.score >= 70 ? "#fbbf24" : "#f87171";
-                    var bgColor = ws.score >= 70 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)";
+                for (var wi = 0; wi < worstWithPenalties.length; wi++) {
+                    var ws = worstWithPenalties[wi];
+                    var color = ws.score <= 3 ? "#fbbf24" : "#f87171";
+                    var bgColor = ws.score <= 3 ? "rgba(251,191,36,0.15)" : "rgba(248,113,113,0.15)";
                     personalHtml += '<div style="border-left:3px solid ' + color + ';padding:.5rem .8rem;background:' + bgColor + ';border-radius:4px">';
                     personalHtml += '<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.3rem">';
-                    personalHtml += '<strong>' + ws.name + '</strong> <span style="color:' + color + ';font-weight:bold;font-size:1.1rem">' + ws.score + '点</span>';
+                    personalHtml += '<strong>' + ws.name + '</strong> <span style="color:' + color + ';font-weight:bold;font-size:1.1rem">' + ws.score + '件</span>';
                     personalHtml += ' ' + renderPenaltySummary(ws.penalties);
                     personalHtml += '</div>';
                     if (ws.issues.length > 0) {
@@ -4482,16 +4483,16 @@ function calculateFairnessMetrics(staff, shifts, days, year, month) {
                 personalHtml += '</div></div>';
             }
 
-            // 全員のスコア一覧
+            // 全員のスコア一覧（ペナルティ多い順）
             personalHtml += '<div><div style="font-weight:600;margin-bottom:.5rem;opacity:.8">全スタッフ</div>';
             personalHtml += '<div style="display:flex;flex-wrap:wrap;gap:.4rem;font-size:.8rem">';
             var sortedPersonal = Object.keys(personalScores)
                 .map(function(id) { return { name: personalScores[id].name, score: personalScores[id].score, penalties: personalScores[id].penalties }; })
-                .sort(function(a, b) { return a.score - b.score; });
+                .sort(function(a, b) { return b.score - a.score; });
             for (var pi = 0; pi < sortedPersonal.length; pi++) {
                 var sp = sortedPersonal[pi];
-                var bgColor = sp.score >= 80 ? "rgba(16,185,129,0.25)" : sp.score >= 60 ? "rgba(251,191,36,0.25)" : "rgba(248,113,113,0.25)";
-                var textColor = sp.score >= 80 ? "#6ee7b7" : sp.score >= 60 ? "#fcd34d" : "#fca5a5";
+                var bgColor = sp.score === 0 ? "rgba(16,185,129,0.25)" : sp.score <= 3 ? "rgba(251,191,36,0.25)" : "rgba(248,113,113,0.25)";
+                var textColor = sp.score === 0 ? "#6ee7b7" : sp.score <= 3 ? "#fcd34d" : "#fca5a5";
                 personalHtml += '<div style="background:' + bgColor + ';padding:.3rem .6rem;border-radius:4px;display:flex;align-items:center;gap:.4rem">';
                 personalHtml += '<span style="color:' + textColor + '">' + sp.name + ' <strong>' + sp.score + '</strong></span>';
                 personalHtml += ' ' + renderPenaltySummary(sp.penalties);
@@ -4540,13 +4541,12 @@ function calculateMetrics(year, month, shifts) {
 }
 
 // ========== 個人負荷スコア計算（obj準拠・Python shift_quality.py と同一ロジック） ==========
-// ペナルティ重み（shift_quality.py の PENALTY_WEIGHTS と同一）
-var PENALTY_WEIGHTS = {
-    consec_5: -5, consec_6: -10, night_interval_close: -3,
-    shinya_no_rest: -4, scattered_night: -5, junnya_off_shinya: -4,
-    day_to_shinya: -5, kibou_night: -3, junnya_shinya_balance: -2,
-    good_rotation: 3
-};
+// ペナルティ項目（shift_quality.py の PENALTY_KEYS と同一、good_rotation除外）
+var PENALTY_KEYS = [
+    "consec_5", "consec_6", "night_interval_close",
+    "shinya_no_rest", "scattered_night", "junnya_off_shinya",
+    "day_to_shinya", "kibou_night", "junnya_shinya_balance"
+];
 
 function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, wishes) {
     var REST_TYPES = ["off", "paid", "refresh"];
@@ -4635,12 +4635,11 @@ function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, 
         }
     }
 
-    // スコア計算（100点満点、Python側と同一重み）
-    var score = 100;
-    for (var key in PENALTY_WEIGHTS) {
-        score += (p[key] || 0) * PENALTY_WEIGHTS[key];
+    // スコア計算（ペナルティ件数合計、0=最良、Python側と同一）
+    var score = 0;
+    for (var ki = 0; ki < PENALTY_KEYS.length; ki++) {
+        score += p[PENALTY_KEYS[ki]] || 0;
     }
-    score = Math.max(0, Math.min(100, score));
 
     // 問題日の収集（シフト表のアンダーライン表示用）
     var nightIntervalIssueDays = [];
@@ -4909,19 +4908,19 @@ function calculateVersionMetrics(shifts) {
         personalScoreValues.push(ps.score);
     }
 
-    // 個人スコア統計
-    var minPersonal = personalScoreValues.length ? Math.min.apply(null, personalScoreValues) : 100;
-    var avgPersonal = personalScoreValues.length ? personalScoreValues.reduce(function(a, b) { return a + b; }, 0) / personalScoreValues.length : 100;
+    // 個人スコア統計（ペナルティ件数: 0=最良、多いほど悪い）
+    var maxPersonal = personalScoreValues.length ? Math.max.apply(null, personalScoreValues) : 0;
+    var avgPersonal = personalScoreValues.length ? personalScoreValues.reduce(function(a, b) { return a + b; }, 0) / personalScoreValues.length : 0;
     var personalStd = 0;
     if (personalScoreValues.length >= 2) {
         var variance = personalScoreValues.reduce(function(sum, v) { return sum + Math.pow(v - avgPersonal, 2); }, 0) / personalScoreValues.length;
         personalStd = Math.sqrt(variance);
     }
 
-    // ワースト3
+    // ワースト3（ペナルティ多い順）
     var worstStaff = Object.keys(personalScores)
         .map(function(id) { return { id: id, name: personalScores[id].name, score: personalScores[id].score, issues: personalScores[id].issues }; })
-        .sort(function(a, b) { return a.score - b.score; })
+        .sort(function(a, b) { return b.score - a.score; })
         .slice(0, 3);
 
     var m = {
@@ -4934,25 +4933,23 @@ function calculateVersionMetrics(shifts) {
         errors: errors,
         warnings: warnings,
         issues: issues,
-        // 個人負荷スコア
+        // 個人負荷スコア（ペナルティ件数合計）
         personalScores: personalScores,
-        minPersonal: minPersonal,
+        maxPersonal: maxPersonal,
         avgPersonal: Math.round(avgPersonal * 10) / 10,
         personalStd: Math.round(personalStd * 10) / 10,
         worstStaff: worstStaff
     };
 
-    // 総合スコア計算 (100点満点) - 個人負荷を考慮
-    var score = 0;
-    score += minPersonal * 0.3;           // 最悪ケース（30%）
-    score += avgPersonal * 0.3;           // 平均（30%）
-    score += (100 - personalStd) * 0.2;   // 均等性（20%）
+    // 総合スコア計算 (100点満点) - ペナルティ件数ベース
+    var score = 100;
+    score -= maxPersonal * 3;             // 最悪ケース
+    score -= avgPersonal * 2;             // 平均ペナルティ
+    score -= personalStd * 2;             // ばらつき
     // 従来の減点要素
-    var penaltyScore = 100;
-    penaltyScore -= m.errors * 15;
-    penaltyScore -= m.warnings * 5;
-    penaltyScore -= (100 - m.wishSatisfaction) * 0.5;
-    score += Math.max(0, penaltyScore) * 0.2; // 制約違反（20%）
+    score -= m.errors * 15;
+    score -= m.warnings * 5;
+    score -= (100 - m.wishSatisfaction) * 0.5;
 
     m.totalScore = Math.max(0, Math.min(100, Math.round(score)));
 

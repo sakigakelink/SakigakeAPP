@@ -10,27 +10,16 @@ from utils import HOLIDAYS
 REST_SHIFTS = {"off", "paid", "refresh"}
 NIGHT_SHIFTS = {"night2", "junnya", "shinya"}
 
-# 個人スコア計算用の重み（100点満点からの減点/加点）
-PENALTY_WEIGHTS = {
-    "consec_5": -5,
-    "consec_6": -10,
-    "night_interval_close": -3,
-    "shinya_no_rest": -4,
-    "scattered_night": -5,
-    "junnya_off_shinya": -4,
-    "day_to_shinya": -5,
-    "kibou_night": -3,
-    "junnya_shinya_balance": -2,
-    "good_rotation": 3,  # ボーナス（加点）
-}
+PENALTY_KEYS = [
+    "consec_5", "consec_6", "night_interval_close",
+    "shinya_no_rest", "scattered_night", "junnya_off_shinya",
+    "day_to_shinya", "kibou_night", "junnya_shinya_balance",
+]
 
 
 def calculate_personal_score(penalties):
-    """個人ペナルティ件数から100点満点スコアを計算"""
-    score = 100
-    for key, weight in PENALTY_WEIGHTS.items():
-        score += penalties.get(key, 0) * weight
-    return max(0, min(100, score))
+    """個人ペナルティ件数の合計（0=最良、多いほど悪い）。good_rotationは除外。"""
+    return sum(penalties.get(k, 0) for k in PENALTY_KEYS)
 
 
 def calculate_gini(values):
@@ -316,13 +305,12 @@ def format_quality(q):
     if q.get("late_range", 0) > 0:
         line2_parts.append(f"遅出差={q['late_range']}")
 
-    # 個人スコアサマリー
+    # 個人スコアサマリー（ペナルティ件数合計、0=最良）
     per_staff = q.get("per_staff", [])
     if per_staff:
         scores = [s["score"] for s in per_staff]
-        avg = sum(scores) / len(scores)
-        worst = min(per_staff, key=lambda s: s["score"])
-        line2_parts.append(f"個人平均={avg:.0f}点")
-        line2_parts.append(f"最低={worst['name']}{worst['score']}点")
+        worst = max(per_staff, key=lambda s: s["score"])
+        if worst["score"] > 0:
+            line2_parts.append(f"最多={worst['name']}{worst['score']}件")
 
     return " ".join(line1_parts) + "\n    内訳: " + " ".join(line2_parts)
