@@ -317,6 +317,105 @@ class ShiftSolver:
                 if log_queue:
                     log_queue.put({'type': 'log', 'msg': f'[事前チェックB] {msg}'})
                 return {"status": "infeasible", "message": msg, "shifts": {}, "violations": []}
+        # チェック C: workType に対して不可能な希望
+        _blocked_shifts_pre = {
+            "day_only": {"night2", "junnya", "shinya", "ake", "late"},
+            "2kohtai": {"junnya", "shinya"},
+            "3kohtai": {"night2", "ake"},
+            "night_only": {"day", "late", "junnya", "shinya"},
+        }
+        wish_errors = []
+        for w in self.wishes:
+            sid = w.get("staffId")
+            sidx = self.staff_id_to_idx.get(sid)
+            if sidx is None:
+                continue
+            wt = w.get("type")
+            sh = w.get("shift")
+            if sh not in SHIFT_IDX:
+                continue
+            staff = self.staff_list[sidx]
+            staff_name = staff.get("name", sid)
+            staff_wtype = staff.get("workType", "2kohtai")
+            blocked = _blocked_shifts_pre.get(staff_wtype, set())
+            if wt == "assign" and sh in blocked:
+                wish_errors.append(f"{staff_name}: {sh}は{staff_wtype}では不可")
+
+        # チェック D: 夜勤専従の休日希望が公休上限超過
+        _night_only_rest_wish_pre = {}  # {staff_idx: set[int]}
+        for w in self.wishes:
+            sid = w.get("staffId")
+            sidx = self.staff_id_to_idx.get(sid)
+            if sidx is None:
+                continue
+            staff = self.staff_list[sidx]
+            if staff.get("workType") != "night_only":
+                continue
+            wt = w.get("type")
+            sh = w.get("shift")
+            if wt != "assign" or sh not in ("off", "paid", "refresh"):
+                continue
+            staff_name = staff.get("name", sid)
+            max_night = staff.get("maxNight", 0)
+            staff_id = staff["id"]
+            prev_data = self.prev_month_data.get(staff_id, {})
+            last_day = prev_data.get("lastDay", "")
+            carryover_ake = 1 if last_day == "night2" else 0
+            available_days = self.num_days - carryover_ake
+            night2_target = min(max_night, available_days // 2)
+            quota = max(0, self.num_days - carryover_ake - night2_target * 2)
+
+            new_days = {d for d in w.get("days", []) if 1 <= d <= self.num_days}
+            already = _night_only_rest_wish_pre.get(sidx, set())
+            combined = already | new_days
+            if len(combined) > quota:
+                wish_errors.append(
+                    f"{staff_name}: 夜勤専従の休日希望({len(combined)}日)が公休上限({quota}日)を超過"
+                )
+            _night_only_rest_wish_pre[sidx] = combined
+
+        # チェック E: 前月引き継ぎとの競合
+        for s in range(self.num_staff):
+            work_type = self.staff_list[s].get("workType", "2kohtai")
+            if work_type not in ("2kohtai", "night_only"):
+                continue
+            staff_id = self.staff_list[s]["id"]
+            staff_name = self.staff_list[s].get("name", staff_id)
+            prev_data = self.prev_month_data.get(staff_id, {})
+            last_day = prev_data.get("lastDay", "")
+            # forced: {day_number(1-indexed): forced_shift}
+            forced = {}
+            if last_day == "night2":
+                forced[1] = "ake"
+                if work_type == "2kohtai":
+                    forced[2] = "off"
+            elif last_day == "ake":
+                forced[1] = "off"
+            if not forced:
+                continue
+            for w in self.wishes:
+                if w.get("staffId") != staff_id:
+                    continue
+                if w.get("type") != "assign":
+                    continue
+                sh = w.get("shift")
+                for day in w.get("days", []):
+                    f_sh = forced.get(day)
+                    if not f_sh:
+                        continue
+                    # off強制日にrefresh/paid希望はOK（どれも休みの一種）
+                    if f_sh == "off" and sh in ("refresh", "paid"):
+                        continue
+                    if sh != f_sh:
+                        wish_errors.append(
+                            f"{staff_name}: {day}日は前月引継ぎで{f_sh}のため{sh}希望は不可"
+                        )
+
+        if wish_errors:
+            msg = "以下の希望が不正です。修正してください:\n" + "\n".join(wish_errors)
+            if log_queue:
+                log_queue.put({'type': 'log', 'msg': f'[事前チェックC/D/E] {msg}'})
+            return {"status": "infeasible", "message": msg, "shifts": {}, "violations": []}
         # ─────────────────────────────────────────────────────────────────
 
         # 変数作成（ソルバー対象職員のみ）
@@ -871,14 +970,7 @@ class ShiftSolver:
                 forced_by_prev[(s, 0)] = "off"
 
         # 希望反映（全てハード制約）
-        # workType別の禁止シフト（希望が不可能な場合はスキップ）
-        _blocked_shifts = {
-            "day_only": {"night2", "junnya", "shinya", "ake", "late"},
-            "2kohtai": {"junnya", "shinya"},
-            "3kohtai": {"night2", "ake"},
-            "night_only": {"day", "late", "junnya", "shinya"},
-        }
-        _night_only_rest_wish_count = {}  # {staff_idx: set[int]} - 適用済み休日希望日付セット（重複排除用）
+        # 不正な希望は事前チェックC/D/Eで弾き済み
         for w in self.wishes:
             sid = w.get("staffId")
             sidx = self.staff_id_to_idx.get(sid)
@@ -889,40 +981,10 @@ class ShiftSolver:
             sh = w.get("shift")
             if sh not in SHIFT_IDX:
                 continue
-            staff_name = self.staff_list[sidx]["name"]
-            staff_wtype = self.staff_list[sidx].get("workType", "2kohtai")
-
-            # 不可能な希望をスキップ（day_onlyにnight2希望など）
-            blocked = _blocked_shifts.get(staff_wtype, set())
-            if wt == "assign" and sh in blocked:
-                if log_queue:
-                    log_queue.put({'type': 'log', 'msg': f'[希望スキップ] {staff_name}: {sh}は{staff_wtype}では不可'})
-                continue
-
-            # 夜勤専従: 休日希望が公休上限を超える場合はスキップ（INFEASIBLE防止）
-            if staff_wtype == "night_only" and wt == "assign" and sh in ("off", "paid", "refresh"):
-                quota = _night_only_rest_days.get(sidx, 0)
-                # 範囲内のユニーク日付のみカウント（重複・範囲外を除外）
-                new_days = {d for d in days if 0 <= d - 1 < self.num_days} - _night_only_rest_wish_count.get(sidx, set())
-                valid_days_count = len(new_days)
-                already_set = _night_only_rest_wish_count.get(sidx, set())
-                if len(already_set) + valid_days_count > quota:
-                    if log_queue:
-                        log_queue.put({'type': 'log', 'msg': f'[希望スキップ] {staff_name}: 夜勤専従の{sh}希望({valid_days_count}日)が公休上限({quota}日)を超えるためスキップ'})
-                    continue
-                _night_only_rest_wish_count[sidx] = already_set | new_days
 
             for day in days:
                 di = day - 1
                 if di < 0 or di >= self.num_days:
-                    continue
-
-                # 前月引き継ぎで強制されるシフトと競合する希望はスキップ
-                # ただしoff強制日にrefresh/paid希望はOK（どれも休みの一種）
-                forced = forced_by_prev.get((sidx, di))
-                if forced and wt == "assign" and sh != forced and not (forced == "off" and sh in ("refresh", "paid")):
-                    if log_queue:
-                        log_queue.put({'type': 'log', 'msg': f'[希望スキップ] {staff_name}: {day}日は前月引継で{forced}のため{sh}希望をスキップ'})
                     continue
 
                 # 同じ日にoff/refresh/paid希望がある場合、非off希望をスキップ（off優先）
