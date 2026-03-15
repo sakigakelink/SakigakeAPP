@@ -252,7 +252,16 @@ function checkBackupStatus() {
         .then(function (r) { return r.json(); })
         .then(function (res) {
             if (res.status === "success") {
-                updateBackupStatus("💾 " + res.timestamp);
+                var msg = "\uD83D\uDCBE " + res.timestamp;
+                fetch("/api/backup/daily/info")
+                    .then(function (r2) { return r2.json(); })
+                    .then(function (info) {
+                        if (info.count > 0) {
+                            msg += " | \u65E5\u6B21: " + info.count + "\u4E16\u4EE3";
+                        }
+                        updateBackupStatus(msg);
+                    })
+                    .catch(function () { updateBackupStatus(msg); });
             }
         })
         .catch(function (e) { console.warn("fetch error:", e); });
@@ -353,6 +362,67 @@ function restoreFromBackup() {
         .catch(function (e) {
             alert("接続エラー");
         });
+}
+
+function exportSettings() {
+    fetch("/api/settings/export", {method: "POST"})
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+            var blob = new Blob([JSON.stringify(data, null, 2)], {type: "application/json"});
+            var a = document.createElement("a");
+            a.href = URL.createObjectURL(blob);
+            a.download = "sakigake_settings_" + new Date().toISOString().slice(0, 10) + ".json";
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        })
+        .catch(function (e) { alert("\u30A8\u30AF\u30B9\u30DD\u30FC\u30C8\u5931\u6557: " + e); });
+}
+
+function importSettings() {
+    var input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".json";
+    input.onchange = function () {
+        if (!input.files || !input.files[0]) return;
+        var reader = new FileReader();
+        reader.onload = function (e) {
+            var data;
+            try {
+                data = JSON.parse(e.target.result);
+            } catch (err) {
+                alert("\u7121\u52B9\u306AJSON\u30D5\u30A1\u30A4\u30EB\u3067\u3059");
+                return;
+            }
+            if (!data.version || !data.version.startsWith("1.")) {
+                alert("\u672A\u5BFE\u5FDC\u306E\u30D5\u30A1\u30A4\u30EB\u5F62\u5F0F\u3067\u3059");
+                return;
+            }
+            var msg = "\u8A2D\u5B9A\u3092\u30A4\u30F3\u30DD\u30FC\u30C8\u3057\u307E\u3059\u304B\uFF1F\n\u73FE\u5728\u306E\u8A2D\u5B9A\u306F\u81EA\u52D5\u30D0\u30C3\u30AF\u30A2\u30C3\u30D7\u3055\u308C\u307E\u3059\u3002";
+            if (data.employees) msg += "\n\u30FB\u8077\u54E1\u30C7\u30FC\u30BF: " + data.employees.length + "\u4EF6";
+            if (data.wardSettings) msg += "\n\u30FB\u75C5\u68DF\u8A2D\u5B9A: " + Object.keys(data.wardSettings).length + "\u75C5\u68DF";
+            if (data.holidays) msg += "\n\u30FB\u795D\u65E5\u30C7\u30FC\u30BF";
+            if (!confirm(msg)) return;
+            fetch("/api/settings/import", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(data),
+            })
+                .then(function (r) { return r.json(); })
+                .then(function (res) {
+                    if (res.status === "success") {
+                        alert(res.message);
+                        location.reload();
+                    } else {
+                        alert("\u30A4\u30F3\u30DD\u30FC\u30C8\u30A8\u30E9\u30FC: " + res.message);
+                    }
+                })
+                .catch(function (err) { alert("\u63A5\u7D9A\u30A8\u30E9\u30FC: " + err); });
+        };
+        reader.readAsText(input.files[0]);
+    };
+    input.click();
 }
 
 function migrateStaffToBackend() {

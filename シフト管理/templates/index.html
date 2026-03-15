@@ -138,6 +138,8 @@
 <span id="backupStatus" style="font-size:.75rem;color:var(--text2)"></span>
 <button class="btn btn-secondary" onclick="restoreFromBackup()">📥 復元</button>
 <button class="btn btn-success" onclick="migrateStaffToBackend()" title="LocalStorageの職員データをemployees.jsonに移行">📤 移行</button>
+<button class="btn btn-secondary" onclick="exportSettings()" title="職員・病棟設定を一括エクスポート">⬇ 設定書出</button>
+<button class="btn btn-secondary" onclick="importSettings()" title="エクスポートした設定を復元">⬆ 設定読込</button>
 <button class="btn btn-orange" id="importStaffBtn">インポート</button>
 <button class="btn btn-primary" id="addStaffBtn">+新規</button>
 </div>

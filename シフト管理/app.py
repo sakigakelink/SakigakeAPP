@@ -12,7 +12,7 @@ from flask_cors import CORS
 # pythonw.exe 起動時もカレントディレクトリをスクリプト位置に合わせる
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-from routes import register_routes
+from routes import register_routes, start_daily_backup
 
 # Flaskアプリ初期化
 app = Flask(__name__)
@@ -26,6 +26,9 @@ os.makedirs(BACKUP_DIR, exist_ok=True)
 
 # ルート登録
 register_routes(app, BACKUP_DIR)
+
+# 日次バックアップスレッド起動
+start_daily_backup(BACKUP_DIR)
 
 
 def open_browser():

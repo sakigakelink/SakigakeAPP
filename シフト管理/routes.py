@@ -10,7 +10,7 @@ import json as pyjson
 import logging
 import subprocess
 import threading
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from flask import Response, request, jsonify, send_file, render_template, stream_with_context
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4, landscape
@@ -184,6 +184,69 @@ def _safe_internal_error(e, context=""):
     """内部エラーをログに記録し、安全なレスポンスを返す"""
     logger.exception("内部エラー [%s]: %s", context, e)
     return _error_response("サーバー内部エラーが発生しました")
+
+
+def _run_daily_backup(backup_dir, daily_dir):
+    """日次バックアップ実行: backup_latest.json → daily/daily_YYYY-MM-DD.json"""
+    try:
+        latest = os.path.join(backup_dir, "backup_latest.json")
+        if not os.path.exists(latest):
+            return
+        today_str = date.today().isoformat()
+        daily_file = os.path.join(daily_dir, f"daily_{today_str}.json")
+        if os.path.exists(daily_file):
+            return  # 同日バックアップ済み
+        import shutil
+        shutil.copy2(latest, daily_file)
+        _cleanup_daily_backups(daily_dir)
+        logger.info("日次バックアップ完了: %s", daily_file)
+    except Exception as e:
+        logger.exception("日次バックアップエラー: %s", e)
+
+
+def _cleanup_daily_backups(daily_dir):
+    """30日超の日次バックアップを削除（月初分は12ヶ月保持）"""
+    today = date.today()
+    for f in os.listdir(daily_dir):
+        m = re.match(r"daily_(\d{4}-\d{2}-\d{2})\.json", f)
+        if not m:
+            continue
+        try:
+            d = date.fromisoformat(m.group(1))
+        except ValueError:
+            continue
+        age_days = (today - d).days
+        if age_days <= 30:
+            continue
+        if d.day == 1 and age_days <= 365:
+            continue
+        try:
+            os.remove(os.path.join(daily_dir, f))
+        except OSError:
+            pass
+
+
+def start_daily_backup(backup_dir):
+    """日次バックアップスレッド起動（AM3:00に実行）"""
+    daily_dir = os.path.join(backup_dir, "daily")
+    os.makedirs(daily_dir, exist_ok=True)
+
+    # 起動時に当日分がなければ即実行
+    _run_daily_backup(backup_dir, daily_dir)
+
+    def _backup_loop():
+        while True:
+            now = datetime.now()
+            next_run = now.replace(hour=3, minute=0, second=0, microsecond=0)
+            if now >= next_run:
+                next_run += timedelta(days=1)
+            sleep_sec = (next_run - now).total_seconds()
+            time.sleep(sleep_sec)
+            _run_daily_backup(backup_dir, daily_dir)
+
+    t = threading.Thread(target=_backup_loop, daemon=True)
+    t.start()
+    logger.info("日次バックアップスレッド起動（次回: AM3:00）")
 
 
 def register_routes(app, BACKUP_DIR):
@@ -435,6 +498,47 @@ def register_routes(app, BACKUP_DIR):
         except Exception as e:
             return _safe_internal_error(e, "backup_list")
 
+    # === 日次バックアップAPI ===
+    @app.route("/api/backup/daily/list", methods=["GET"])
+    def daily_backup_list():
+        """日次バックアップ一覧"""
+        try:
+            daily_dir = os.path.join(BACKUP_DIR, "daily")
+            if not os.path.isdir(daily_dir):
+                return jsonify({"status": "success", "files": []})
+            files = []
+            for f in sorted(os.listdir(daily_dir), reverse=True):
+                if not f.startswith("daily_") or not f.endswith(".json"):
+                    continue
+                filepath = os.path.join(daily_dir, f)
+                m = re.match(r"daily_(\d{4}-\d{2}-\d{2})\.json", f)
+                files.append({
+                    "filename": f,
+                    "date": m.group(1) if m else "",
+                    "size": os.path.getsize(filepath),
+                })
+            return jsonify({"status": "success", "files": files, "count": len(files)})
+        except Exception as e:
+            return _safe_internal_error(e, "daily_backup_list")
+
+    @app.route("/api/backup/daily/info", methods=["GET"])
+    def daily_backup_info():
+        """日次バックアップ概要（バックアップ状態表示用）"""
+        try:
+            daily_dir = os.path.join(BACKUP_DIR, "daily")
+            if not os.path.isdir(daily_dir):
+                return jsonify({"count": 0, "latest": None})
+            files = sorted([f for f in os.listdir(daily_dir)
+                            if f.startswith("daily_") and f.endswith(".json")], reverse=True)
+            latest = None
+            if files:
+                m = re.match(r"daily_(\d{4}-\d{2}-\d{2})\.json", files[0])
+                if m:
+                    latest = m.group(1)
+            return jsonify({"count": len(files), "latest": latest})
+        except Exception as e:
+            return _safe_internal_error(e, "daily_backup_info")
+
     # === 病棟設定API ===
     SETTINGS_FILE = os.path.join(os.path.dirname(__file__), "shared", "ward_settings.json")
 
@@ -492,6 +596,97 @@ def register_routes(app, BACKUP_DIR):
             return _error_response("病棟設定の保存に失敗しました")
         except Exception as e:
             return _safe_internal_error(e, "save_ward_settings")
+
+    # === 設定エクスポート/インポートAPI ===
+    SHARED_DIR = os.path.join(os.path.dirname(__file__), "shared")
+    HOLIDAYS_FILE = os.path.join(os.path.dirname(__file__), "holidays.json")
+
+    @app.route("/api/settings/export", methods=["POST"])
+    def export_settings():
+        """全設定を1つのJSONとしてエクスポート"""
+        try:
+            export_data = {
+                "exportedAt": datetime.now().isoformat(),
+                "version": "1.0",
+                "employees": [],
+                "wardSettings": {},
+                "holidays": [],
+            }
+
+            emp_path = os.path.join(SHARED_DIR, "employees.json")
+            if os.path.exists(emp_path):
+                with open(emp_path, "r", encoding="utf-8") as f:
+                    export_data["employees"] = pyjson.load(f)
+
+            if os.path.exists(SETTINGS_FILE):
+                with open(SETTINGS_FILE, "r", encoding="utf-8") as f:
+                    export_data["wardSettings"] = pyjson.load(f)
+
+            if os.path.exists(HOLIDAYS_FILE):
+                with open(HOLIDAYS_FILE, "r", encoding="utf-8") as f:
+                    export_data["holidays"] = pyjson.load(f)
+
+            return jsonify(export_data)
+        except Exception as e:
+            return _safe_internal_error(e, "export_settings")
+
+    @app.route("/api/settings/import", methods=["POST"])
+    def import_settings():
+        """エクスポートJSONから設定を復元"""
+        try:
+            data = request.get_json()
+            if not data or not isinstance(data, dict):
+                return jsonify({"status": "error", "message": "無効なデータ"}), 400
+
+            version = data.get("version", "")
+            if not version.startswith("1."):
+                return jsonify({"status": "error", "message": f"未対応のバージョン: {version}"}), 400
+
+            employees = data.get("employees")
+            ward_settings = data.get("wardSettings")
+            holidays = data.get("holidays")
+
+            if employees is not None and not isinstance(employees, list):
+                return jsonify({"status": "error", "message": "employees は配列である必要があります"}), 400
+            if ward_settings is not None and not isinstance(ward_settings, dict):
+                return jsonify({"status": "error", "message": "wardSettings は辞書である必要があります"}), 400
+
+            # インポート前バックアップ
+            pre_backup_dir = os.path.join(SHARED_DIR, "pre_import_backup")
+            os.makedirs(pre_backup_dir, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            restored = []
+
+            if employees is not None:
+                emp_path = os.path.join(SHARED_DIR, "employees.json")
+                if os.path.exists(emp_path):
+                    import shutil
+                    shutil.copy2(emp_path, os.path.join(pre_backup_dir, f"employees_{timestamp}.json"))
+                atomic_json_write(emp_path, employees)
+                restored.append(f"職員データ({len(employees)}件)")
+
+            if ward_settings is not None:
+                if os.path.exists(SETTINGS_FILE):
+                    import shutil
+                    shutil.copy2(SETTINGS_FILE, os.path.join(pre_backup_dir, f"ward_settings_{timestamp}.json"))
+                atomic_json_write(SETTINGS_FILE, ward_settings)
+                restored.append(f"病棟設定({len(ward_settings)}病棟)")
+
+            if holidays is not None and isinstance(holidays, list):
+                if os.path.exists(HOLIDAYS_FILE):
+                    import shutil
+                    shutil.copy2(HOLIDAYS_FILE, os.path.join(pre_backup_dir, f"holidays_{timestamp}.json"))
+                atomic_json_write(HOLIDAYS_FILE, holidays)
+                restored.append("祝日データ")
+
+            msg = "インポート完了: " + "、".join(restored) if restored else "インポート対象がありません"
+            return jsonify({"status": "success", "message": msg})
+        except (pyjson.JSONDecodeError, OSError) as e:
+            logger.exception("設定インポートエラー: %s", e)
+            return _error_response("設定のインポートに失敗しました")
+        except Exception as e:
+            return _safe_internal_error(e, "import_settings")
 
     @app.route("/api/shutdown", methods=["POST"])
     def shutdown():
