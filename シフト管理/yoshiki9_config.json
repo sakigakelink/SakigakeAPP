@@ -1,0 +1,69 @@
+{
+  "hospital_name": "さきがけホスピタル",
+  "night_band": {
+    "start": "16:30",
+    "end": "08:30"
+  },
+  "shift_schedules": {
+    "3kohtai": {
+      "day": {"start": "08:30", "end": "17:00"},
+      "junnya": {"start": "16:30", "end": "01:00"},
+      "shinya": {"start": "00:30", "end": "09:00"}
+    },
+    "2kohtai": {
+      "day": {"start": "08:30", "end": "17:00"},
+      "night2": {"start": "16:30", "end": "09:00"}
+    }
+  },
+  "shift_hours": {
+    "day":     {"day": 8.0,  "night": 0.5,  "note": "8:30-16:30=日勤, 16:30-17:00=夜勤"},
+    "day_moushiokuri": {"day": 8.0, "night": 0.25, "note": "申し送り者: -0.25h"},
+    "late":    {"day": 8.0,  "night": 0.25, "note": "遅出"},
+    "night2":  {"day": 0.0,  "night": 7.5,  "note": "夜勤入り日: 16:30-0:00"},
+    "ake":     {"day": 0.5,  "night": 8.5,  "note": "夜勤明け日: 0:00-8:30=夜勤, 8:30-9:00=日勤"},
+    "junnya":  {"day": 0.0,  "night": 8.5,  "note": "準夜: 16:30-1:00"},
+    "shinya":  {"day": 0.5,  "night": 8.0,  "note": "深夜: 0:30-8:30=夜勤, 8:30-9:00=日勤"},
+    "off":     {"day": 0.0,  "night": 0.0},
+    "paid":    {"day": 0.0,  "night": 0.0},
+    "refresh": {"day": 0.0,  "night": 0.0}
+  },
+  "ward_configs": {
+    "ward1": {
+      "file_label": "様式9（精神療養 1病棟）",
+      "sheet_name": "特定入院料 (看護職員+看護補助者)",
+      "ward_type": "精神療養病棟入院料",
+      "ratio": "15対1",
+      "ward_count": 1,
+      "bed_count": 60,
+      "wards": ["ichiboutou"],
+      "ward_names": {"ichiboutou": "1病棟"},
+      "has_other_staff_table": true,
+      "has_schedule_section": true,
+      "nurse_ratio_base": 50
+    },
+    "ward3": {
+      "file_label": "様式9（特殊疾患 3病棟）",
+      "sheet_name": "特定入院料 (看護職員+看護補助者)",
+      "ward_type": "特殊疾患入院施設管理加算",
+      "ratio": "10対1",
+      "ward_count": 1,
+      "bed_count": 60,
+      "wards": ["sanbyoutou"],
+      "ward_names": {"sanbyoutou": "3病棟"},
+      "has_other_staff_table": false,
+      "has_schedule_section": false
+    },
+    "ward23": {
+      "file_label": "様式9（15対1 2.3病棟）",
+      "sheet_name": "一般病棟・療養病棟以外の入院基本料",
+      "ward_type": "精神病棟入院基本料",
+      "ratio": "15対1",
+      "ward_count": 2,
+      "bed_count": 120,
+      "wards": ["nibyoutou", "sanbyoutou"],
+      "ward_names": {"nibyoutou": "2病棟", "sanbyoutou": "3病棟"},
+      "has_other_staff_table": true,
+      "has_schedule_section": true
+    }
+  }
+}

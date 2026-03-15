@@ -1,0 +1,44 @@
+{
+  "ward_id": "ichiboutou",
+  "ward_name": "1病棟",
+  "monthlyOff": 9,
+  "staffingRequirements": {
+    "weekday": {
+      "day": 7,
+      "junnya": 2,
+      "shinya": 2
+    },
+    "weekend": {
+      "day": 5,
+      "junnya": 2,
+      "shinya": 2
+    }
+  },
+  "dayAdjustment": {
+    "enabled": true,
+    "comment": "曜日別日勤人数調整: 月・木=基準, 水・金=-1, 火・土=-2, 日祝=休日設定",
+    "monday": 0,
+    "tuesday": -2,
+    "wednesday": -1,
+    "thursday": 0,
+    "friday": -1,
+    "saturday": -2
+  },
+  "shiftRestrictions": {
+    "late": false
+  },
+  "nurseAideConstraints": {
+    "enabled": true,
+    "maxSameShiftJunnya": 1,
+    "maxSameShiftShinya": 1,
+    "maxDayByWeekday": {
+      "sunday": 3,
+      "monday": null,
+      "tuesday": 2,
+      "wednesday": 2,
+      "thursday": null,
+      "friday": 2,
+      "saturday": 2
+    }
+  }
+}

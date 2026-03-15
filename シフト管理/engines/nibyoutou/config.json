@@ -1,0 +1,25 @@
+{
+  "ward_id": "nibyoutou",
+  "ward_name": "2病棟",
+  "monthlyOff": 9,
+  "staffingRequirements": {
+    "weekday": {"day": 7, "night": 2},
+    "weekend": {"day": 5, "night": 2}
+  },
+  "reqDayWeekday": 7,
+  "reqDayHoliday": 5,
+  "reqJunnya": 2,
+  "reqShinya": 2,
+  "reqLate": 1,
+  "maxLate": 4,
+  "dayAdjustment": {
+    "enabled": true,
+    "comment": "曜日別日勤人数調整: 月・金=基準, 木=基準+1, 火・水・土=基準-1, 日祝=休日設定",
+    "monday": 0,
+    "tuesday": -1,
+    "wednesday": -1,
+    "thursday": 1,
+    "friday": 0,
+    "saturday": -1
+  }
+}

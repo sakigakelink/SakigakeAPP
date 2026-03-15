@@ -1,0 +1,17 @@
+{
+  "name": "Sakigake Shift",
+  "short_name": "Shift",
+  "description": "看護シフト管理アプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/static/ico.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

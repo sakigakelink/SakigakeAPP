@@ -1,0 +1,1508 @@
+[
+  {
+    "id": "10060952",
+    "name": "赤井　一之",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 4
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060654",
+    "name": "西　壽子",
+    "ward": "nibyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060766",
+    "name": "内田　ゆき",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060710",
+    "name": "田中　久枝",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060446",
+    "name": "坂田　翔平",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060854",
+    "name": "島田　佳絵",
+    "ward": "sanbyoutou",
+    "shiftCategory": "nightOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060862",
+    "name": "有田　美和",
+    "ward": "sanbyoutou",
+    "shiftCategory": "nightOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 9
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060899",
+    "name": "所谷　征省",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060197",
+    "name": "畑山　晴美",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060933",
+    "name": "國枝　航",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060958",
+    "name": "平松　深雪",
+    "ward": "ichiboutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061018",
+    "name": "久保　彩夏",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060863",
+    "name": "森　摩李子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060949",
+    "name": "北　弘美",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060948",
+    "name": "細田　定子",
+    "ward": "nibyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 8
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060851",
+    "name": "上田　一樹",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060903",
+    "name": "太田　伸",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060987",
+    "name": "小川　修一",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060986",
+    "name": "古林　千加",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060993",
+    "name": "橋本　昌樹",
+    "ward": "nibyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060768",
+    "name": "児玉　規枝",
+    "ward": "nibyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060984",
+    "name": "堀　あゆみ",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060985",
+    "name": "西川　敬太郎",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060778",
+    "name": "細川　恵里",
+    "ward": "nibyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060867",
+    "name": "隠塚　恵夢",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060939",
+    "name": "松藤　智恵美",
+    "ward": "nibyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061038",
+    "name": "吉村　一良",
+    "ward": "ichiboutou",
+    "shiftCategory": "threeShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060951",
+    "name": "田中　理加",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060955",
+    "name": "池田　麻美",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060990",
+    "name": "中原　大輔",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061002",
+    "name": "山口　小百合",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061003",
+    "name": "難波　良彰",
+    "ward": "nibyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10060959",
+    "name": "芥川　今日子",
+    "ward": "nibyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10281029",
+    "name": "濱川　昌子",
+    "ward": "nibyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061007",
+    "name": "平松　英恵",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061042",
+    "name": "末森　愛子",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10281046",
+    "name": "石川　綾",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10281050",
+    "name": "萩原　碧",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10271055",
+    "name": "大岩　千文",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "junkango",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080689",
+    "name": "樋口　裕正",
+    "ward": "sanbyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 8
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": [],
+      "nightRestriction": "junnya_only"
+    }
+  },
+  {
+    "id": "10080483",
+    "name": "崎岡　恵子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 8
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": [],
+      "nightRestriction": "junnya_only"
+    }
+  },
+  {
+    "id": "10080737",
+    "name": "田中　千佳子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080239",
+    "name": "藤村　貴子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080496",
+    "name": "小林　ケイ子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080365",
+    "name": "川原　比呂子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 8
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": [],
+      "nightRestriction": "junnya_only"
+    }
+  },
+  {
+    "id": "10080799",
+    "name": "宗藤　晴美",
+    "ward": "sanbyoutou",
+    "shiftCategory": "threeShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 8
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": [],
+      "nightRestriction": "junnya_only"
+    }
+  },
+  {
+    "id": "10080888",
+    "name": "加藤　玉恵",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340998",
+    "name": "末藤　佳子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340968",
+    "name": "長谷川　仁子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061045",
+    "name": "柴田　亮",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061052",
+    "name": "石井　邦男",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061056",
+    "name": "塩尻　雅子",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10061060",
+    "name": "守屋　稔久",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10281033",
+    "name": "西村　夕貴",
+    "ward": "ichiboutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10070693",
+    "name": "林　大輔",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "junkango",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10071043",
+    "name": "岩佐　崇生",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "junkango",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340440",
+    "name": "松尾　芳子",
+    "ward": "ichiboutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080617",
+    "name": "前野　晶子",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 5
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080680",
+    "name": "畑山　洋一",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080561",
+    "name": "岡﨑　貞夫",
+    "ward": "ichiboutou",
+    "shiftCategory": "twoShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080941",
+    "name": "上田　温奈",
+    "ward": "ichiboutou",
+    "shiftCategory": "threeShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 7
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": [],
+      "nightRestriction": "junnya_only"
+    }
+  },
+  {
+    "id": "10080860",
+    "name": "逸見　祥子",
+    "ward": "ichiboutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10081024",
+    "name": "中井　捺貴",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10080648",
+    "name": "石井　泉",
+    "ward": "ichiboutou",
+    "shiftCategory": "threeShift",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10081041",
+    "name": "伊達　弥生",
+    "ward": "ichiboutou",
+    "shiftCategory": "dayOnly",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10070972",
+    "name": "阿部　忍",
+    "ward": "nibyoutou",
+    "shiftCategory": "threeShift",
+    "type": "junkango",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340973",
+    "name": "卯田　風香",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340974",
+    "name": "大槙　結奈",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340975",
+    "name": "中村　真菜",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340976",
+    "name": "本田　華音",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340977",
+    "name": "石川　ひな子",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340979",
+    "name": "中島　紗葵",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10340982",
+    "name": "笹倉　彩希",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10341001",
+    "name": "石井　結",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10341010",
+    "name": "岩倉　瑞姫",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10341008",
+    "name": "浅津　果音",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10341012",
+    "name": "福永　芽依",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10341037",
+    "name": "中山　華",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  },
+  {
+    "id": "10341036",
+    "name": "冨永　琉花",
+    "ward": "sanbyoutou",
+    "shiftCategory": "flexRequest",
+    "type": "nurseaide",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 0
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
+  }
+]

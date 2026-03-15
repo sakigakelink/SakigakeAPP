@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<link rel="icon" type="image/svg+xml" href="/static/ico.svg">
+<link rel="manifest" href="/static/manifest.json">
+<meta name="theme-color" content="#0f172a">
+<title>Sakigake Shift</title>
+<link rel="stylesheet" href="/static/css/style.css?v=26">
+</head>
+<body>
+<header class="header">
+<div class="header-content" style="display:flex;align-items:center;gap:2rem">
+<div style="font-weight:600;font-size:1.25rem">Sakigake Shift</div>
+<nav class="nav-tabs" id="navTabs" style="margin:0">
+<button class="nav-tab active" data-tab="shift">シフト</button>
+<button class="nav-tab" data-tab="staff">職員</button>
+<button class="nav-tab" data-tab="constraints">制約</button>
+</nav>
+<div style="margin-left:auto">
+<button class="btn btn-secondary" onclick="restartServer()" style="font-size:.8rem">↻ 再読み込み</button>
+<button class="btn btn-danger" onclick="shutdownApp()" style="font-size:.8rem">⏻ 終了</button>
+</div>
+</div>
+</header>
+<main class="main">
+<div id="tab-shift" class="tab-content active">
+<div class="card">
+<div id="mainContent">
+<div class="card-header" style="flex-wrap:wrap;gap:.5rem">
+<div style="display:flex;align-items:center;gap:.5rem">
+<div class="month-sel">
+<button class="month-btn" id="prevMonth">&lt;</button>
+<span id="currentMonth"></span>
+<button class="month-btn" id="nextMonth">&gt;</button>
+</div>
+<div class="ward-tabs" id="wardTabs" style="margin:0"></div>
+</div>
+<div style="display:flex;align-items:center;gap:.5rem">
+<select id="solveMode" class="form-select" style="padding:.4rem .6rem;font-size:.85rem;width:auto">
+<option value="quick" selected>⚡ 通常（30秒）</option>
+<option value="quality">💎 品質重視（90秒）</option>
+</select>
+<button class="btn btn-primary" id="btnSolve">生成開始</button>
+<button class="btn btn-success" id="pdfBtn">PDF出力</button>
+<button class="btn btn-info" id="jsonBtn" style="background:#3b82f6">JSON出力</button>
+<button class="btn btn-secondary" id="clearBtn">クリア</button>
+<span id="actualBtnGroup" style="display:none;margin-left:.5rem;border-left:2px solid var(--bg3);padding-left:.5rem">
+<button class="btn" id="btnActualStart" onclick="startActualTracking()" style="background:#f59e0b;color:#000;font-size:.8rem" title="確定シフトから実績入力を開始">実績入力開始</button>
+<button class="btn" id="btnModeToggle" onclick="toggleActualMode()" style="display:none;font-size:.8rem">予定⇔実績</button>
+<button class="btn btn-danger" id="btnFinalizeActual" onclick="finalizeActual()" style="display:none;font-size:.8rem">実績確定</button>
+</span>
+<button class="btn" id="btnYoshiki9" onclick="showYoshiki9Dialog()" style="display:none;background:#8b5cf6;color:#fff;font-size:.8rem;margin-left:.5rem">様式9出力</button>
+</div>
+</div>
+<div style="padding:.6rem .8rem;background:var(--bg2);border-radius:6px;margin-bottom:.5rem">
+<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.4rem">
+<span style="font-weight:600;font-size:.9rem">📝 希望入力</span>
+<span id="parseResult" style="font-size:.8rem;color:var(--text2);margin-left:auto"></span>
+</div>
+<!-- GUI入力 -->
+<div style="display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin-bottom:.4rem">
+<select id="wishStaffSelect" class="form-select" style="padding:.3rem .5rem;font-size:.85rem;min-width:120px"></select>
+<div id="wishDayChips" style="display:flex;flex-wrap:wrap;gap:2px"></div>
+</div>
+<div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap;margin-bottom:.4rem">
+<div id="wishShiftBtns" style="display:flex;flex-wrap:wrap;gap:4px"></div>
+<button class="btn btn-primary" id="wishCommitBtn" onclick="commitWishQueue()" style="padding:.3rem .8rem;font-size:.85rem;font-weight:600;display:none">確定</button>
+</div>
+<div id="wishQueue" style="display:flex;flex-wrap:wrap;gap:4px;margin-bottom:.3rem"></div>
+<!-- テキスト入力（折りたたみ） -->
+<details style="margin-bottom:.3rem">
+<summary style="font-size:.8rem;color:var(--text2);cursor:pointer">テキスト入力（まとめて入力）</summary>
+<div style="display:flex;align-items:center;gap:.5rem;margin-top:.3rem">
+<input id="wishNatural" class="setting-input" style="flex:1;padding:.3rem .5rem;font-family:monospace;font-size:.85rem" placeholder="例: 内田5休, 山田全有給, 田中月火休">
+<button class="btn btn-primary" onclick="importWishNatural()" style="padding:.3rem .6rem;font-size:.85rem">保存</button>
+</div>
+</details>
+<div id="wishList" style="width:100%;font-size:.8rem"></div>
+</div>
+<div id="solveProgress" style="display:none;margin-bottom:.5rem;padding:.8rem 1rem;background:linear-gradient(135deg,#1e3a5f,#2d5a87);border-radius:8px;color:#fff">
+<div style="display:flex;align-items:center;gap:1rem">
+<div class="spinner" id="solveSpinner"></div>
+<div style="flex:1">
+<div style="font-weight:600;font-size:1rem" id="solveStatus">生成中...</div>
+<div style="font-size:.8rem;opacity:.8" id="solveElapsed">経過時間: 0.0秒</div>
+</div>
+</div>
+<div id="solveLog" style="margin-top:.5rem;font-size:.75rem;opacity:.9;max-height:80px;overflow-y:auto"></div>
+<canvas id="solveChart" width="400" height="120" style="display:none;margin-top:.5rem;background:rgba(0,0,0,.2);border-radius:4px;width:100%;max-width:400px;height:120px"></canvas>
+</div>
+<div id="log" style="display:none;margin-bottom:.5rem;padding:.5rem;background:var(--bg3);border-radius:6px;font-size:.85rem;flex-wrap:wrap;gap:.5rem 1rem"></div>
+<div class="gen-log" id="checkLog" style="display:none;margin-bottom:1rem"></div>
+<div id="shiftStatusBar" style="margin-bottom:.8rem;padding:.8rem 1rem;background:linear-gradient(135deg,var(--bg2),var(--bg3));border-radius:8px;border-left:4px solid var(--blue)">
+<div style="display:flex;align-items:center;gap:1rem;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:.5rem">
+<span id="shiftStatusBadge" class="status-badge draft">仮</span>
+<span id="currentDraftName" style="font-size:1.1rem;font-weight:600;color:var(--text1)">-</span>
+</div>
+<div id="shiftStatusContext" style="font-size:.85rem;color:var(--text2);background:var(--bg1);padding:.3rem .6rem;border-radius:4px"></div>
+<span id="shiftStatusDetail" style="font-size:.8rem;color:var(--text2);margin-left:auto"></span>
+</div>
+</div>
+<div id="draftPanel" style="background:var(--bg2);padding:.8rem;border-radius:8px;margin-bottom:1rem">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.5rem">
+<span style="font-weight:600;font-size:.9rem">📁 保存済みパターン</span>
+<div style="display:flex;gap:.5rem">
+<button class="btn btn-success" onclick="confirmShift()" style="padding:.3rem .6rem;font-size:.8rem">✓ 確定</button>
+<button class="btn btn-secondary" onclick="migrateShiftsToFiles()" style="padding:.3rem .6rem;font-size:.8rem" title="LocalStorageのシフトを新システムに移行">📤 移行</button>
+</div>
+</div>
+<div id="draftList" style="font-size:.85rem"></div>
+</div>
+<div style="overflow-x:auto"><table id="shiftTable"></table></div>
+<div id="fairnessMetrics" style="display:none;margin-top:1rem;background:var(--bg3);padding:1rem;border-radius:8px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+        <h3 style="font-size:1rem;margin:0;color:var(--blue)">📊 公平性・負担評価</h3>
+        <div id="metricsContext" style="font-size:.8rem;color:var(--text2);background:var(--bg2);padding:.3rem .8rem;border-radius:4px"></div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:.6rem;font-size:.85rem" id="metricsGrid"></div>
+</div>
+<div id="personalLoadPanel" style="display:none;margin-top:1rem;background:linear-gradient(135deg,#1e293b,#334155);padding:1rem;border-radius:8px;color:#fff">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem;flex-wrap:wrap;gap:.5rem">
+        <h3 style="font-size:1rem;margin:0;color:#60a5fa">👤 個人負荷スコア v2</h3>
+        <div id="personalLoadContext" style="font-size:.8rem;color:#94a3b8;background:rgba(255,255,255,0.1);padding:.3rem .8rem;border-radius:4px"></div>
+    </div>
+    <div id="personalLoadContent"></div>
+</div>
+
+</div>
+</div>
+</div>
+
+<div id="tab-staff" class="tab-content">
+<div class="card">
+<div class="card-header">
+<span>職員一覧</span>
+<div style="display:flex;align-items:center;gap:.5rem">
+<span id="backupStatus" style="font-size:.75rem;color:var(--text2)"></span>
+<button class="btn btn-secondary" onclick="restoreFromBackup()">📥 復元</button>
+<button class="btn btn-success" onclick="migrateStaffToBackend()" title="LocalStorageの職員データをemployees.jsonに移行">📤 移行</button>
+<button class="btn btn-orange" id="importStaffBtn">インポート</button>
+<button class="btn btn-primary" id="addStaffBtn">+新規</button>
+</div>
+</div>
+<div class="ward-tabs" id="staffWardTabs"></div>
+<div class="staff-list" id="staffList"></div>
+
+<!-- 人員配置設定パネル -->
+<div class="card" style="margin-top:1rem">
+<div class="card-header">
+<span>人員配置設定（病棟別）</span>
+</div>
+<div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem">
+<div>
+<label style="font-size:.8rem;color:var(--text2)">日勤（平日）</label>
+<input type="number" id="reqDayWeekday" value="7" min="1" max="20" class="input-field" style="width:100%">
+</div>
+<div>
+<label style="font-size:.8rem;color:var(--text2)">日勤（土日祝）</label>
+<input type="number" id="reqDayHoliday" value="5" min="1" max="20" class="input-field" style="width:100%">
+</div>
+<div>
+<label style="font-size:.8rem;color:var(--text2)">準夜帯</label>
+<input type="number" id="reqJunnya" value="2" min="1" max="10" class="input-field" style="width:100%">
+</div>
+<div>
+<label style="font-size:.8rem;color:var(--text2)">深夜帯</label>
+<input type="number" id="reqShinya" value="2" min="1" max="10" class="input-field" style="width:100%">
+</div>
+<div id="reqLateWrap">
+<label style="font-size:.8rem;color:var(--text2)">遅出</label>
+<input type="number" id="reqLate" value="1" min="0" max="5" class="input-field" style="width:100%">
+</div>
+<div id="maxLateWrap">
+<label style="font-size:.8rem;color:var(--text2)">遅出上限/月</label>
+<input type="number" id="maxLate" value="4" min="0" max="10" class="input-field" style="width:100%">
+</div>
+<div>
+<label style="font-size:.8rem;color:var(--text2)">公休日数</label>
+<input type="number" id="monthlyOff" value="9" min="6" max="12" class="input-field" style="width:100%" disabled title="月により自動設定">
+</div></div>
+</div>
+</div>
+
+<div id="tab-constraints" class="tab-content">
+<div class="card">
+<div class="card-header">
+<span>制約ルール一覧</span>
+<div class="ward-tabs" id="constraintWardTabs"></div>
+</div>
+<div style="padding:1rem" id="constraintsBody"></div>
+</div>
+</div>
+
+</div>
+</main>
+<div class="modal-overlay" id="shiftModal">
+<div class="modal">
+<div class="modal-header">
+<span id="shiftModalTitle">勤務選択</span>
+<button class="modal-close" id="closeShiftModal">x</button>
+</div>
+<div id="shiftButtons" style="display:grid;grid-template-columns:repeat(3,1fr);gap:.5rem"></div>
+<div id="dayHoursWrap" style="display:none;margin-top:.75rem;padding:.5rem .75rem;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px">
+<label style="font-size:.8rem;color:#1e40af;font-weight:600;display:block;margin-bottom:.3rem">日勤時間数（デフォルト: 7.5h）</label>
+<div style="display:flex;align-items:center;gap:.5rem">
+<input type="number" id="dayHoursInput" step="0.5" min="0" max="12" value="7.5" style="width:70px;padding:.3rem .5rem;border:1px solid #bfdbfe;border-radius:4px;font-size:.95rem;text-align:center">
+<span style="font-size:.85rem;color:#64748b">時間</span>
+<button class="btn shift-day" id="dayHoursConfirm" style="margin-left:auto;padding:.3rem .8rem;font-size:.85rem">確定</button>
+</div>
+</div>
+</div>
+</div>
+<div class="modal-overlay" id="staffModal">
+<div class="modal">
+<div class="modal-header">
+<span id="staffModalTitle">職員</span>
+<button class="modal-close" id="closeStaffModal">x</button>
+</div>
+<form id="staffForm">
+<input type="hidden" id="editStaffId">
+<div id="staffIdDisplay" style="margin-bottom:1rem;display:none">
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">職員ID</label>
+<input type="text" class="form-input" id="staffIdReadonly" readonly style="width:100%;background:var(--bg2);color:#9ca3af">
+</div>
+<div style="margin-bottom:1rem">
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">氏名</label>
+<input type="text" class="form-input" id="staffName" required style="width:100%">
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+<div>
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">病棟</label>
+<select class="form-select" id="staffWard" style="width:100%">
+<option value="1">一病棟</option>
+<option value="2">二病棟</option>
+<option value="3">三病棟</option>
+</select>
+</div>
+<div>
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">勤務区分</label>
+<select class="form-select" id="staffWorkType" style="width:100%" onchange="updateMaxNightHint()">
+<option value="day_only">日勤のみ</option>
+<option value="2kohtai">二交代</option>
+<option value="3kohtai">三交代</option>
+<option value="night_only">夜勤専従</option>
+<option value="fixed">固定シフト</option>
+</select>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+<div>
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">夜勤上限/月</label>
+<input type="number" class="form-input" id="staffMaxNight" value="5" min="0" style="width:100%">
+<small id="maxNightHint" style="color:#888;font-size:.72rem;display:block;margin-top:.2rem;line-height:1.3"></small>
+</div>
+<div>
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">夜勤下限/月</label>
+<input type="number" class="form-input" id="staffMinNight" value="0" min="0" style="width:100%">
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+<div>
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">職種</label>
+<select class="form-select" id="staffType" style="width:100%">
+<option value="nurse">看護師</option>
+<option value="junkango">准看護師</option>
+<option value="nurseaide">NurseAide</option>
+</select>
+</div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+<div>
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">夜勤制限</label>
+<select class="form-select" id="staffNightRestriction" style="width:100%">
+<option value="">なし</option>
+<option value="junnya_only">準夜のみ（深夜不可）</option>
+<option value="shinya_only">深夜のみ（準夜不可）</option>
+</select>
+</div>
+<div></div>
+</div>
+<div id="fixedPatternSection" style="display:none;margin-bottom:1rem">
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">固定シフトパターン（曜日別）</label>
+<div style="display:grid;grid-template-columns:repeat(7,1fr);gap:.3rem;font-size:.85rem">
+<div style="text-align:center"><label>月</label><br><select class="form-select" id="fp0" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+<div style="text-align:center"><label>火</label><br><select class="form-select" id="fp1" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+<div style="text-align:center"><label>水</label><br><select class="form-select" id="fp2" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+<div style="text-align:center"><label>木</label><br><select class="form-select" id="fp3" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+<div style="text-align:center"><label>金</label><br><select class="form-select" id="fp4" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+<div style="text-align:center"><label>土</label><br><select class="form-select" id="fp5" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+<div style="text-align:center"><label>日</label><br><select class="form-select" id="fp6" style="width:100%;font-size:.8rem;padding:.2rem"><option value="day">日勤</option><option value="off">休</option><option value="shinya">深夜</option><option value="junnya">準夜</option><option value="early">早出</option><option value="late">遅出</option></select></div>
+</div>
+</div>
+<div style="text-align:right;margin-top:1.5rem">
+<button type="button" class="btn btn-secondary" id="cancelStaffBtn">キャンセル</button>
+<button type="submit" class="btn btn-primary" style="margin-left:.5rem">保存</button>
+</div>
+</form>
+</div>
+</div>
+<div class="modal-overlay" id="importModal">
+<div class="modal">
+<div class="modal-header">
+<span>職員インポート</span>
+<button class="modal-close" id="closeImportModal">x</button>
+</div>
+<div style="margin-bottom:1rem">
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">病棟</label>
+<select class="form-select" id="importWard" style="width:100%">
+<option value="1">一病棟</option>
+<option value="2">二病棟</option>
+<option value="3">三病棟</option>
+</select>
+</div>
+<div style="margin-bottom:1rem">
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">JSON</label>
+<textarea class="form-textarea" id="importStaffJson" style="min-height:150px"></textarea>
+</div>
+<div style="margin-bottom:1rem">
+<button class="btn btn-secondary" id="previewImportBtn">プレビュー</button>
+<button class="btn btn-secondary" id="sampleImportBtn">サンプル</button>
+</div>
+<div class="import-preview" id="importPreview" style="display:none"></div>
+<div style="text-align:right;margin-top:1.5rem">
+<button class="btn btn-secondary" id="cancelImportBtn">キャンセル</button>
+<button class="btn btn-success" id="execImportBtn" style="margin-left:.5rem">インポート実行</button>
+</div>
+</div>
+</div>
+<div class="modal-overlay" id="actualReasonModal">
+<div class="modal" style="max-width:360px">
+<div class="modal-header">
+<span>変更理由</span>
+<button class="modal-close" onclick="closeActualReasonModal()">x</button>
+</div>
+<div style="margin-bottom:.8rem">
+<span id="actualReasonInfo" style="font-size:.85rem;color:var(--text2)"></span>
+</div>
+<input type="text" id="actualReasonInput" class="form-input" style="width:100%;margin-bottom:1rem" placeholder="例: 急病、研修、交代 など" maxlength="200">
+<div style="text-align:right">
+<button class="btn btn-secondary" onclick="closeActualReasonModal()">キャンセル</button>
+<button class="btn btn-primary" onclick="submitActualChange()" style="margin-left:.5rem">変更</button>
+</div>
+</div>
+</div>
+<div class="modal-overlay" id="yoshiki9Modal">
+<div class="modal" style="max-width:500px">
+<div class="modal-header">
+<span>様式9 Excel出力</span>
+<button class="modal-close" onclick="closeYoshiki9Modal()">x</button>
+</div>
+<div style="margin-bottom:1rem">
+<div style="display:flex;align-items:center;gap:.5rem;margin-bottom:.8rem">
+<label style="font-size:.9rem">対象年月:</label>
+<select id="y9Year" class="form-select" style="width:auto"></select>
+<select id="y9Month" class="form-select" style="width:auto"></select>
+</div>
+<div style="margin-bottom:.8rem">
+<label style="font-size:.9rem;display:block;margin-bottom:.3rem">1日平均入院患者数</label>
+<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.5rem">
+<div><label style="font-size:.75rem;color:var(--text2)">1病棟</label><input type="number" id="y9Patients1" value="58" class="form-input" style="width:100%"></div>
+<div><label style="font-size:.75rem;color:var(--text2)">2病棟</label><input type="number" id="y9Patients2" value="42" class="form-input" style="width:100%"></div>
+<div><label style="font-size:.75rem;color:var(--text2)">3病棟</label><input type="number" id="y9Patients3" value="58" class="form-input" style="width:100%"></div>
+</div>
+</div>
+<div id="y9Status" style="margin-bottom:1rem;font-size:.85rem"></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+<button class="btn btn-primary" onclick="generateYoshiki9('ward1')" style="font-size:.85rem">1病棟（精神療養）</button>
+<button class="btn btn-primary" onclick="generateYoshiki9('ward3')" style="font-size:.85rem">3病棟（特殊疾患）</button>
+<button class="btn btn-primary" onclick="generateYoshiki9('ward23')" style="font-size:.85rem">2.3病棟（15:1）</button>
+<button class="btn btn-success" onclick="generateYoshiki9('all')" style="font-size:.85rem">全て一括(ZIP)</button>
+</div>
+</div>
+</div>
+<script src="/static/js/app.js?v=83"></script>
+</body>
+</html>

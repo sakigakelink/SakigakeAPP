@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+backup/
+nul
+.claude/
+*.xlsx
+*.bak  

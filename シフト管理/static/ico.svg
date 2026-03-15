@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="256" height="256">
+  <defs>
+    <linearGradient id="bgB" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#171133"/> </linearGradient>
+    <linearGradient id="dawn" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#0ea5e9"/> <stop offset="50%" stop-color="#3b82f6"/> <stop offset="100%" stop-color="#f97316"/> </linearGradient>
+    <filter id="shadowB">
+      <feDropShadow dx="0" dy="12" stdDeviation="12" flood-color="#000" flood-opacity="0.5"/>
+    </filter>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgB)"/>
+  
+  <g stroke="#334155" stroke-width="4" opacity="0.4" stroke-linecap="round">
+    <line x1="130" y1="200" x2="382" y2="200"/>
+    <line x1="130" y1="312" x2="382" y2="312"/>
+    <line x1="200" y1="130" x2="200" y2="382"/>
+    <line x1="312" y1="130" x2="312" y2="382"/>
+  </g>
+  
+  <path d="M 140 380 L 220 380 L 380 140 L 300 140 Z" fill="url(#dawn)" filter="url(#shadowB)"/>
+  <path d="M 220 420 L 280 420 L 420 200 L 360 200 Z" fill="url(#dawn)" opacity="0.8"/>
+</svg>
