@@ -3152,6 +3152,122 @@ document.addEventListener("touchmove", function(e) {
 
 var wishQueue = [];
 
+// 希望入力バリデーション
+function validateWish(staffId, days, shift) {
+    // 職員情報取得
+    var staff = null;
+    for (var i = 0; i < D.staff.length; i++) {
+        if (D.staff[i].id === staffId) { staff = D.staff[i]; break; }
+    }
+    if (!staff) return { ok: false, message: "⚠ 職員が見つかりません" };
+
+    var wt = staff.workType || "2kohtai";
+    var name = staff.name || staffId;
+    var restShifts = { off: 1, paid: 1, refresh: 1 };
+    var shiftNames = { day: "日勤", late: "遅出", night2: "夜勤", junnya: "準夜", shinya: "深夜", off: "休み", paid: "有給", ake: "明け", refresh: "リフレ" };
+
+    // 1. workType不整合
+    var blocked = {};
+    if (wt === "day_only") blocked = { night2: 1, junnya: 1, shinya: 1, ake: 1, late: 1 };
+    else if (wt === "2kohtai") blocked = { junnya: 1, shinya: 1 };
+    else if (wt === "3kohtai") blocked = { night2: 1, ake: 1 };
+    else if (wt === "night_only") blocked = { day: 1, late: 1, junnya: 1, shinya: 1 };
+    if (blocked[shift]) {
+        var wtName = WORK_TYPES[wt] || wt;
+        return { ok: false, message: "⚠ " + name + "は" + wtName + "のため" + (shiftNames[shift] || shift) + "は割当不可" };
+    }
+
+    // 2. 同日矛盾チェック（既存wishes + wishQueue）
+    var wk = Y + "-" + M;
+    var existing = D.wishes[wk] || [];
+    var isNewRest = !!restShifts[shift];
+    // 既存wishesから同スタッフの日別シフト種別を収集
+    var dayKinds = {}; // {day: {rest: bool, work: bool}}
+    for (var wi = 0; wi < existing.length; wi++) {
+        var ew = existing[wi];
+        if (ew.staffId !== staffId || ew.type !== "assign") continue;
+        var ewDays = ew.days || [];
+        for (var di = 0; di < ewDays.length; di++) {
+            if (!dayKinds[ewDays[di]]) dayKinds[ewDays[di]] = { rest: false, work: false };
+            if (restShifts[ew.shift]) dayKinds[ewDays[di]].rest = true;
+            else dayKinds[ewDays[di]].work = true;
+        }
+    }
+    // wishQueueからも
+    for (var qi = 0; qi < wishQueue.length; qi++) {
+        var qw = wishQueue[qi];
+        if (qw.staffId !== staffId) continue;
+        var qwDays = qw.days || [];
+        for (var di = 0; di < qwDays.length; di++) {
+            if (!dayKinds[qwDays[di]]) dayKinds[qwDays[di]] = { rest: false, work: false };
+            if (restShifts[qw.shift]) dayKinds[qwDays[di]].rest = true;
+            else dayKinds[qwDays[di]].work = true;
+        }
+    }
+    // 新しい希望との矛盾チェック
+    var conflictDays = [];
+    for (var di = 0; di < days.length; di++) {
+        var d = days[di];
+        var dk = dayKinds[d] || { rest: false, work: false };
+        if ((isNewRest && dk.work) || (!isNewRest && dk.rest)) {
+            conflictDays.push(d);
+        }
+    }
+    if (conflictDays.length > 0) {
+        return { ok: false, message: "⚠ " + name + "の" + conflictDays.join(",") + "日に休みと勤務の希望が重複します" };
+    }
+
+    // 3. 前月引継ぎ競合
+    if (wt === "2kohtai" || wt === "night_only") {
+        var prevData = getPrevMonthStaffData(staffId, Y, M, W);
+        var lastDay = prevData.lastDay;
+        var forced = {}; // {day: forced_shift}
+        if (lastDay === "night2") {
+            forced[1] = "ake";
+            if (wt === "2kohtai") forced[2] = "off";
+        } else if (lastDay === "ake") {
+            forced[1] = "off";
+        }
+        var carryConflicts = [];
+        for (var di = 0; di < days.length; di++) {
+            var d = days[di];
+            var fsh = forced[d];
+            if (!fsh) continue;
+            // off強制日にrefresh/paidはOK
+            if (fsh === "off" && (shift === "refresh" || shift === "paid")) continue;
+            if (shift !== fsh) {
+                carryConflicts.push(d + "日は前月引継ぎで" + (shiftNames[fsh] || fsh));
+            }
+        }
+        if (carryConflicts.length > 0) {
+            return { ok: false, message: "⚠ " + name + ": " + carryConflicts.join("、") + "のため" + (shiftNames[shift] || shift) + "不可" };
+        }
+    }
+
+    // 4. off希望上限（警告のみ）
+    if (shift === "off") {
+        var monthlyOff = parseInt(document.getElementById("monthlyOff").value) || 9;
+        var offCount = 0;
+        for (var wi = 0; wi < existing.length; wi++) {
+            var ew = existing[wi];
+            if (ew.staffId === staffId && ew.type === "assign" && ew.shift === "off") {
+                offCount += (ew.days || []).length;
+            }
+        }
+        for (var qi = 0; qi < wishQueue.length; qi++) {
+            if (wishQueue[qi].staffId === staffId && wishQueue[qi].shift === "off") {
+                offCount += (wishQueue[qi].days || []).length;
+            }
+        }
+        offCount += days.length;
+        if (offCount > monthlyOff) {
+            return { ok: true, message: "⚠ " + name + "のoff希望が" + offCount + "日 → 上限" + monthlyOff + "日を超過（生成時にエラーになる可能性あり）" };
+        }
+    }
+
+    return { ok: true, message: "" };
+}
+
 function addWishFromUI(btn) {
     var staffId = document.getElementById("wishStaffSelect").value;
     if (!staffId) {
@@ -3173,13 +3289,28 @@ function addWishFromUI(btn) {
     // 職員名取得
     var staffName = document.getElementById("wishStaffSelect").selectedOptions[0].textContent;
 
+    // バリデーション
+    var v = validateWish(staffId, selectedDays, shift);
+    if (!v.ok) {
+        document.getElementById("parseResult").textContent = v.message;
+        document.getElementById("parseResult").style.color = "var(--red)";
+        return;
+    }
+
     wishQueue.push({ staffId: staffId, staffName: staffName, days: selectedDays, shift: shift });
 
     // 日付選択・シフトボタン選択をリセット（職員はそのまま）
     resetWishDayChips();
     clearWishShiftBtnSelection();
 
-    document.getElementById("parseResult").textContent = "";
+    if (v.message) {
+        // 警告あり（off上限超過など）だがキューには追加
+        document.getElementById("parseResult").textContent = v.message;
+        document.getElementById("parseResult").style.color = "#eab308";
+    } else {
+        document.getElementById("parseResult").textContent = "";
+        document.getElementById("parseResult").style.color = "";
+    }
     renderWishQueue();
 }
 
