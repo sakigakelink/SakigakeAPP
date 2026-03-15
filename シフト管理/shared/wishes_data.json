@@ -2180,7 +2180,6 @@
       "shift": "off",
       "days": [
         9,
-        18,
         24,
         29
       ]
@@ -2588,7 +2587,6 @@
       "shift": "off",
       "days": [
         17,
-        18,
         22
       ]
     },
@@ -3403,6 +3401,22 @@
       ],
       "shift": "off",
       "isFixed": true
+    },
+    {
+      "staffId": "10060778",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        18
+      ]
+    },
+    {
+      "staffId": "10060710",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        18
+      ]
     }
   ]
 }
