@@ -22,8 +22,6 @@ VALID_WARDS = {"ichiboutou", "nibyoutou", "sanbyoutou", "1", "2", "3"}
 # 有効な職員タイプ
 VALID_STAFF_TYPES = {"nurse", "junkango", "nurseaide"}
 
-# 有効なソルブモード
-VALID_SOLVE_MODES = {"quick", "balanced", "quality"}
 
 
 class ValidationError(Exception):
@@ -135,14 +133,6 @@ def validate_max_night(max_night):
         raise ValidationError("maxNight は 0-31 の範囲である必要があります", "maxNight")
     return max_night
 
-
-def validate_solve_mode(mode):
-    """ソルブモードのバリデーション"""
-    if not mode:
-        return "balanced"  # デフォルト
-    if mode not in VALID_SOLVE_MODES:
-        raise ValidationError(f"無効な solveMode: {mode}", "solveMode")
-    return mode
 
 
 def validate_staff_data(staff):
@@ -261,8 +251,6 @@ def validate_solve_request(data):
         validated["config"] = dict(config)  # 全フィールドを保持
         if "ward" in config:
             validated["config"]["ward"] = validate_ward(config["ward"])
-        if "solveMode" in config:
-            validated["config"]["solveMode"] = validate_solve_mode(config["solveMode"])
         # 数値フィールド（範囲チェック付き）
         range_rules = {
             "reqDayWeekday": (0, 20), "reqDayHoliday": (0, 20),

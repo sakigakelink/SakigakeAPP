@@ -2182,8 +2182,7 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             reqLate: (W === "1" || W === "3") ? 0 : (parseInt(document.getElementById("reqLate").value) || 1),
             maxLate: (W === "1" || W === "3") ? 0 : (parseInt(document.getElementById("maxLate").value) || 4),
             monthlyOff: getMonthlyOff(M),
-            seed: seed,
-            solveMode: document.getElementById("solveMode").value || "quick"
+            seed: seed
         },
         wishes: D.wishes[wk] || [],
         prevMonthData: prevMonthData,

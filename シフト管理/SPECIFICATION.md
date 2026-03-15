@@ -135,12 +135,9 @@ python app.py
 
 ## 5. ソルバー
 
-### 5.1 solveMode（タイムリミット）
-| モード | 制限時間 | 用途 |
-|--------|---------|------|
-| quick | 15秒 | 素早く確認 |
-| balanced | 45秒 | 通常使用 |
-| quality | 90秒 | 高品質重視 |
+### 5.1 ソルバー実行方式
+3つのseed（7, 31, 97）で各15秒、計最大45秒。最良obj（最小値）を採用。
+OPTIMALが出た時点で残りの試行はスキップ。
 
 ### 5.2 解法戦略（v2.0）
 カスケード廃止。厳密解法（attempt_level=1）のみ実行。
@@ -185,7 +182,6 @@ Response: text/event-stream (SSE)
   "wishes": [...],
   "config": {
     "ward": "2",
-    "solveMode": "balanced",
     "reqDayWeekday": 7,
     "reqDayHoliday": 5,
     "reqJunnya": 3,

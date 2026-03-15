@@ -9,7 +9,7 @@ from validation import (
     validate_year, validate_month, validate_day,
     validate_ward, validate_shift, validate_staff_id, validate_staff_name,
     validate_shift_category, validate_staff_type, validate_max_night,
-    validate_solve_mode, validate_ward_settings,
+    validate_ward_settings,
     validate_staff_data, validate_wish, validate_solve_request,
     validate_locked_shifts, validate_draft_name, validate_actual_change,
 )

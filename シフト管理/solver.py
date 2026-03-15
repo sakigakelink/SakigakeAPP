@@ -232,7 +232,7 @@ class ShiftSolver:
                 count += 1
         return count
 
-    def _solve_core(self, log_queue=None):
+    def _solve_core(self, log_queue=None, timeout=15):
         # モデル再作成 (毎回新しいモデルで解く)
         self.model = cp_model.CpModel()
         self.shifts = {}
@@ -1519,7 +1519,7 @@ class ShiftSolver:
         solver = cp_model.CpSolver()
 
         # OR-Tools 最適化フラグ
-        solver.parameters.log_search_progress = True
+        solver.parameters.log_search_progress = not self.config.get("_quiet", False)
         solver.parameters.symmetry_level = 2
         solver.parameters.linearization_level = 2
         solver.parameters.cp_model_presolve = True
@@ -1532,8 +1532,8 @@ class ShiftSolver:
         num_cores = os.cpu_count() or 4
         solver.parameters.num_search_workers = num_cores
 
-        # タイムアウト: 各試行15秒固定（試行回数はsolve()で制御）
-        solver.parameters.max_time_in_seconds = 15
+        # タイムアウト: 各試行の秒数（デフォルト15秒、試行回数はsolve()で制御）
+        solver.parameters.max_time_in_seconds = timeout
 
         seed = self.config.get("seed", 0)
         if seed > 0:
@@ -1665,11 +1665,9 @@ class ShiftSolver:
         cfg = self.config
         debug_log.append(f"Config: ward={cfg.get('ward')}, reqLate={cfg.get('reqLate')}, reqJ={cfg.get('reqJunnya')}, reqS={cfg.get('reqShinya')}, monthlyOff={cfg.get('monthlyOff')}")
 
-        # 複数seed試行でobj最小化（solveMode別: quick=1回, balanced=3回, quality=5回）
-        solve_mode = self.config.get("solveMode", "quick")
-        seeds = [7, 31, 97, 313, 1009]
-        num_trials = {"quick": 1, "balanced": 3, "quality": 5}
-        n = num_trials.get(solve_mode, 1)
+        # 複数seed試行でobj最小化（常に3回×15秒固定）
+        seeds = [7, 31, 97]
+        n = 3
 
         best_res = None
         best_obj = None

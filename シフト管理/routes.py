@@ -219,12 +219,6 @@ def register_routes(app, BACKUP_DIR):
         except ValidationError as e:
             return _error_response(e.message, 400, e.field)
 
-        # モード設定（quick/balanced/quality）
-        solve_mode = data.get("config", {}).get("solveMode", "balanced")
-        if "config" not in data:
-            data["config"] = {}
-        data["config"]["solveMode"] = solve_mode
-
         # 固定シフト職員: 希望入力（assign）をfixedShiftsにマージ
         # 直接入力と希望入力どちらで入れても同等に扱う
         fixed_staff_list = [s for s in data.get("staff", []) if s.get("workType") == "fixed"]

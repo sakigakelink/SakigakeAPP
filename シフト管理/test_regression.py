@@ -60,7 +60,7 @@ for wn, cfg in WARD_CONFIGS.items():
         k2 = [s for s in sp if s['workType'] == '2kohtai']
         for s in k2[:2]:
             prev[s["id"]] = {"lastDay": "night2"}
-    data = {"year": 2026, "month": 4, "staff": sp, "config": {**cfg, "seed": 42, "solveMode": "balanced"},
+    data = {"year": 2026, "month": 4, "staff": sp, "config": {**cfg, "seed": 42},
             "wishes": ward_wishes, "prevMonthData": prev}
     ok = run_test(f"Ward {wn} (wishes={len(ward_wishes)})", data)
     if ok != "OK": failed.append(f"Ward {wn}")
