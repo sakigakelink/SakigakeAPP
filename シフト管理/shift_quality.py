@@ -51,7 +51,7 @@ def evaluate_shift_quality(result, data):
 
     Args:
         result: ShiftSolver.solve() の返却値
-        data: ソルバーに渡した入力データ (year, month, staff, wishes, config)
+        data: ソルバーに渡した入力データ (year, month, staff, config)
 
     Returns:
         dict: 品質スコアカード
@@ -61,7 +61,6 @@ def evaluate_shift_quality(result, data):
     year = data["year"]
     month = data["month"]
     num_days = calendar.monthrange(year, month)[1]
-    wishes = data.get("wishes", [])
 
     # --- 各職員のシフトリスト構築 ---
     night_counts = []
@@ -117,26 +116,6 @@ def evaluate_shift_quality(result, data):
     consec_max = max(consecutive_maxes) if consecutive_maxes else 0
     consec_avg = round(sum(consecutive_maxes) / len(consecutive_maxes), 1) if consecutive_maxes else 0
 
-    # --- 希望達成率 ---
-    wish_total = 0
-    wish_met = 0
-    for w in wishes:
-        sid = w.get("staffId")
-        wtype = w.get("type")
-        shift_val = w.get("shift")
-        for day in w.get("days", []):
-            wish_total += 1
-            actual = shifts.get(f"{sid}-{day}", "")
-            if wtype == "assign":
-                if shift_val in ("off", "paid") and actual in REST_SHIFTS:
-                    wish_met += 1
-                elif actual == shift_val:
-                    wish_met += 1
-            elif wtype == "avoid":
-                if actual != shift_val:
-                    wish_met += 1
-    wish_rate = round(wish_met / wish_total * 100, 1) if wish_total > 0 else None
-
     # --- ソルバースコア ---
     opt = result.get("optimization_score", {})
 
@@ -149,9 +128,6 @@ def evaluate_shift_quality(result, data):
         "late_gini": late_gini,
         "consec_max": consec_max,
         "consec_avg": consec_avg,
-        "wish_total": wish_total,
-        "wish_met": wish_met,
-        "wish_rate": wish_rate,
         "objective_value": opt.get("objective_value"),
         "night_diff": opt.get("night_diff"),
     }
@@ -164,8 +140,6 @@ def format_quality(q):
         f"週末公平={q['weekend_grade']}({q['weekend_gini']:.2f})",
         f"連勤max={q['consec_max']}",
     ]
-    if q["wish_rate"] is not None:
-        parts.append(f"希望達成={q['wish_rate']:.0f}%")
     if q["objective_value"] is not None:
         parts.append(f"obj={q['objective_value']:.0f}")
     return " ".join(parts)
