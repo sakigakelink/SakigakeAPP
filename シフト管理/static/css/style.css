@@ -18,6 +18,7 @@ body{font-family:'Helvetica Neue',Arial,sans-serif;background:var(--bg);color:va
 .btn-success{background:var(--green);color:#fff}
 .btn-secondary{background:var(--text2);color:#fff}
 .btn-danger{background:var(--red);color:#fff}
+.btn-warning{background:#eab308;color:#000}
 .btn-purple{background:var(--purple);color:#fff}
 .btn-orange{background:var(--orange);color:#fff}
 .form-input,.form-select,.input-field{padding:.5rem;background:var(--bg2);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:.9rem}
@@ -129,6 +130,12 @@ th{background:var(--bg3);font-weight:600}
 .draft-item .draft-date{color:var(--text2);font-size:.75rem}
 .draft-item .draft-selected{color:#6366f1;font-size:.8rem;font-weight:bold}
 .draft-item button{padding:.2rem .5rem;font-size:.75rem}
+.draft-item .draft-penalties{font-size:.7rem;display:inline-flex;gap:.2rem;flex-wrap:wrap}
+.draft-item .draft-penalties .penalty-badge{padding:1px 4px;border-radius:3px;background:rgba(239,68,68,0.15);color:#ef4444;font-size:.65rem;white-space:nowrap}
+.draft-item .draft-penalties .penalty-badge.good{background:rgba(16,185,129,0.15);color:#10b981}
+.cell-diff{background:rgba(250,204,21,0.35) !important;box-shadow:inset 0 0 0 1px #eab308}
+.compare-banner{display:flex;align-items:center;gap:.8rem;padding:.5rem 1rem;margin-bottom:.5rem;background:rgba(250,204,21,0.15);border:1px solid #eab308;border-radius:6px;font-size:.85rem}
+.compare-banner button{margin-left:auto}
 
 .change-history{max-height:200px;overflow-y:auto;font-size:.8rem}
 .change-history-item{padding:.4rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}

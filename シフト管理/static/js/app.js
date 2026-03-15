@@ -22,6 +22,8 @@ var M = _now.getMonth() === 11 ? 1 : _now.getMonth() + 2;
 var W = "2";
 var sel = null;
 var currentViewDraft = null; // 現在表示中の案名
+var compareDraftShifts = null; // 比較対象のシフトデータ（フラット形式）
+var compareDraftName = null; // 比較対象の案名
 var solveTimer = null;
 var solveStartTime = null;
 var solveChartData = [];
@@ -324,12 +326,13 @@ function loadDraftList() {
             var draftNameEl = document.getElementById("currentDraftName");
             var contextEl = document.getElementById("shiftStatusContext");
 
-            // シフトデータをキャッシュ（実績ボタン表示用）
+            // シフトデータをキャッシュ（実績ボタン表示用・比較用）
             if (!D._shiftFiles) D._shiftFiles = {};
             var sk = Y + "-" + M + "-" + W;
             if (data.exists !== false) {
                 D._shiftFiles[sk] = data;
             }
+            window._lastDraftData = data;
             updateActualButtons();
 
             // コンテキスト表示（常に）
@@ -381,6 +384,10 @@ function loadDraftList() {
                 html += "<div class='draft-item" + (isSelected ? " selected" : "") + "'>";
                 html += "<span class='draft-name'>" + escHtml(name) + "</span>";
                 html += "<span class='draft-score'>" + score + "点</span>";
+                // ペナルティバッジ
+                if (draft.shifts) {
+                    html += "<span class='draft-penalties'>" + getDraftPenaltySummary(draft.shifts) + "</span>";
+                }
                 html += "<span class='draft-date'>" + createdAt + "</span>";
                 if (isSelected) {
                     html += "<span class='draft-selected'>← 選択中</span>";
@@ -390,6 +397,15 @@ function loadDraftList() {
                     html += "<button class='btn btn-secondary' onclick=\"loadDraft('" + name + "')\">表示</button>";
                 } else {
                     html += "<span class='draft-selected'>表示中</span>";
+                }
+                // 比較ボタン（表示中でない案のみ）
+                if (!isViewing) {
+                    var isComparing = (name === compareDraftName);
+                    if (isComparing) {
+                        html += "<button class='btn btn-warning' onclick=\"clearCompareDraft()\">比較解除</button>";
+                    } else {
+                        html += "<button class='btn btn-secondary' onclick=\"setCompareDraft('" + name + "')\">比較</button>";
+                    }
                 }
                 if (!isSelected) {
                     html += "<button class='btn btn-primary' onclick=\"selectDraft('" + name + "')\">仮に設定</button>";
@@ -1636,7 +1652,13 @@ function render() {
                     cellContent += "<span class=\"day-hours-sub\">" + parseFloat(dh) + "</span>";
                 }
             }
-            html += "<td class=\"shift-cell" + cls + cellHolCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\">" + cellContent + "</td>";
+            // 比較差分ハイライト
+            var diffCls = "";
+            if (compareDraftShifts) {
+                var compVal = compareDraftShifts[s.id + "-" + d] || "";
+                if (compVal !== sh) diffCls = " cell-diff";
+            }
+            html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\">" + cellContent + "</td>";
         }
         html += "<td>" + dc + "</td><td>" + nc + "</td><td>" + oc + "</td></tr>";
     }
@@ -1698,6 +1720,22 @@ function render() {
     }
     html += "</tbody>";
     t.innerHTML = html;
+
+    // 比較中バナー表示
+    var bannerEl = document.getElementById("compareBanner");
+    if (!bannerEl) {
+        bannerEl = document.createElement("div");
+        bannerEl.id = "compareBanner";
+        t.parentNode.insertBefore(bannerEl, t);
+    }
+    if (compareDraftName) {
+        bannerEl.className = "compare-banner";
+        bannerEl.innerHTML = "&#x1F4CA; <b>" + escHtml(compareDraftName) + "</b>と比較中 <button class='btn btn-secondary' onclick='clearCompareDraft()'>比較解除</button>";
+    } else {
+        bannerEl.className = "";
+        bannerEl.innerHTML = "";
+    }
+
     var cells = document.querySelectorAll(".shift-cell[data-staff]");
     for (var i = 0; i < cells.length; i++) {
         cells[i].addEventListener("click", function () {
@@ -4773,6 +4811,75 @@ function renderPenaltySummary(penalties) {
     if (penalties.good_rotation) items.push("好" + penalties.good_rotation);
     if (items.length === 0) return '<span style="color:#6ee7b7;font-size:.7rem">問題なし</span>';
     return '<span style="font-size:.7rem;color:#94a3b8">' + items.join(" ") + '</span>';
+}
+
+// ドラフトのshifts（職員別形式）からペナルティ合計を軽量集計してバッジHTMLを返す
+function getDraftPenaltySummary(draftShifts) {
+    var staff = [];
+    for (var i = 0; i < D.staff.length; i++) {
+        if (D.staff[i].ward === W) staff.push(D.staff[i]);
+    }
+    var days = new Date(Y, M, 0).getDate();
+
+    // 希望マップ構築
+    var wk = Y + "-" + M;
+    var wishes = D.wishes[wk] || [];
+    var wishMap = {};
+    for (var wi = 0; wi < wishes.length; wi++) {
+        var w = wishes[wi];
+        var wdays = w.days || [];
+        for (var wdi = 0; wdi < wdays.length; wdi++) {
+            if (w.type === "assign") wishMap[w.staffId + "-" + wdays[wdi]] = w.shift;
+        }
+    }
+
+    // フラット形式に変換
+    var flatShifts = {};
+    for (var staffId in draftShifts) {
+        var daysMap = draftShifts[staffId];
+        for (var day in daysMap) {
+            flatShifts[staffId + "-" + day] = daysMap[day];
+        }
+    }
+
+    // 全スタッフのペナルティを合算
+    var totals = {
+        consec_5: 0, consec_6: 0, night_interval_close: 0,
+        shinya_no_rest: 0, scattered_night: 0, junnya_off_shinya: 0,
+        day_to_shinya: 0, kibou_night: 0, junnya_shinya_balance: 0,
+        good_rotation: 0
+    };
+    for (var si = 0; si < staff.length; si++) {
+        var s = staff[si];
+        var wt = s.workType || "2kohtai";
+        if (wt === "fixed" || wt === "day_only") continue;
+        var prevData = getPrevMonthStaffData(s.id, Y, M, W);
+        var ps = calculatePersonalLoad(s.id, flatShifts, days, wt, Y, M, wishMap, prevData);
+        for (var k in totals) totals[k] += (ps.penalties[k] || 0);
+    }
+    return renderPenaltySummary(totals);
+}
+
+// 比較対象ドラフトを設定
+function setCompareDraft(name) {
+    // loadDraftListのキャッシュからデータ取得
+    if (!window._lastDraftData || !window._lastDraftData.drafts[name]) return;
+    var draftShifts = window._lastDraftData.drafts[name].shifts;
+    compareDraftShifts = {};
+    for (var staffId in draftShifts) {
+        var daysMap = draftShifts[staffId];
+        for (var day in daysMap) {
+            compareDraftShifts[staffId + "-" + day] = daysMap[day];
+        }
+    }
+    compareDraftName = name;
+    render();
+}
+
+function clearCompareDraft() {
+    compareDraftShifts = null;
+    compareDraftName = null;
+    render();
 }
 
 function calculateVersionMetrics(shifts) {
