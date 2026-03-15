@@ -12,6 +12,10 @@ from validation import (
     validate_ward_settings,
     validate_staff_data, validate_wish, validate_solve_request,
     validate_locked_shifts, validate_draft_name, validate_actual_change,
+    validate_backup_data,
+    convert_shift_category_to_work_type, convert_work_type_to_shift_category,
+    convert_ward_id_to_code, convert_ward_code_to_id,
+    employee_to_frontend, frontend_to_employee,
 )
 
 
@@ -348,6 +352,219 @@ class TestSolveRequestComprehensive:
         }
         result = validate_solve_request(data)
         assert result["lockedShifts"]["s1-1"] == "day"
+
+
+# === validate_staff_type ===
+class TestValidateStaffType:
+    def test_valid_nurse(self):
+        assert validate_staff_type("nurse") == "nurse"
+
+    def test_valid_junkango(self):
+        assert validate_staff_type("junkango") == "junkango"
+
+    def test_valid_nurseaide(self):
+        assert validate_staff_type("nurseaide") == "nurseaide"
+
+    def test_none_default(self):
+        assert validate_staff_type(None) == "nurse"
+
+    def test_empty_default(self):
+        assert validate_staff_type("") == "nurse"
+
+    def test_invalid(self):
+        with pytest.raises(ValidationError, match="無効な type"):
+            validate_staff_type("doctor")
+
+
+# === validate_backup_data ===
+class TestValidateBackupData:
+    def test_valid(self):
+        data = {"key": "value"}
+        assert validate_backup_data(data) == data
+
+    def test_not_dict(self):
+        with pytest.raises(ValidationError, match="辞書"):
+            validate_backup_data("string")
+
+    def test_list(self):
+        with pytest.raises(ValidationError, match="辞書"):
+            validate_backup_data([1, 2])
+
+    def test_empty_dict(self):
+        assert validate_backup_data({}) == {}
+
+
+# === convert_shift_category_to_work_type ===
+class TestConvertShiftCategoryToWorkType:
+    def test_two_shift(self):
+        assert convert_shift_category_to_work_type("twoShift") == "2kohtai"
+
+    def test_three_shift(self):
+        assert convert_shift_category_to_work_type("threeShift") == "3kohtai"
+
+    def test_day_only(self):
+        assert convert_shift_category_to_work_type("dayOnly") == "day_only"
+
+    def test_night_only(self):
+        assert convert_shift_category_to_work_type("nightOnly") == "night_only"
+
+    def test_flex_request(self):
+        assert convert_shift_category_to_work_type("flexRequest") == "fixed"
+
+    def test_unknown_default(self):
+        assert convert_shift_category_to_work_type("unknown") == "2kohtai"
+
+
+# === convert_work_type_to_shift_category ===
+class TestConvertWorkTypeToShiftCategory:
+    def test_2kohtai(self):
+        assert convert_work_type_to_shift_category("2kohtai") == "twoShift"
+
+    def test_3kohtai(self):
+        assert convert_work_type_to_shift_category("3kohtai") == "threeShift"
+
+    def test_day_only(self):
+        assert convert_work_type_to_shift_category("day_only") == "dayOnly"
+
+    def test_night_only(self):
+        assert convert_work_type_to_shift_category("night_only") == "nightOnly"
+
+    def test_fixed(self):
+        assert convert_work_type_to_shift_category("fixed") == "flexRequest"
+
+    def test_unknown_default(self):
+        assert convert_work_type_to_shift_category("unknown") == "twoShift"
+
+
+# === convert_ward_id_to_code / convert_ward_code_to_id ===
+class TestConvertWard:
+    def test_id_to_code(self):
+        assert convert_ward_id_to_code("ichiboutou") == "1"
+        assert convert_ward_id_to_code("nibyoutou") == "2"
+        assert convert_ward_id_to_code("sanbyoutou") == "3"
+
+    def test_id_to_code_unknown(self):
+        assert convert_ward_id_to_code("unknown") == "unknown"
+
+    def test_code_to_id(self):
+        assert convert_ward_code_to_id("1") == "ichiboutou"
+        assert convert_ward_code_to_id("2") == "nibyoutou"
+        assert convert_ward_code_to_id("3") == "sanbyoutou"
+
+    def test_code_to_id_int(self):
+        assert convert_ward_code_to_id(2) == "nibyoutou"
+
+    def test_code_to_id_unknown(self):
+        assert convert_ward_code_to_id("9") == "9"
+
+
+# === employee_to_frontend ===
+class TestEmployeeToFrontend:
+    def test_basic(self):
+        emp = {
+            "id": "123", "name": "田中",
+            "ward": "nibyoutou", "shiftCategory": "twoShift",
+            "type": "nurse",
+            "personalRules": {"nightShift": {"maxPerMonth": 4}},
+        }
+        f = employee_to_frontend(emp)
+        assert f["id"] == "123"
+        assert f["name"] == "田中"
+        assert f["ward"] == "2"
+        assert f["workType"] == "2kohtai"
+        assert f["type"] == "nurse"
+        assert f["maxNight"] == 4
+
+    def test_defaults(self):
+        emp = {"id": "x", "name": "Y"}
+        f = employee_to_frontend(emp)
+        assert f["ward"] == "2"  # nibyoutou default
+        assert f["workType"] == "2kohtai"
+        assert f["maxNight"] == 5
+
+    def test_min_night(self):
+        emp = {
+            "id": "x", "name": "Y",
+            "personalRules": {"nightShift": {"maxPerMonth": 5, "minPerMonth": 2}},
+        }
+        f = employee_to_frontend(emp)
+        assert f["minNight"] == 2
+
+    def test_no_min_night(self):
+        emp = {"id": "x", "name": "Y", "personalRules": {"nightShift": {"maxPerMonth": 5}}}
+        f = employee_to_frontend(emp)
+        assert "minNight" not in f
+
+    def test_night_restriction(self):
+        emp = {
+            "id": "x", "name": "Y",
+            "personalRules": {"nightRestriction": "no_consecutive"},
+        }
+        f = employee_to_frontend(emp)
+        assert f["nightRestriction"] == "no_consecutive"
+
+    def test_fixed_pattern(self):
+        emp = {"id": "x", "name": "Y", "fixedPattern": {"1": "day", "2": "off"}}
+        f = employee_to_frontend(emp)
+        assert f["fixedPattern"] == {"1": "day", "2": "off"}
+
+
+# === frontend_to_employee ===
+class TestFrontendToEmployee:
+    def test_basic(self):
+        staff = {
+            "id": "123", "name": "田中",
+            "ward": "2", "workType": "2kohtai",
+            "type": "nurse", "maxNight": 4,
+        }
+        e = frontend_to_employee(staff)
+        assert e["id"] == "123"
+        assert e["name"] == "田中"
+        assert e["ward"] == "nibyoutou"
+        assert e["shiftCategory"] == "twoShift"
+        assert e["type"] == "nurse"
+        assert e["personalRules"]["nightShift"]["maxPerMonth"] == 4
+
+    def test_day_only_zero_night(self):
+        staff = {"id": "1", "name": "A", "workType": "day_only", "maxNight": 5}
+        e = frontend_to_employee(staff)
+        assert e["personalRules"]["nightShift"]["maxPerMonth"] == 0
+
+    def test_fixed_zero_night(self):
+        staff = {"id": "1", "name": "A", "workType": "fixed", "maxNight": 3}
+        e = frontend_to_employee(staff)
+        assert e["personalRules"]["nightShift"]["maxPerMonth"] == 0
+
+    def test_min_night(self):
+        staff = {"id": "1", "name": "A", "minNight": 2}
+        e = frontend_to_employee(staff)
+        assert e["personalRules"]["nightShift"]["minPerMonth"] == 2
+
+    def test_no_min_night(self):
+        staff = {"id": "1", "name": "A"}
+        e = frontend_to_employee(staff)
+        assert "minPerMonth" not in e["personalRules"]["nightShift"]
+
+    def test_night_restriction(self):
+        staff = {"id": "1", "name": "A", "nightRestriction": "no_consecutive"}
+        e = frontend_to_employee(staff)
+        assert e["personalRules"]["nightRestriction"] == "no_consecutive"
+
+    def test_roundtrip(self):
+        """employee_to_frontend → frontend_to_employee の往復で主要フィールド保持"""
+        emp = {
+            "id": "99", "name": "佐藤",
+            "ward": "sanbyoutou", "shiftCategory": "threeShift",
+            "type": "junkango",
+            "personalRules": {"nightShift": {"maxPerMonth": 3}},
+        }
+        f = employee_to_frontend(emp)
+        e = frontend_to_employee(f)
+        assert e["id"] == "99"
+        assert e["name"] == "佐藤"
+        assert e["ward"] == "sanbyoutou"
+        assert e["shiftCategory"] == "threeShift"
+        assert e["personalRules"]["nightShift"]["maxPerMonth"] == 3
 
 
 if __name__ == "__main__":

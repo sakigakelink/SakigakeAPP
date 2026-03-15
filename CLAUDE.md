@@ -19,7 +19,9 @@
 - OR-Tools CP-SAT ソルバーによるシフト自動生成
 - solver.py が中核ファイル（約1600行）
 - 依存パッケージ: `pip install -r シフト管理/requirements.txt`
-- テスト: `cd シフト管理 && python -m pytest test_validation.py`（61テスト）
+- テスト: `cd シフト管理 && python -m pytest test_validation.py`（101テスト）
+- テスト: `cd シフト管理 && python -m pytest test_shift_quality.py`（36テスト: 品質評価）
+- テスト: `cd シフト管理 && python -m pytest test_solver_boundary.py`（14テスト: ソルバー境界・診断）
 - テスト: `cd シフト管理 && python -m pytest test_regression.py`（全病棟の回帰テスト、実行に数分かかる）
 - テストはローカル・リモートどちらでも実行可能
 
