@@ -60,6 +60,11 @@ python app.py
 | 2病棟（nibyoutou） | 可（reqLate=1, maxLate=4） | |
 | 3病棟（sanbyoutou） | 不可（reqLate=0, maxLate=0） | solver.pyで強制 |
 
+### 2.4 1病棟の職種別制約（engines/ichiboutou/config.json）
+- **有資格者（nurse+junkango）日勤最低人数**: 曜日別ハード制約（火土=3名、水金=4名、日祝=2名、月木=制限なし）
+- **全時間帯で正看護師（nurse）最低1名**: 日勤・準夜帯・深夜帯それぞれにnurseが必ず1名以上
+- **看護補助者（nurseaide）夜勤制限**: 準夜帯・深夜帯それぞれ最大1名/日
+
 ---
 
 ## 3. 制約条件
@@ -80,6 +85,9 @@ python app.py
 | maxNight上限 | 職員ごとの月間夜勤上限（employees.jsonで設定） |
 | 前月引き継ぎ | 前月末シフト状態を月初の制約に反映 |
 | 希望休厳守 | off/refresh/paid の assign 希望は全レベルでハード制約（緩和不可） |
+| 有資格者日勤最低人数 | 1病棟: 曜日別に nurse+junkango の日勤最低人数を保証（config.json設定） |
+| 全帯nurse最低1名 | 1病棟: 日勤・準夜帯・深夜帯で正看護師が最低1名（config.json設定） |
+| 看護補助者夜勤上限 | 1病棟: 準夜帯・深夜帯の nurseaide 各最大1名（config.json設定） |
 
 ### 3.2 前月引き継ぎ詳細
 前月確定データから以下を自動取得してソルバーに渡す:

@@ -172,3 +172,117 @@ class TestSolverEdgeCases:
         data["month"] = 2
         solver = ShiftSolver(data)
         assert solver.num_days == 29
+
+
+# === 1病棟 職種別制約テスト ===
+def _make_staff_typed(sid, name, wt="2kohtai", staff_type="nurse", max_night=5):
+    """typeフィールド付きの職員データ"""
+    return {"id": sid, "name": name, "workType": wt, "type": staff_type,
+            "maxNight": max_night}
+
+
+def _ward1_data(staff, **kwargs):
+    """1病棟用のテストデータ"""
+    d = {
+        "year": 2026, "month": 4,  # 4月: 1日=水曜
+        "staff": staff,
+        "config": {
+            "ward": "1",
+            "reqDayWeekday": 7, "reqDayHoliday": 5,
+            "reqJunnya": 2, "reqShinya": 2,
+            "reqLate": 0, "maxLate": 0, "monthlyOff": 9,
+        },
+        "wishes": [],
+        "prevMonthData": {},
+    }
+    d.update(kwargs)
+    return d
+
+
+class TestWard1QualifiedStaffConstraints:
+    """1病棟の有資格者最低人数・nurse最低1名・nurseaide夜勤上限テスト"""
+
+    def _build_ward1_staff(self):
+        """1病棟テスト用: nurse 10名 + junkango 3名 + nurseaide 5名 = 18名"""
+        staff = []
+        for i in range(10):
+            staff.append(_make_staff_typed(f"n{i}", f"看護師{i}", "2kohtai", "nurse", 4))
+        for i in range(3):
+            staff.append(_make_staff_typed(f"j{i}", f"准看{i}", "3kohtai", "junkango", 5))
+        for i in range(5):
+            staff.append(_make_staff_typed(f"a{i}", f"助手{i}", "3kohtai", "nurseaide", 5))
+        return staff
+
+    def test_ward1_qualified_minimum_enforced(self):
+        """1病棟: 有資格者(nurse+junkango)日勤最低人数が守られること"""
+        from datetime import date as dt
+        staff = self._build_ward1_staff()
+        data = _ward1_data(staff)
+        result = ShiftSolver(data).solve()
+        assert result["status"].lower() in ("optimal", "feasible"), f"解なし: {result.get('message')}"
+
+        shifts = result["shifts"]  # フラット形式: {"staffId-day": "shift"}
+        num_days = 30  # 2026年4月
+        WD_MIN = {1: 3, 2: 4, 4: 4, 5: 3}  # 火=3, 水=4, 金=4, 土=3
+        HOLIDAY_MIN = 2
+
+        qualified_ids = {s["id"] for s in staff if s["type"] in ("nurse", "junkango")}
+        for d in range(1, num_days + 1):
+            d_obj = dt(2026, 4, d)
+            weekday = d_obj.weekday()
+            is_sun = weekday == 6
+            if is_sun:
+                min_q = HOLIDAY_MIN
+            elif weekday in WD_MIN:
+                min_q = WD_MIN[weekday]
+            else:
+                continue  # 月木は制限なし
+            q_day_count = sum(1 for sid in qualified_ids
+                              if shifts.get(f"{sid}-{d}") == "day")
+            assert q_day_count >= min_q, \
+                f"4/{d}({['月','火','水','木','金','土','日'][weekday]}): 有資格者日勤{q_day_count}名 < 最低{min_q}名"
+
+    def test_ward1_nurse_minimum_all_bands(self):
+        """1病棟: 全時間帯でnurse最低1名"""
+        staff = self._build_ward1_staff()
+        data = _ward1_data(staff)
+        result = ShiftSolver(data).solve()
+        assert result["status"].lower() in ("optimal", "feasible"), f"解なし: {result.get('message')}"
+
+        shifts = result["shifts"]  # フラット形式: {"staffId-day": "shift"}
+        num_days = 30
+        nurse_ids = {s["id"] for s in staff if s["type"] == "nurse"}
+
+        for d in range(1, num_days + 1):
+            # 日勤帯
+            n_day = sum(1 for sid in nurse_ids if shifts.get(f"{sid}-{d}") == "day")
+            assert n_day >= 1, f"4/{d}: 日勤帯にnurse {n_day}名（最低1名必要）"
+            # 準夜帯 (junnya + night2)
+            n_junnya = sum(1 for sid in nurse_ids
+                          if shifts.get(f"{sid}-{d}") in ("junnya", "night2"))
+            assert n_junnya >= 1, f"4/{d}: 準夜帯にnurse {n_junnya}名（最低1名必要）"
+            # 深夜帯 (shinya + ake)
+            n_shinya = sum(1 for sid in nurse_ids
+                          if shifts.get(f"{sid}-{d}") in ("shinya", "ake"))
+            assert n_shinya >= 1, f"4/{d}: 深夜帯にnurse {n_shinya}名（最低1名必要）"
+
+    def test_ward1_nurseaide_night_limit(self):
+        """1病棟: nurseaideの夜勤が各帯1名以下"""
+        staff = self._build_ward1_staff()
+        data = _ward1_data(staff)
+        result = ShiftSolver(data).solve()
+        assert result["status"].lower() in ("optimal", "feasible"), f"解なし: {result.get('message')}"
+
+        shifts = result["shifts"]  # フラット形式: {"staffId-day": "shift"}
+        num_days = 30
+        aide_ids = {s["id"] for s in staff if s["type"] == "nurseaide"}
+
+        for d in range(1, num_days + 1):
+            # 準夜帯
+            na_junnya = sum(1 for sid in aide_ids
+                           if shifts.get(f"{sid}-{d}") in ("junnya", "night2"))
+            assert na_junnya <= 1, f"4/{d}: 準夜帯にnurseaide {na_junnya}名（最大1名）"
+            # 深夜帯
+            na_shinya = sum(1 for sid in aide_ids
+                           if shifts.get(f"{sid}-{d}") in ("shinya", "ake"))
+            assert na_shinya <= 1, f"4/{d}: 深夜帯にnurseaide {na_shinya}名（最大1名）"

@@ -27,18 +27,30 @@
   "shiftRestrictions": {
     "late": false
   },
-  "nurseAideConstraints": {
+  "qualifiedStaffMinimum": {
     "enabled": true,
-    "maxSameShiftJunnya": 1,
-    "maxSameShiftShinya": 1,
-    "maxDayByWeekday": {
-      "sunday": 3,
+    "comment": "曜日別の有資格者(nurse+junkango)日勤最低人数（ハード制約）",
+    "day": {
       "monday": null,
-      "tuesday": 2,
-      "wednesday": 2,
+      "tuesday": 3,
+      "wednesday": 4,
       "thursday": null,
-      "friday": 2,
-      "saturday": 2
+      "friday": 4,
+      "saturday": 3,
+      "sunday_holiday": 2
     }
+  },
+  "nurseMinimumPerBand": {
+    "enabled": true,
+    "comment": "全時間帯で正看護師(nurse)が最低N名必須（ハード制約）",
+    "day": 1,
+    "junnya": 1,
+    "shinya": 1
+  },
+  "nurseAideNightLimits": {
+    "enabled": true,
+    "comment": "看護補助者の夜勤帯別最大人数",
+    "maxJunnya": 1,
+    "maxShinya": 1
   }
 }
