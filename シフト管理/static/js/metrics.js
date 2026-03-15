@@ -52,7 +52,8 @@ export function checkConstraints() {
         // 固定シフト者は全チェック対象外
         if (s.workType === "fixed") continue;
         var wt = s.workType || "2kohtai";
-        var maxNight = s.maxNight !== undefined ? s.maxNight : 5;
+        var defaultMax = (wt === "2kohtai" || wt === "night_only") ? 10 : 5;
+        var maxNight = s.maxNight !== undefined ? s.maxNight : defaultMax;
 
         // 連続勤務数 (前月)
         var initConsecutive = 0;
@@ -93,12 +94,12 @@ export function checkConstraints() {
             }
         }
 
-        // 夜勤回数チェック
+        // 夜勤スロット数チェック（night2+ake / junnya+shinya で統一）
         var nightCount = 0;
         for (var d = 0; d < days; d++) {
-            if (wt === "2kohtai" && shArr[d] === "night2") nightCount++;
+            if (wt === "2kohtai" && (shArr[d] === "night2" || shArr[d] === "ake")) nightCount++;
             if (wt === "3kohtai" && (shArr[d] === "junnya" || shArr[d] === "shinya")) nightCount++;
-            if (wt === "night_only" && shArr[d] === "night2") nightCount++;
+            if (wt === "night_only" && (shArr[d] === "night2" || shArr[d] === "ake")) nightCount++;
         }
         if (nightCount > maxNight) {
             errors.push(s.name + ": 夜勤" + nightCount + "回(上限" + maxNight + ") [ハード制約]");
@@ -412,9 +413,8 @@ export function calculateFairnessMetrics(staff, shifts, days, year, month) {
             }
         }
 
-        // 夜勤pt（二交代: night2+ake実日数, 三交代: junnya+shinya実日数）
-        // ×2ではなく実際のake日数を使用（月末night2のakeは翌月のため）
-        var nightPt = (wt === "2kohtai" || wt === "night_only") ? nightCount + akeCount : nightCount;
+        // 夜勤スロット数（nightCountが既にnight2+ake / junnya+shinyaで統一済み）
+        var nightPt = nightCount;
 
         // 夜勤間隔計算
         var avgInterval = 0;
@@ -1074,16 +1074,15 @@ export function calculateVersionMetrics(shifts) {
             var wd = dt.getDay();
             var isWeekend = (wd === 0 || wd === 6 || HOLIDAYS[Y + "-" + M + "-" + d]);
 
-            if (["night2", "junnya", "shinya"].indexOf(sh) >= 0) nightCount++;
-            if (sh === "ake") akeCount++;
+            if (["night2", "junnya", "shinya", "ake"].indexOf(sh) >= 0) nightCount++;
             if (sh === "late") lateCount++;
             if (isWeekend && sh && ["off", "paid", "refresh"].indexOf(sh) < 0) weekendWork++;
             if (sh && ["off", "paid", "refresh"].indexOf(sh) < 0) { cons++; if (cons > consMax) consMax = cons; }
             else cons = 0;
         }
 
-        // 夜勤pt（二交代: night2+ake実日数, 三交代: junnya+shinya実日数）
-        var nightPt = (wt === "2kohtai" || wt === "night_only") ? nightCount + akeCount : nightCount;
+        // 夜勤スロット数（night2+ake / junnya+shinya 統一済み）
+        var nightPt = nightCount;
 
         if (wt !== "day_only" && wt !== "fixed" && wt !== "night_only") {
             nightCounts.push(nightPt);

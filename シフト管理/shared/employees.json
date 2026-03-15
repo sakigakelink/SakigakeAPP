@@ -7,7 +7,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 4
+        "maxPerMonth": 8
       },
       "dayOff": {
         "minPerMonth": 9
@@ -102,7 +102,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 10
+        "maxPerMonth": 20
       },
       "dayOff": {
         "minPerMonth": 9
@@ -121,7 +121,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 9
+        "maxPerMonth": 18
       },
       "dayOff": {
         "minPerMonth": 9
@@ -140,7 +140,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -159,7 +159,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -178,7 +178,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -216,7 +216,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -235,7 +235,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -254,7 +254,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -292,7 +292,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -311,7 +311,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -330,7 +330,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -349,7 +349,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -406,7 +406,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -425,7 +425,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -520,7 +520,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -539,7 +539,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -558,7 +558,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -577,7 +577,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -596,7 +596,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -653,7 +653,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -672,7 +672,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -691,7 +691,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -710,7 +710,7 @@
     "type": "nurse",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -1037,7 +1037,7 @@
     "type": "junkango",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 10
+        "maxPerMonth": 20
       },
       "dayOff": {
         "minPerMonth": 9
@@ -1056,7 +1056,7 @@
     "type": "junkango",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 10
+        "maxPerMonth": 20
       },
       "dayOff": {
         "minPerMonth": 9
@@ -1094,7 +1094,7 @@
     "type": "nurseaide",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 5
+        "maxPerMonth": 10
       },
       "dayOff": {
         "minPerMonth": 9
@@ -1113,7 +1113,7 @@
     "type": "nurseaide",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 10
+        "maxPerMonth": 20
       },
       "dayOff": {
         "minPerMonth": 9
@@ -1132,7 +1132,7 @@
     "type": "nurseaide",
     "personalRules": {
       "nightShift": {
-        "maxPerMonth": 10
+        "maxPerMonth": 20
       },
       "dayOff": {
         "minPerMonth": 9

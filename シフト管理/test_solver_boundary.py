@@ -7,7 +7,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 from solver import ShiftSolver
 
 
-def _make_staff(sid, name, wt="2kohtai", max_night=5):
+def _make_staff(sid, name, wt="2kohtai", max_night=10):
     return {"id": sid, "name": name, "workType": wt, "maxNight": max_night}
 
 
@@ -93,7 +93,7 @@ class TestDiagnoseInfeasible:
 class TestSolverPreChecks:
     def test_night_supply_shortage(self):
         """夜勤供給不足 → infeasible + 明確なメッセージ"""
-        staff = [_make_staff("s0", "職員0", max_night=1)]
+        staff = [_make_staff("s0", "職員0", max_night=2)]
         result = ShiftSolver(_base_data(staff)).solve()
         assert result["status"] == "infeasible"
         assert "夜勤供給不足" in result.get("message", "")
@@ -175,7 +175,7 @@ class TestSolverEdgeCases:
 
 
 # === 1病棟 職種別制約テスト ===
-def _make_staff_typed(sid, name, wt="2kohtai", staff_type="nurse", max_night=5):
+def _make_staff_typed(sid, name, wt="2kohtai", staff_type="nurse", max_night=10):
     """typeフィールド付きの職員データ"""
     return {"id": sid, "name": name, "workType": wt, "type": staff_type,
             "maxNight": max_night}
@@ -206,7 +206,7 @@ class TestWard1QualifiedStaffConstraints:
         """1病棟テスト用: nurse 10名 + junkango 3名 + nurseaide 5名 = 18名"""
         staff = []
         for i in range(10):
-            staff.append(_make_staff_typed(f"n{i}", f"看護師{i}", "2kohtai", "nurse", 4))
+            staff.append(_make_staff_typed(f"n{i}", f"看護師{i}", "2kohtai", "nurse", 8))
         for i in range(3):
             staff.append(_make_staff_typed(f"j{i}", f"准看{i}", "3kohtai", "junkango", 5))
         for i in range(5):
@@ -333,7 +333,7 @@ class TestConfigDriven:
         for i in range(15):
             staff.append({
                 "id": f"n{i}", "name": f"看護師{i}", "workType": "2kohtai",
-                "type": "nurse", "maxNight": 5,
+                "type": "nurse", "maxNight": 10,
             })
         data = {
             "year": 2026, "month": 4,

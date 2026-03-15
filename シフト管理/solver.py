@@ -104,12 +104,12 @@ class ShiftSolver:
         """病棟の構成（2交代/3交代の人数・配置要件）に基づきminNightデフォルトを自動計算
 
         計算ロジック:
+        - maxNight は全勤務体系で「夜勤帯スロット数」に統一
+          - 二交代: night2+ake のスロット数（night2 1回 = 2スロット）
+          - 三交代: junnya+shinya のスロット数
         - 夜勤帯の総需要 = (reqJunnya + reqShinya) × days
-        - night2がN回入ると ake もN回 → night2が消費する需要 = 2N
-        - 3kohtai が担当する需要 = total_demand - 2N  (≤ cap_3k でなければならない)
-        - したがって N ≥ (total_demand - cap_3k) / 2  が最低ライン
-        - ここに10%マージンを加え、2kohtai容量でクランプ
-        - 3kohtaiの残り需要は cap_3k 以内に収まることが保証される
+        - cap_2k, cap_3k, supply_no は全てスロット数
+        - 3kohtai が担当する需要 = total_demand - supply_2k - supply_no
         """
         req_j = self.config.get("reqJunnya", 2)
         req_s = self.config.get("reqShinya", 2)
@@ -127,18 +127,18 @@ class ShiftSolver:
             return
 
         cap_3k = sum(s.get("maxNight", 5) for _, s in staff_3k)
-        cap_2k = sum(s.get("maxNight", 5) for _, s in staff_2k)
+        cap_2k = sum(s.get("maxNight", 10) for _, s in staff_2k)
 
-        # night_only の供給量
+        # night_only の供給量（スロット数）
         staff_no = [s for s in self.staff_list if s.get("workType") == "night_only"]
-        supply_no = sum(s.get("maxNight", 0) for s in staff_no)  # night2回数（ake含めて×2）
+        supply_no = sum(s.get("maxNight", 0) for s in staff_no)
 
         total_night_demand = (req_j + req_s) * days
         # night_onlyが担当する分を除く
-        demand_after_no = max(0, total_night_demand - 2 * supply_no)
+        demand_after_no = max(0, total_night_demand - supply_no)
 
-        # 総供給能力 = 2 * cap_2k + cap_3k  (night2→ake で2スロット消費)
-        total_supply = 2 * cap_2k + cap_3k + 2 * supply_no
+        # 総供給能力（全てスロット数で統一済み）
+        total_supply = cap_2k + cap_3k + supply_no
 
         if num_2k > 0 and demand_after_no > 0:
             if cap_2k == 0:
@@ -147,32 +147,32 @@ class ShiftSolver:
                     if "minNight" not in s:
                         s["minNight"] = 0
             else:
-                # 最低night2回数: 3kohtai需要が cap_3k を超えないように
-                # demand_after_no - 2*N <= cap_3k  →  N >= (demand_after_no - cap_3k) / 2
-                floor_night2 = max(0, math.ceil((demand_after_no - cap_3k) / 2))
+                # 最低2kohtaiスロット数: 3kohtai需要が cap_3k を超えないように
+                # demand_after_no - slots_2k <= cap_3k  →  slots_2k >= demand_after_no - cap_3k
+                floor_slots_2k = max(0, math.ceil(demand_after_no - cap_3k))
 
-                if floor_night2 <= cap_2k:
+                if floor_slots_2k <= cap_2k:
                     # 通常ケース: 2kohtai容量内に収まる
                     # 10%マージンを加えるが cap_2k を超えない
-                    min_total_night2 = min(math.ceil(floor_night2 * 1.10), cap_2k)
+                    min_total_slots_2k = min(math.ceil(floor_slots_2k * 1.10), cap_2k)
                     # 3kohtai残り需要の確認
-                    remaining_check = demand_after_no - 2 * min_total_night2
+                    remaining_check = demand_after_no - min_total_slots_2k
                     if remaining_check > cap_3k:
-                        # マージン分でオーバーした場合、floor_night2に戻す
-                        min_total_night2 = floor_night2
+                        # マージン分でオーバーした場合、floorに戻す
+                        min_total_slots_2k = floor_slots_2k
                 else:
-                    # 供給不足ケース: floor_night2 > cap_2k
+                    # 供給不足ケース
                     # 2kohtai は maxNight の 70% を下限として確保（控えめに）
-                    min_total_night2 = int(cap_2k * 0.70)
+                    min_total_slots_2k = int(cap_2k * 0.70)
 
                 # 各2kohtai職員に按分（maxNightの比率で）
                 for idx, s in staff_2k:
                     if "minNight" not in s:
-                        max_n = s.get("maxNight", 5)
+                        max_n = s.get("maxNight", 10)
                         if max_n <= 0:
                             s["minNight"] = 0
                         else:
-                            share = min_total_night2 * max_n / cap_2k
+                            share = min_total_slots_2k * max_n / cap_2k
                             s["minNight"] = min(max(1, int(share)), max_n)
         elif num_2k > 0:
             # 需要なし
@@ -182,8 +182,8 @@ class ShiftSolver:
 
         # 3kohtaiのminNight
         if num_3k > 0:
-            total_min_night2 = sum(s.get("minNight", 0) for _, s in staff_2k)
-            remaining_for_3k = max(0, demand_after_no - 2 * total_min_night2)
+            total_min_slots_2k = sum(s.get("minNight", 0) for _, s in staff_2k)
+            remaining_for_3k = max(0, demand_after_no - total_min_slots_2k)
 
             if cap_3k == 0:
                 # 全3交代職員がmaxNight=0のため夜勤割当不可
@@ -363,7 +363,8 @@ class ShiftSolver:
                 wt = s.get("workType", "")
                 mn = s.get("minNight", 0)
                 if mn > 0 and wt in ("2kohtai", "3kohtai"):
-                    log_queue.put({'type': 'log', 'msg': f'[minNight自動] {s.get("name",s["id"])}: {wt} minNight={mn} maxNight={s.get("maxNight",5)}'})
+                    def_mn = 10 if wt == "2kohtai" else 5
+                    log_queue.put({'type': 'log', 'msg': f'[minNight自動] {s.get("name",s["id"])}: {wt} minNight={mn} maxNight={s.get("maxNight",def_mn)}'})
 
         # ソルバー対象職員がいない場合は固定シフトのみ返す
         if self.num_staff == 0:
@@ -396,15 +397,15 @@ class ShiftSolver:
         # チェック A: 夜勤供給不足
         _req_j = self.config.get("reqJunnya", 2)
         _req_s = self.config.get("reqShinya", 2)
-        _cap_2k = sum(s.get("maxNight", 5) for s in self.staff_list if s.get("workType") == "2kohtai")
+        _cap_2k = sum(s.get("maxNight", 10) for s in self.staff_list if s.get("workType") == "2kohtai")
         _cap_3k = sum(s.get("maxNight", 5) for s in self.staff_list if s.get("workType") == "3kohtai")
         _supply_no = sum(s.get("maxNight", 0) for s in self.staff_list if s.get("workType") == "night_only")
-        _total_supply = 2 * _cap_2k + _cap_3k + 2 * _supply_no
+        _total_supply = _cap_2k + _cap_3k + _supply_no
         _total_demand = (_req_j + _req_s) * self.num_days
         if _total_supply < _total_demand:
             msg = (
                 f"夜勤供給不足のため解なし: "
-                f"供給{_total_supply}枠（2交代×2={2*_cap_2k} + 3交代={_cap_3k} + 夜専×2={2*_supply_no}）"
+                f"供給{_total_supply}枠（2交代={_cap_2k} + 3交代={_cap_3k} + 夜専={_supply_no}）"
                 f" < 需要{_total_demand}枠（準夜{_req_j}+深夜{_req_s}）×{self.num_days}日"
             )
             if log_queue:
@@ -957,7 +958,8 @@ class ShiftSolver:
         for s in range(self.num_staff):
             si = self.staff_list[s]
             work_type = si.get("workType", "2kohtai")
-            max_night = si.get("maxNight", 5)
+            default_max_night = 10 if work_type in ("2kohtai", "night_only") else 5
+            max_night = si.get("maxNight", default_max_night)
 
             # 遅出上限（lateシフト有効な病棟のみ）
             if shift_restrictions.get("late", True):
@@ -990,15 +992,16 @@ class ShiftSolver:
                         self.shifts[(s, d, SHIFT_IDX["ake"])]
                     )
 
-                # 二交代の夜勤回数: 常に <= maxNight（ハード制約）
+                # 二交代の夜勤スロット数: night2+ake <= maxNight（ハード制約）
                 night2_list = [self.shifts[(s,d,SHIFT_IDX["night2"])] for d in range(self.num_days)]
-                self.model.Add(sum(night2_list) <= max_night)
+                ake_list = [self.shifts[(s,d,SHIFT_IDX["ake"])] for d in range(self.num_days)]
+                self.model.Add(sum(night2_list) + sum(ake_list) <= max_night)
 
-                # 二交代の最低夜勤回数（ソフト制約）
+                # 二交代の最低夜勤スロット数（ソフト制約）
                 min_night = si.get("minNight", 0)
                 if min_night > 0:
                     mn_short = self.model.NewIntVar(0, min_night, f"mn_short_2k_{s}")
-                    self.model.Add(sum(night2_list) + mn_short >= min_night)
+                    self.model.Add(sum(night2_list) + sum(ake_list) + mn_short >= min_night)
                     staff_shortage_penalty += mn_short * 300
 
                 # 前月からの引き継ぎ（常に厳守）
@@ -1045,11 +1048,11 @@ class ShiftSolver:
                     )
                 # 夜勤専従は ake→off 不要（夜明夜明...の連続勤務が可能）
 
-                # maxNight = night2の回数（絶対遵守・緩和しない）
+                # maxNight = 夜勤帯スロット数（night2+ake）、night2回数は maxNight//2
                 # キャリーオーバーakeがある場合、その1日分を除いた有効日数でクランプ
                 # （例: 28日月でキャリーオーバーあり → 27日中で最大13ペア）
                 available_days = self.num_days - carryover_ake
-                night2_target = min(max_night, available_days // 2)
+                night2_target = min(max_night // 2, available_days // 2)
                 night2_list = [self.shifts[(s,d,SHIFT_IDX["night2"])] for d in range(self.num_days)]
                 self.model.Add(sum(night2_list) == night2_target)
 
@@ -1227,17 +1230,18 @@ class ShiftSolver:
             wt = self.staff_list[s].get("workType", "2kohtai")
             if wt == "day_only" or wt == "night_only":
                 continue
-            max_night = self.staff_list[s].get("maxNight", 5)
+            default_max = 10 if wt == "2kohtai" else 5
+            max_night = self.staff_list[s].get("maxNight", default_max)
             if max_night <= 0:
                 continue
 
             if wt == "2kohtai":
-                # night2とakeを別々にカウント（月末night2のakeは翌月なので×2だと不正確）
+                # night2+ake をスロット数としてカウント（maxNightと同じ単位）
                 nl = [self.shifts[(s,d,SHIFT_IDX["night2"])] for d in range(self.num_days)]
                 al = [self.shifts[(s,d,SHIFT_IDX["ake"])] for d in range(self.num_days)]
-                raw_nc = self.model.NewIntVar(0, max_night * 2, f"raw_nc_{s}")
+                raw_nc = self.model.NewIntVar(0, max_night, f"raw_nc_{s}")
                 self.model.Add(raw_nc == sum(nl) + sum(al))
-                max_burden = max_night * 2
+                max_burden = max_night
             elif wt == "3kohtai":
                 nl = [self.shifts[(s,d,SHIFT_IDX["junnya"])] for d in range(self.num_days)]
                 nl += [self.shifts[(s,d,SHIFT_IDX["shinya"])] for d in range(self.num_days)]

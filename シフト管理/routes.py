@@ -975,7 +975,7 @@ def register_routes(app, BACKUP_DIR):
                     if sh in ["day"]: day_count += 1
                 else:
                     if sh in ["day", "late"]: day_count += 1
-                if sh in ["night2", "junnya", "shinya"]: night_count += 1
+                if sh in ["night2", "junnya", "shinya", "ake"]: night_count += 1
                 if sh in ["off", "paid", "refresh"]: off_count += 1
 
             row.append(str(day_count))
