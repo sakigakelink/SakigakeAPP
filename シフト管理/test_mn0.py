@@ -86,7 +86,7 @@ wishes_none = []
 cases = [
     ("baseline", wishes, {}),
     ("off_only", wishes_off_only, {}),
-    ("no_wishes", wishes_none, {}),
+    ("shinya_ge", wishes, {"_shinya_ge": True}),
 ]
 with open("test_mn0_result.txt", "w", encoding="utf-8") as f:
     for label, ws, extra_cfg in cases:

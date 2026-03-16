@@ -949,11 +949,15 @@ class ShiftSolver:
 
         # 深夜帯の必要人数（夜勤専従含む全職員でカウント、前月引き継ぎakeも含む）【ハード制約・緩和禁止】
         req_s = self.config.get("reqShinya", 2)
+        shinya_ge_mode = self.config.get("_shinya_ge", False)
         for d in range(self.num_days):
             sw = [self.shifts[(s,d,SHIFT_IDX["shinya"])] for s in range(self.num_staff)]
             sw += [self.shifts[(s,d,SHIFT_IDX["ake"])] for s in range(self.num_staff)]
             adjusted_req = max(0, req_s - fixed_shinya_counts[d])
-            self.model.Add(sum(sw) == adjusted_req)
+            if shinya_ge_mode:
+                self.model.Add(sum(sw) >= adjusted_req)
+            else:
+                self.model.Add(sum(sw) == adjusted_req)
 
         # --- 職種別制約（config駆動、全病棟共通フレームワーク） ---
         nurseaide_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurseaide"]
