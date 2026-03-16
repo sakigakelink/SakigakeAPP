@@ -479,6 +479,46 @@ function render() {
             noConsecutiveRest = issueDays.noConsecutiveRest || false;
         }
 
+        // 前月引継ぎ制約バッジ計算（1-2日目に表示）
+        var carryoverLabels = {};
+        if (hasPrevData && wt !== "fixed") {
+            var coLastDay = prevShifts[s.id + "-" + prevDays] || "";
+            var coSecondLast = prevShifts[s.id + "-" + (prevDays - 1)] || "";
+            // 連勤カウント
+            var coCWork = 0;
+            for (var cok = 0; cok < 10; cok++) {
+                var cod = prevDays - cok;
+                if (cod < 1) break;
+                var cosh = prevShifts[s.id + "-" + cod] || "";
+                if (!cosh || cosh === "off" || cosh === "paid" || cosh === "ake" || cosh === "refresh") break;
+                coCWork++;
+            }
+            if (wt === "2kohtai" || wt === "night_only") {
+                if (coLastDay === "night2") {
+                    carryoverLabels[1] = { label: "\u660e", title: "\u524d\u6708\u672bnight2\u2192ake\u5fc5\u9808", cls: "forced-ake" };
+                    if (wt === "2kohtai") carryoverLabels[2] = { label: "\u4f11", title: "ake\u2192\u4f11\u307f\u5fc5\u9808", cls: "forced-off" };
+                } else if (coLastDay === "ake") {
+                    carryoverLabels[1] = { label: "\u4f11", title: "\u524d\u6708\u672bake\u2192\u4f11\u307f\u5fc5\u9808", cls: "forced-off" };
+                }
+            } else if (wt === "3kohtai") {
+                var coNight1 = (coLastDay === "junnya" || coLastDay === "shinya");
+                var coNight2 = (coSecondLast === "junnya" || coSecondLast === "shinya");
+                if (coNight1 && coNight2) {
+                    carryoverLabels[1] = { label: "\u591c\u7981", title: "\u524d\u6708\u672b2\u9023\u591c\u52e4\u2192\u591c\u52e4\u7981\u6b62", cls: "night-forbidden" };
+                } else if (coLastDay === "junnya") {
+                    carryoverLabels[1] = { label: "\u6e96/\u4f11", title: "\u524d\u6708\u672b\u6e96\u591c\u2192\u6e96\u591cor\u4f11\u307f", cls: "constrained" };
+                } else if (coLastDay === "shinya") {
+                    carryoverLabels[1] = { label: "\u4f11/\u6df1", title: "\u524d\u6708\u672b\u6df1\u591c\u2192\u4f11\u307for\u6df1\u591c", cls: "constrained" };
+                }
+            }
+            // 連勤制約（上書き）
+            if (coCWork >= 7) {
+                carryoverLabels[1] = { label: "\u4f11", title: "\u524d\u6708\u672b" + coCWork + "\u9023\u52e4\u2192\u4f11\u307f\u5fc5\u9808", cls: "forced-off" };
+            } else if (coCWork >= 5 && !carryoverLabels[1]) {
+                carryoverLabels[1] = { label: "\u9023" + coCWork, title: "\u524d\u6708\u672b" + coCWork + "\u9023\u52e4", cls: "consec" };
+            }
+        }
+
         var rowStyle = "";
         // 連休なしの場合、職員名に下線マーカー追加
         var nameStyle = "background:" + bgColor;
@@ -621,7 +661,14 @@ function render() {
                     }
                 }
             }
-            html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + (violTip ? " title=\"" + escHtml(violTip) + "\"" : "") + ">" + cellContent + "</td>";
+            // 前月引継ぎバッジ
+            var coBadge = "";
+            if (carryoverLabels[d]) {
+                var co = carryoverLabels[d];
+                coBadge = "<span class=\"co-badge co-" + co.cls + "\" title=\"" + co.title + "\">" + co.label + "</span>";
+            }
+            var cellTip = violTip ? " title=\"" + escHtml(violTip) + "\"" : (coBadge && carryoverLabels[d] ? " title=\"" + carryoverLabels[d].title + "\"" : "");
+            html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + cellTip + ">" + cellContent + coBadge + "</td>";
         }
         // 夜勤セル色分け: maxNightとの比率で背景色
         var ncStyle = "";

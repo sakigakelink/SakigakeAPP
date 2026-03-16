@@ -140,6 +140,17 @@ class ShiftSolver:
         # 総供給能力（全てスロット数で統一済み）
         total_supply = cap_2k + cap_3k + supply_no
 
+        # 供給比率に応じた動的キャップ率（minNightはソフト制約なので安全に調整可）
+        supply_ratio = total_supply / demand_after_no if demand_after_no > 0 else 999
+        if supply_ratio >= 1.3:
+            cap_pct = 0.85   # 十分な余裕
+        elif supply_ratio >= 1.15:
+            cap_pct = 0.80   # やや余裕
+        elif supply_ratio >= 1.0:
+            cap_pct = 0.75   # タイト（前月引継ぎ・希望休で余裕消失）
+        else:
+            cap_pct = 0.70   # 供給不足
+
         if num_2k > 0 and demand_after_no > 0:
             if cap_2k == 0:
                 # 全2交代職員がmaxNight=0のため夜勤割当不可
@@ -151,8 +162,8 @@ class ShiftSolver:
                 # demand_after_no - slots_2k <= cap_3k  →  slots_2k >= demand_after_no - cap_3k
                 floor_slots_2k = max(0, math.ceil(demand_after_no - cap_3k))
 
-                # min_total_slots_2k は cap_2k の 85% を上限とし、ソルバーに柔軟性を残す
-                cap_2k_ceiling = int(cap_2k * 0.85)
+                # min_total_slots_2k は cap_2k の cap_pct% を上限とし、ソルバーに柔軟性を残す
+                cap_2k_ceiling = int(cap_2k * cap_pct)
                 if floor_slots_2k <= cap_2k_ceiling:
                     # 通常ケース: 2kohtai容量内に余裕あり
                     # 10%マージンを加えるが上限は cap_2k の 85%
@@ -163,13 +174,12 @@ class ShiftSolver:
                         # マージン分でオーバーした場合、floorに戻す
                         min_total_slots_2k = floor_slots_2k
                 elif floor_slots_2k <= cap_2k:
-                    # タイトケース: floor は容量内だが85%を超える
-                    # floorそのものを使うが cap_2k の 85% で切る
+                    # タイトケース: floor は容量内だがcap_pct%を超える
+                    # floorそのものを使うが cap_2k の cap_pct% で切る
                     min_total_slots_2k = cap_2k_ceiling
                 else:
                     # 供給不足ケース
-                    # 2kohtai は maxNight の 70% を下限として確保（控えめに）
-                    min_total_slots_2k = int(cap_2k * 0.70)
+                    min_total_slots_2k = int(cap_2k * cap_pct)
 
                 # 各2kohtai職員に按分（maxNightの比率で）
                 for idx, s in staff_2k:
@@ -197,13 +207,13 @@ class ShiftSolver:
                     if "minNight" not in s:
                         s["minNight"] = 0
             else:
-                # cap_3kの85%を上限としてクランプ（ソルバーに柔軟性を残す）
-                cap_3k_ceiling = int(cap_3k * 0.85)
+                # cap_3kのcap_pct%を上限としてクランプ（ソルバーに柔軟性を残す）
+                cap_3k_ceiling = int(cap_3k * cap_pct)
                 remaining_for_3k = min(remaining_for_3k, cap_3k_ceiling)
 
-                # 供給不足の場合は70%に抑える
+                # 供給不足の場合はcap_pctに抑える
                 if total_supply < demand_after_no:
-                    remaining_for_3k = min(remaining_for_3k, int(cap_3k * 0.70))
+                    remaining_for_3k = min(remaining_for_3k, int(cap_3k * cap_pct))
 
                 for idx, s in staff_3k:
                     if "minNight" not in s:
@@ -346,9 +356,19 @@ class ShiftSolver:
                                 and s["id"] not in fixed_ids
                                 and s["id"] not in day_only_ids)
             if night_capable < req_night_total:
-                night_tight.append(f"  {d}日: 夜勤可能{night_capable}人 < 必要{req_night_total}枠")
+                fo_cnt = len((forced_off.get(d, set()) - day_only_ids - fixed_ids))
+                wo_cnt = len((wish_off.get(d, set()) - day_only_ids - fixed_ids))
+                night_tight.append(
+                    f"  {d}日: 夜勤可能{night_capable}人 < 必要{req_night_total}枠"
+                    f"（前月引継{fo_cnt}人不可, 希望休{wo_cnt}人不可）"
+                )
             elif night_capable == req_night_total:
-                night_tight.append(f"  {d}日: 夜勤可能{night_capable}人 = 必要{req_night_total}枠（余裕なし）")
+                fo_cnt = len((forced_off.get(d, set()) - day_only_ids - fixed_ids))
+                wo_cnt = len((wish_off.get(d, set()) - day_only_ids - fixed_ids))
+                night_tight.append(
+                    f"  {d}日: 夜勤可能{night_capable}人 = 必要{req_night_total}枠（余裕なし）"
+                    f"（前月引継{fo_cnt}人, 希望休{wo_cnt}人）"
+                )
 
         if night_tight:
             causes.append("【夜勤人員不足】以下の日で夜勤に入れる人が足りません:\n" + "\n".join(night_tight[:5]))
