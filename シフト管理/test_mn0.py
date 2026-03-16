@@ -1,4 +1,4 @@
-"""三病棟4月 - minNight=0テスト"""
+"""三病棟4月 - reqJunnya/reqShinya変動テスト"""
 import sys, json, os
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ".")
@@ -64,13 +64,24 @@ san_ids = {s["id"] for s in san}
 all_w = json.load(open("shared/wishes_data.json", "r", encoding="utf-8"))
 wishes = [w for w in all_w.get("2026-4", []) if w.get("staffId") in san_ids]
 
-result = ShiftSolver({"year": 2026, "month": 4, "staff": san, "config": config,
-                       "wishes": wishes, "prevMonthData": prev_month_data}).solve()
-
+cases = [
+    ("reqJ3_S2", 3, 2),
+    ("reqJ2_S2", 2, 2),
+    ("reqJ3_S1", 3, 1),
+    ("reqJ2_S1", 2, 1),
+]
 with open("test_mn0_result.txt", "w", encoding="utf-8") as f:
-    f.write(f"status: {result.get('status')}\n")
-    if result.get("message"):
-        f.write(f"message:\n{result['message']}\n")
-    if result.get("shifts"):
-        f.write(f"shifts: {len(result['shifts'])}件\n")
+    for label, rj, rs in cases:
+        cfg = dict(config)
+        cfg["reqJunnya"] = rj
+        cfg["reqShinya"] = rs
+        for s in san:
+            s["minNight"] = 0
+        r = ShiftSolver({"year": 2026, "month": 4, "staff": san, "config": cfg,
+                          "wishes": wishes, "prevMonthData": prev_month_data}).solve()
+        line = f"{label}: {r.get('status')}"
+        if r.get("shifts"):
+            line += f" ({len(r['shifts'])}件)"
+        f.write(line + "\n")
+        print(line)
 print("Done")
