@@ -455,6 +455,8 @@ class ShiftSolver:
         _supply_no = sum(s.get("maxNight", 0) for s in self.staff_list if s.get("workType") == "night_only")
         _total_supply = _cap_2k + _cap_3k + _supply_no
         _total_demand = (_req_j + _req_s) * self.num_days
+        # 供給/需要比率を保存（夜勤帯制約のソフト化判定に使用）
+        self._night_supply_ratio = _total_supply / _total_demand if _total_demand > 0 else 999
         if _total_supply < _total_demand:
             msg = (
                 f"夜勤供給不足のため解なし: "
@@ -859,11 +861,24 @@ class ShiftSolver:
 
         # 準夜帯の必要人数（夜勤専従含む全職員でカウント）
         req_j = self.config.get("reqJunnya", 2)
+        # 供給余裕がない場合（≤110%）は1人不足までソフト制約化
+        night_tight = getattr(self, '_night_supply_ratio', 999) <= 1.10
+        if night_tight and log_queue:
+            ratio_pct = round(getattr(self, '_night_supply_ratio', 0) * 100)
+            log_queue.put({'type': 'log', 'msg': f'[夜勤帯] 供給余裕{ratio_pct}% → 夜勤帯1名不足を許容するソフト制約モードで実行'})
         for d in range(self.num_days):
             jw = [self.shifts[(s,d,SHIFT_IDX["junnya"])] for s in range(self.num_staff)]
             jw += [self.shifts[(s,d,SHIFT_IDX["night2"])] for s in range(self.num_staff)]
             adjusted_req = max(0, req_j - fixed_junnya_counts[d])
-            self.model.Add(sum(jw) == adjusted_req)
+            if night_tight and adjusted_req > 0:
+                # ソフト制約: 不足1人まで許容、不足にペナルティ
+                j_short = self.model.NewIntVar(0, 1, f"j_short_{d}")
+                self.model.Add(sum(jw) + j_short >= adjusted_req)
+                self.model.Add(sum(jw) <= adjusted_req)
+                staff_shortage_penalty += j_short * 2000  # 夜勤不足は日勤不足より重い
+                staff_shortage_info.append({"day": d+1, "type": "準夜", "var": j_short})
+            else:
+                self.model.Add(sum(jw) == adjusted_req)
 
         # 深夜帯の必要人数（夜勤専従含む全職員でカウント、前月引き継ぎakeも含む）
         req_s = self.config.get("reqShinya", 2)
@@ -871,7 +886,14 @@ class ShiftSolver:
             sw = [self.shifts[(s,d,SHIFT_IDX["shinya"])] for s in range(self.num_staff)]
             sw += [self.shifts[(s,d,SHIFT_IDX["ake"])] for s in range(self.num_staff)]
             adjusted_req = max(0, req_s - fixed_shinya_counts[d])
-            self.model.Add(sum(sw) == adjusted_req)
+            if night_tight and adjusted_req > 0:
+                s_short = self.model.NewIntVar(0, 1, f"s_short_{d}")
+                self.model.Add(sum(sw) + s_short >= adjusted_req)
+                self.model.Add(sum(sw) <= adjusted_req)
+                staff_shortage_penalty += s_short * 2000
+                staff_shortage_info.append({"day": d+1, "type": "深夜", "var": s_short})
+            else:
+                self.model.Add(sum(sw) == adjusted_req)
 
         # --- 職種別制約（config駆動、全病棟共通フレームワーク） ---
         nurseaide_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurseaide"]
