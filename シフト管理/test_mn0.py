@@ -64,24 +64,31 @@ san_ids = {s["id"] for s in san}
 all_w = json.load(open("shared/wishes_data.json", "r", encoding="utf-8"))
 wishes = [w for w in all_w.get("2026-4", []) if w.get("staffId") in san_ids]
 
+# 國枝のday希望(6,13,20,27)を除外
+kunied_id = None
+for s in san:
+    if s["name"].startswith("國枝"):
+        kunied_id = s["id"]
+        break
+
+wishes_no_kunie_day = []
+for w in wishes:
+    if w.get("staffId") == kunied_id and w.get("shift") == "day":
+        continue
+    wishes_no_kunie_day.append(w)
+
 cases = [
-    ("baseline", 3, 2, 9, True),
-    ("monthlyOff=8", 3, 2, 8, True),
-    ("monthlyOff=10", 3, 2, 10, True),
-    ("no_prev", 3, 2, 9, False),
-    ("no_prev_mOff8", 3, 2, 8, False),
+    ("baseline", wishes, {}),
+    ("no_kunie_day", wishes_no_kunie_day, {}),
 ]
 with open("test_mn0_result.txt", "w", encoding="utf-8") as f:
-    for label, rj, rs, mo, use_prev in cases:
+    for label, ws, extra_cfg in cases:
         cfg = dict(config)
-        cfg["reqJunnya"] = rj
-        cfg["reqShinya"] = rs
-        cfg["monthlyOff"] = mo
+        cfg.update(extra_cfg)
         for s in san:
             s["minNight"] = 0
-        pm = prev_month_data if use_prev else {}
         r = ShiftSolver({"year": 2026, "month": 4, "staff": san, "config": cfg,
-                          "wishes": wishes, "prevMonthData": pm}).solve()
+                          "wishes": ws, "prevMonthData": prev_month_data}).solve()
         line = f"{label}: {r.get('status')}"
         if r.get("shifts"):
             line += f" ({len(r['shifts'])}件)"
