@@ -342,6 +342,8 @@ def register_routes(app, BACKUP_DIR):
                 data.get("prevMonthData", {}),
             )
 
+        solve_mode = data.get("config", {}).get("solveMode", "quick")
+
         def generate():
             cfg = data.get("config", {})
             solver = ShiftSolver(data)
