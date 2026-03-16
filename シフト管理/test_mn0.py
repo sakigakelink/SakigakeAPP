@@ -83,19 +83,20 @@ wishes_off_only = [w for w in wishes if w.get("shift") in ("off","paid","refresh
 # 全希望なし
 wishes_none = []
 
+import copy
 cases = [
-    ("baseline", wishes, {}),
-    ("off_only", wishes_off_only, {}),
-    ("shinya_ge", wishes, {"_shinya_ge": True}),
+    ("baseline_maxN8", False),
+    ("3k_maxN10", True),
 ]
 with open("test_mn0_result.txt", "w", encoding="utf-8") as f:
-    for label, ws, extra_cfg in cases:
-        cfg = dict(config)
-        cfg.update(extra_cfg)
-        for s in san:
+    for label, bump_3k in cases:
+        staff = copy.deepcopy(san)
+        for s in staff:
             s["minNight"] = 0
-        r = ShiftSolver({"year": 2026, "month": 4, "staff": san, "config": cfg,
-                          "wishes": ws, "prevMonthData": prev_month_data}).solve()
+            if bump_3k and s.get("workType") == "3kohtai":
+                s["maxNight"] = 10
+        r = ShiftSolver({"year": 2026, "month": 4, "staff": staff, "config": config,
+                          "wishes": wishes, "prevMonthData": prev_month_data}).solve()
         line = f"{label}: {r.get('status')}"
         if r.get("shifts"):
             line += f" ({len(r['shifts'])}件)"
