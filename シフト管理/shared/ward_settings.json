@@ -5,16 +5,7 @@
     "reqJunnya": 2,
     "reqShinya": 2,
     "reqLate": 1,
-    "maxLate": 4,
-    "dayAdjustment": {
-      "enabled": true,
-      "monday": 0,
-      "tuesday": -1,
-      "wednesday": -1,
-      "thursday": 1,
-      "friday": 0,
-      "saturday": -1
-    }
+    "maxLate": 4
   },
   "1": {
     "reqDayWeekday": 7,
@@ -22,16 +13,7 @@
     "reqJunnya": 2,
     "reqShinya": 2,
     "reqLate": 0,
-    "maxLate": 0,
-    "dayAdjustment": {
-      "enabled": true,
-      "monday": 0,
-      "tuesday": -2,
-      "wednesday": -1,
-      "thursday": 0,
-      "friday": -1,
-      "saturday": -2
-    }
+    "maxLate": 0
   },
   "3": {
     "reqDayWeekday": 7,

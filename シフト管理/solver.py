@@ -791,14 +791,7 @@ class ShiftSolver:
                 if ds_val is not None:
                     target = ds_val
                 else:
-                    # フォールバック: dayAdjustment or デフォルト
                     target = req_day_weekday
-                    day_adj = self.config.get("dayAdjustment", {})
-                    if day_adj.get("enabled") and weekday < 6:
-                        _wd_keys = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"]
-                        target += day_adj.get(_wd_keys[weekday], 0)
-                    elif is_wed:
-                        target -= 1
 
             # 固定シフト職員の分を引く
             adjusted_target = target - fixed_day_counts[d]
