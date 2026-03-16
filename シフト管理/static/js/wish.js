@@ -1118,7 +1118,7 @@ document.addEventListener("touchmove", function(e) {
     e.preventDefault();
 }, { passive: false });
 
-// Window assignments for HTML onclick handlers (only for functions defined in this file)
+// Window assignments for HTML onclick/onmousedown handlers
 window.renderWishes = renderWishes;
 window.renderWishUI = renderWishUI;
 window.deleteWish = deleteWish;
@@ -1126,6 +1126,14 @@ window.importWishNatural = importWishNatural;
 window.parseWishNatural = parseWishNatural;
 window.showWishSample = showWishSample;
 window.importWish = importWish;
+window.wishDayMouseDown = wishDayMouseDown;
+window.wishDayMouseEnter = wishDayMouseEnter;
+window.addWishFromUI = addWishFromUI;
+window.removeFromWishQueue = removeFromWishQueue;
+window.commitWishQueue = commitWishQueue;
+window.editWish = editWish;
+window.selectWishShiftBtn = selectWishShiftBtn;
+window.setupWishDragAndDrop = setupWishDragAndDrop;
 
 export {
     parseWishNatural,
