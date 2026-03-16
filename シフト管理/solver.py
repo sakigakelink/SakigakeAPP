@@ -315,7 +315,7 @@ class ShiftSolver:
 
         # 夜勤不可スタッフID
         day_only_ids = {s["id"] for s in self.staff_list if s.get("workType") == "day_only"}
-        fixed_ids = {s["id"] for s in self.staff_list if s.get("workType") == "fixed"}
+        fixed_ids = {s["id"] for s in self.fixed_staff}
 
         # === 原因1: 日別人員不足（確定事実） ===
         shortage_days = []
