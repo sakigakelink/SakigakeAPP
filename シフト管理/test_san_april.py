@@ -124,7 +124,27 @@ solver_data = {
     "prevMonthData": prev_month_data,
 }
 
-print("\n=== ソルバー実行 ===")
+# まず希望なしで実行して本当の制約問題を切り分け
+print("\n=== ソルバー実行（希望なし） ===")
+solver_data_no_wish = dict(solver_data)
+solver_data_no_wish["wishes"] = []
+solver_nw = ShiftSolver(solver_data_no_wish)
+result_nw = solver_nw.solve()
+print(f"希望なし結果: {result_nw.get('status')}")
+if result_nw.get("message"):
+    print(f"  メッセージ: {result_nw['message'][:300]}")
+
+# 次に前月引継ぎなし+希望ありで実行
+print("\n=== ソルバー実行（前月引継ぎなし） ===")
+solver_data_no_prev = dict(solver_data)
+solver_data_no_prev["prevMonthData"] = {}
+solver_np = ShiftSolver(solver_data_no_prev)
+result_np = solver_np.solve()
+print(f"前月なし結果: {result_np.get('status')}")
+if result_np.get("message"):
+    print(f"  メッセージ: {result_np['message'][:300]}")
+
+print("\n=== ソルバー実行（全データ） ===")
 solver = ShiftSolver(solver_data)
 result = solver.solve()
 
