@@ -1144,6 +1144,10 @@ window.showWishSummary = showWishSummary;
 window.renderWishes = renderWishes;
 window.renderWishUI = renderWishUI;
 window.deleteWish = deleteWish;
+window.importWishNatural = importWishNatural;
+window.parseWishNatural = parseWishNatural;
+window.showWishSample = showWishSample;
+window.importWish = importWish;
 
 export {
     parseWishNatural,
