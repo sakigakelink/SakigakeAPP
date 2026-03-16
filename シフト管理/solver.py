@@ -373,35 +373,53 @@ class ShiftSolver:
         if night_tight:
             causes.append("【夜勤人員不足】以下の日で夜勤に入れる人が足りません:\n" + "\n".join(night_tight[:10]))
 
-        # === 原因2b: 希望休集中日（夜勤帯のake→off消費含む） ===
+        # === 原因2b: 希望休集中日 ===
+        # 夜勤可能スタッフ（day_only/fixedを除外）
+        night_capable_ids = {s["id"] for s in self.staff_list
+                             if s.get("workType") not in ("day_only", "fixed")}
         wish_concentrate = []
-        solver_ids = {s["id"] for s in self.staff_list} - fixed_ids
+        day_wish_counts = []  # (day, off_count, night_avail, names)
         for d in range(1, self.num_days + 1):
-            # ソルバー対象職員のうち、希望休の人数
-            off_ids = wish_off.get(d, set()) & solver_ids
-            fo_ids = forced_off.get(d, set()) & solver_ids
-            combined = off_ids | fo_ids
-            # 実質的にake→off（night2の翌々日）で不可の人も加算
-            if d >= 2:
-                ake_forced = forced_off.get(d, set()) & solver_ids
-                combined |= ake_forced
-            total_unavail = len(combined)
-            total_solver = len(solver_ids)
-            avail = total_solver - total_unavail
-            # 夜勤に入れるのは day_only を除外
-            day_only_in_avail = len(day_only_ids - combined)
-            night_avail = avail - day_only_in_avail
-            if len(off_ids) >= 4 and night_avail <= req_night_total + 1:
+            off_ids = wish_off.get(d, set()) - fixed_ids
+            fo_ids = forced_off.get(d, set()) - fixed_ids
+            # この日の夜勤不可人数（希望休+前月引継ぎ、夜勤可能者のうち）
+            night_unavail = (off_ids | fo_ids) & night_capable_ids
+            night_avail = len(night_capable_ids) - len(night_unavail)
+            if len(off_ids) >= 3:
                 off_names = [s["name"] for s in self.staff_list
-                             if s["id"] in off_ids and s["id"] not in fixed_ids]
-                wish_concentrate.append(
-                    f"  {d}日: 希望休{len(off_ids)}人（{', '.join(off_names[:5])}）"
-                    f" → 夜勤可能{night_avail}人（必要{req_night_total}）"
-                )
+                             if s["id"] in off_ids]
+                day_wish_counts.append((d, len(off_ids), night_avail, off_names))
+        # 希望休が多い日をソート
+        day_wish_counts.sort(key=lambda x: -x[1])
+        for d, cnt, na, names in day_wish_counts[:5]:
+            wish_concentrate.append(
+                f"  {d}日: 希望休{cnt}人（{', '.join(names[:6])}）"
+                f" → 夜勤可能{na}人（必要{req_night_total}）"
+            )
         if wish_concentrate:
-            causes.append("【希望休集中】以下の日で希望休が集中し夜勤要員が不足します:\n"
-                          + "\n".join(wish_concentrate[:5])
-                          + "\n  → いずれかの希望休を別日に移動してください")
+            # 最も希望が集中している職員を特定
+            wish_staff_counts = {}
+            for w in self.wishes:
+                if w.get("type") == "assign" and w.get("shift", "") in rest_shifts:
+                    sid = w.get("staffId")
+                    if sid and sid not in fixed_ids:
+                        wish_staff_counts[sid] = wish_staff_counts.get(sid, 0) + len(w.get("days", []))
+            top_wishers = sorted(wish_staff_counts.items(), key=lambda x: -x[1])[:5]
+            wisher_lines = []
+            for sid, cnt in top_wishers:
+                name = next((s["name"] for s in self.staff_list if s["id"] == sid), sid)
+                days = []
+                for w in self.wishes:
+                    if w.get("staffId") == sid and w.get("type") == "assign" and w.get("shift", "") in rest_shifts:
+                        days.extend(w.get("days", []))
+                days.sort()
+                wisher_lines.append(f"  {name}: {cnt}日（{','.join(str(d) for d in days)}）")
+            causes.append(
+                "【希望休集中】以下の日で希望休が集中しています:\n"
+                + "\n".join(wish_concentrate)
+                + "\n  希望休が多い職員:\n" + "\n".join(wisher_lines)
+                + "\n  → 集中日の希望をいずれか1件移動すると解ける可能性があります"
+            )
 
         # === 原因3: 前月引継ぎ制約 ===
         if forced_details:
