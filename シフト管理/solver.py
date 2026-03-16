@@ -270,7 +270,8 @@ class ShiftSolver:
         req_day_hol = self.config.get("reqDayHoliday", 5)
         req_j = self.config.get("reqJunnya", 2)
         req_s = self.config.get("reqShinya", 2)
-        req_late = self.config.get("reqLate", 1)
+        shift_restrictions = self.ward_engine_config.get("shiftRestrictions", {})
+        req_late = self.config.get("reqLate", 1) if shift_restrictions.get("late", True) else 0
         req_night_total = req_j + req_s
 
         # 希望休マップ
@@ -397,29 +398,28 @@ class ShiftSolver:
                 f" → 夜勤可能{na}人（必要{req_night_total}）"
             )
         if wish_concentrate:
-            # 最も希望が集中している職員を特定
-            wish_staff_counts = {}
+            # 集中日に希望休を入れている職員を特定（集中日のみに絞る）
+            concentrate_days = {d for d, _, _, _ in day_wish_counts[:5]}
+            staff_on_concentrate = {}  # sid -> [days in concentrate_days]
             for w in self.wishes:
                 if w.get("type") == "assign" and w.get("shift", "") in rest_shifts:
                     sid = w.get("staffId")
                     if sid and sid not in fixed_ids:
-                        wish_staff_counts[sid] = wish_staff_counts.get(sid, 0) + len(w.get("days", []))
-            top_wishers = sorted(wish_staff_counts.items(), key=lambda x: -x[1])[:5]
-            wisher_lines = []
-            for sid, cnt in top_wishers:
+                        for d in w.get("days", []):
+                            if d in concentrate_days:
+                                staff_on_concentrate.setdefault(sid, []).append(d)
+            # 集中日に2日以上希望を入れている職員
+            overlap_staff = [(sid, sorted(ds)) for sid, ds in staff_on_concentrate.items() if len(ds) >= 2]
+            overlap_staff.sort(key=lambda x: -len(x[1]))
+            overlap_lines = []
+            for sid, ds in overlap_staff[:5]:
                 name = next((s["name"] for s in self.staff_list if s["id"] == sid), sid)
-                days = []
-                for w in self.wishes:
-                    if w.get("staffId") == sid and w.get("type") == "assign" and w.get("shift", "") in rest_shifts:
-                        days.extend(w.get("days", []))
-                days.sort()
-                wisher_lines.append(f"  {name}: {cnt}日（{','.join(str(d) for d in days)}）")
-            causes.append(
-                "【希望休集中】以下の日で希望休が集中しています:\n"
-                + "\n".join(wish_concentrate)
-                + "\n  希望休が多い職員:\n" + "\n".join(wisher_lines)
-                + "\n  → 集中日の希望をいずれか1件移動すると解ける可能性があります"
-            )
+                overlap_lines.append(f"  {name}: {','.join(str(d) for d in ds)}日")
+            msg = "【希望休集中】以下の日で希望休が集中しています:\n" + "\n".join(wish_concentrate)
+            if overlap_lines:
+                msg += "\n  集中日に複数希望がある職員:\n" + "\n".join(overlap_lines)
+            msg += "\n  → 集中日の希望をいずれか1件移動すると解ける可能性があります"
+            causes.append(msg)
 
         # === 原因3: 前月引継ぎ制約 ===
         if forced_details:
@@ -1931,6 +1931,48 @@ class ShiftSolver:
                 + junnya_off_shinya_penalty + kibou_night_penalty + day_shinya_penalty
                 - good_rotation_bonus
             )
+
+        # === 希望休集中日の夜勤ヒント ===
+        # 希望休が多い日を特定し、夜勤可能スタッフの夜勤変数にヒントを与えて探索を誘導
+        rest_shifts_hint = {"off", "paid", "refresh"}
+        day_only_ids_hint = {s["id"] for s in self.staff_list if s.get("workType") == "day_only"}
+        wish_off_hint = {}  # day(0-indexed) -> set of staff_idx
+        for w in self.wishes:
+            if w.get("type") == "assign" and w.get("shift", "") in rest_shifts_hint:
+                sid = w.get("staffId")
+                for d in w.get("days", []):
+                    if 1 <= d <= self.num_days:
+                        for s_idx in range(self.num_staff):
+                            if self.staff_list[s_idx]["id"] == sid:
+                                wish_off_hint.setdefault(d - 1, set()).add(s_idx)
+        # 希望休人数でソートし、集中日の夜勤可能スタッフにヒント
+        night_shifts_idx = [SHIFT_IDX["night2"], SHIFT_IDX["junnya"], SHIFT_IDX["shinya"]]
+        sorted_days = sorted(range(self.num_days), key=lambda d: len(wish_off_hint.get(d, set())), reverse=True)
+        for d in sorted_days[:10]:  # 上位10日
+            if len(wish_off_hint.get(d, set())) < 3:
+                break
+            night_candidates = []
+            for s_idx in range(self.num_staff):
+                if s_idx in wish_off_hint.get(d, set()):
+                    continue
+                if self.staff_list[s_idx]["id"] in day_only_ids_hint:
+                    continue
+                night_candidates.append(s_idx)
+            # 必要人数分だけヒント（night2, junnya, shinya）
+            req_j_hint = self.config.get("reqJunnya", 2)
+            req_s_hint = self.config.get("reqShinya", 2)
+            hint_count = 0
+            for s_idx in night_candidates:
+                if hint_count >= req_j_hint + req_s_hint:
+                    break
+                wt = self.staff_list[s_idx].get("workType", "2kohtai")
+                if wt in ("2kohtai", "night_only"):
+                    self.model.AddHint(self.shifts[(s_idx, d, SHIFT_IDX["night2"])], 1)
+                elif wt == "3kohtai" and hint_count < req_j_hint:
+                    self.model.AddHint(self.shifts[(s_idx, d, SHIFT_IDX["junnya"])], 1)
+                elif wt == "3kohtai":
+                    self.model.AddHint(self.shifts[(s_idx, d, SHIFT_IDX["shinya"])], 1)
+                hint_count += 1
 
         solver = cp_model.CpSolver()
 
