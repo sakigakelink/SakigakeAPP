@@ -1118,29 +1118,7 @@ document.addEventListener("touchmove", function(e) {
     e.preventDefault();
 }, { passive: false });
 
-// Window assignments for HTML onclick handlers
-window.renderWishCalendar = renderWishCalendar;
-window.wishCycleShift = wishCycleShift;
-window.wishHandleKey = wishHandleKey;
-window.wishStartDrag = wishStartDrag;
-window.wishMoveDrag = wishMoveDrag;
-window.wishEndDrag = wishEndDrag;
-window.wishTouchStart = wishTouchStart;
-window.wishTouchMove = wishTouchMove;
-window.wishTouchEnd = wishTouchEnd;
-window.wishStartMulti = wishStartMulti;
-window.wishMoveMulti = wishMoveMulti;
-window.wishEndMulti = wishEndMulti;
-window.wishUndo = wishUndo;
-window.wishRedo = wishRedo;
-window.wishClear = wishClear;
-window.wishSave = wishSave;
-window.openWishModal = openWishModal;
-window.closeWishModal = closeWishModal;
-window.wishModalSelectAll = wishModalSelectAll;
-window.wishModalDeselectAll = wishModalDeselectAll;
-window.wishApplyModal = wishApplyModal;
-window.showWishSummary = showWishSummary;
+// Window assignments for HTML onclick handlers (only for functions defined in this file)
 window.renderWishes = renderWishes;
 window.renderWishUI = renderWishUI;
 window.deleteWish = deleteWish;
