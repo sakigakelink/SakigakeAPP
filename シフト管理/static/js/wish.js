@@ -1,5 +1,5 @@
 import { D, W, Y, M, wishDragState, setWishDragState, wishDragChip, setWishDragChip, wishDragMoved, setWishDragMoved, wishQueue, setWishQueue } from './state.js';
-import { ABBR, SHIFT_BTNS } from './constants.js';
+import { ABBR, SHIFT_BTNS, WORK_TYPES } from './constants.js';
 import { escHtml, isHoliday } from './util.js';
 import { save } from './api.js';
 import { render } from './render.js';
@@ -629,7 +629,7 @@ function validateWish(staffId, days, shift) {
 
     // 3. 前月引継ぎ競合
     if (wt === "2kohtai" || wt === "night_only") {
-        var prevData = getPrevMonthStaffData(staffId, Y, M, W);
+        var prevData = window.getPrevMonthStaffData ? window.getPrevMonthStaffData(staffId, Y, M, W) : {};
         var lastDay = prevData.lastDay;
         var forced = {}; // {day: forced_shift}
         if (lastDay === "night2") {
