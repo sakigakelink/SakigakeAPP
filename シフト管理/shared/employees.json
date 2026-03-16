@@ -1504,5 +1504,24 @@
       },
       "ngPartner": []
     }
+  },
+  {
+    "id": "10281061",
+    "name": "石畑　好望",
+    "ward": "sanbyoutou",
+    "shiftCategory": "twoShift",
+    "type": "nurse",
+    "personalRules": {
+      "nightShift": {
+        "maxPerMonth": 10
+      },
+      "dayOff": {
+        "minPerMonth": 9
+      },
+      "consecutive": {
+        "maxWorkDays": 5
+      },
+      "ngPartner": []
+    }
   }
 ]
