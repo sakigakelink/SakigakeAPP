@@ -561,8 +561,14 @@ function render() {
                     wl += dailyDayCount[d] || 0;  // 負荷ポイント：その日の日勤人数を加算
                 }
             }
-            // 夜勤カウント：夜勤入り回数（night2/junnya/shinya）。akeは明け（夜勤の翌日）なのでカウント外
-            if (sh === "night2" || sh === "junnya" || sh === "shinya") nc++;
+            // 夜勤カウント：スロット数（2kohtai/night_only: night2+ake, 3kohtai: junnya+shinya）
+            if (wt === "2kohtai" || wt === "night_only") {
+                if (sh === "night2" || sh === "ake") nc++;
+            } else if (wt === "3kohtai") {
+                if (sh === "junnya" || sh === "shinya") nc++;
+            } else {
+                if (sh === "night2" || sh === "junnya" || sh === "shinya") nc++;
+            }
             if (sh === "off" || sh === "paid" || sh === "refresh") oc++;
             var cls = sh ? " shift-" + sh : "";
             var hol = isHoliday(Y, M, d);
@@ -617,7 +623,20 @@ function render() {
             }
             html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + (violTip ? " title=\"" + escHtml(violTip) + "\"" : "") + ">" + cellContent + "</td>";
         }
-        html += "<td>" + dc + "</td><td>" + nc + "</td><td>" + oc + "</td></tr>";
+        // 夜勤セル色分け: maxNightとの比率で背景色
+        var ncStyle = "";
+        if (wt !== "day_only" && wt !== "fixed") {
+            var defaultMax = (wt === "2kohtai" || wt === "night_only") ? 10 : 5;
+            var maxN = s.maxNight !== undefined ? s.maxNight : defaultMax;
+            if (maxN > 0) {
+                var ratio = nc / maxN;
+                if (ratio >= 0.9) ncStyle = "background:#fca5a5;font-weight:bold";       // 赤: 90%以上
+                else if (ratio >= 0.7) ncStyle = "background:#fed7aa";                     // オレンジ: 70-90%
+                else if (ratio <= 0.3) ncStyle = "background:#bfdbfe;font-weight:bold";   // 青: 30%以下
+                else if (ratio <= 0.5) ncStyle = "background:#dbeafe";                     // 薄青: 30-50%
+            }
+        }
+        html += "<td>" + dc + "</td><td style=\"" + ncStyle + "\">" + nc + "</td><td>" + oc + "</td></tr>";
     }
     // 集計行（事前計算済みキャッシュを使用）
     html += "<tr><td class=\"staff-cell\"><b>日勤計</b></td>";
