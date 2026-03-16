@@ -124,7 +124,32 @@ print(f"\n=== Running solver for {year}/{month} sanbyoutou ===")
 print(f"Staff: {len(staff_list)}, Wishes: {len(wishes)}")
 print(f"Config: reqJ=3, reqS=2, reqLate=0, monthlyOff={monthly_off}")
 
+# Debug: show wishes per staff
+wish_summary = {}
+for w in wishes:
+    sid = w.get("staffId")
+    sh = w.get("shift")
+    days = w.get("days", [])
+    is_fixed = w.get("isFixed", False)
+    key = f"{sid}"
+    if key not in wish_summary:
+        wish_summary[key] = []
+    wish_summary[key].append(f"{sh}{'(fixed)' if is_fixed else ''}×{len(days)}")
+print(f"\nWishes per staff:")
+for sid, items in wish_summary.items():
+    name = next((s["name"] for s in staff_list if s["id"] == sid), sid)
+    print(f"  {name} ({sid}): {', '.join(items)}")
+
 solver = ShiftSolver(config)
+
+# Debug: show computed minNight
+print(f"\nComputed minNight:")
+for s in solver.staff_list:
+    wt = s.get("workType", "?")
+    if wt in ("day_only", "fixed"):
+        continue
+    print(f"  {s['name']} wt={wt} minN={s.get('minNight')} maxN={s.get('maxNight')}")
+
 result = solver.solve()
 
 print(f"\nStatus: {result.get('status')}")
