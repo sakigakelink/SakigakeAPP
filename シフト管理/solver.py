@@ -1769,8 +1769,8 @@ class ShiftSolver:
             night_range_diff = self.model.NewIntVar(0, NC_SCALE + 1, "night_range_diff")
             self.model.Add(night_range_diff == mx - mn)
             night_range_penalty = 0
-            # 段階ペナルティ: diff>=1で50, diff>=2で+100, diff>=3で+200, diff>=4で+350, diff>=5で+500
-            thresholds = [(1, 50), (2, 100), (3, 200), (4, 350), (5, 500)]
+            # 段階ペナルティ: 夜勤差を強く抑制（日勤不足500pt/日より重い）
+            thresholds = [(1, 200), (2, 500), (3, 800), (4, 1000), (5, 1500)]
             for thr, pen in thresholds:
                 exceeded = self.model.NewBoolVar(f"night_range_ge_{thr}")
                 self.model.Add(night_range_diff >= thr).OnlyEnforceIf(exceeded)
@@ -1845,7 +1845,7 @@ class ShiftSolver:
                 violation_score = solver.Value(total_violation)
                 night_diff = solver.Value(mx - mn)
                 # 段階的ペナルティと同じ計算方法でnight_scoreを算出
-                _thresholds = [(1, 50), (2, 100), (3, 200), (4, 350), (5, 500)]
+                _thresholds = [(1, 200), (2, 500), (3, 800), (4, 1000), (5, 1500)]
                 night_score = sum(pen for thr, pen in _thresholds if night_diff >= thr)
 
                 result["optimization_score"] = {
