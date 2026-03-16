@@ -8,6 +8,7 @@ import { loadDraftList, saveDraft, confirmShift, checkConfirmStatus, migrateShif
 import { solve, openShift, setShift } from './shift.js';
 import { exportPdf, exportJson } from './export.js';
 import { loadShiftFileAndTrackActual } from './actual.js';
+import './wish.js';
 
 // migrateData は元のコードで呼び出されているが定義がないためスタブ化
 function migrateData() {}
