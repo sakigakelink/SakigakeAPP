@@ -124,29 +124,46 @@ solver_data = {
     "prevMonthData": prev_month_data,
 }
 
-# まず希望なしで実行して本当の制約問題を切り分け
-print("\n=== ソルバー実行（希望なし） ===")
-solver_data_no_wish = dict(solver_data)
-solver_data_no_wish["wishes"] = []
-solver_nw = ShiftSolver(solver_data_no_wish)
-result_nw = solver_nw.solve()
-print(f"希望なし結果: {result_nw.get('status')}")
-if result_nw.get("message"):
-    print(f"  メッセージ: {result_nw['message'][:300]}")
+# 希望を1件ずつ除外して原因希望を特定
+print("\n=== 希望の原因特定 ===")
+# まず全希望で実行
+solver_all = ShiftSolver(solver_data)
+result_all = solver_all.solve()
+print(f"全希望({len(wishes)}件): {result_all.get('status')}")
 
-# 次に前月引継ぎなし+希望ありで実行
-print("\n=== ソルバー実行（前月引継ぎなし） ===")
-solver_data_no_prev = dict(solver_data)
-solver_data_no_prev["prevMonthData"] = {}
-solver_np = ShiftSolver(solver_data_no_prev)
-result_np = solver_np.solve()
-print(f"前月なし結果: {result_np.get('status')}")
-if result_np.get("message"):
-    print(f"  メッセージ: {result_np['message'][:300]}")
+if result_all.get("status") == "infeasible":
+    # staffId別にグルーピングして除外テスト
+    staff_wishes = {}
+    for w in wishes:
+        sid = w.get("staffId")
+        staff_wishes.setdefault(sid, []).append(w)
 
-print("\n=== ソルバー実行（全データ） ===")
-solver = ShiftSolver(solver_data)
-result = solver.solve()
+    with open("test_san_result.txt", "w", encoding="utf-8") as f:
+        f.write(f"全希望: {result_all.get('status')}\n")
+        if result_all.get("message"):
+            f.write(f"msg: {result_all['message']}\n\n")
+
+        f.write("=== 職員別除外テスト ===\n")
+        for sid, sw in staff_wishes.items():
+            name = next((s["name"] for s in staff_list if s["id"] == sid), sid)
+            # この職員の希望を除外
+            filtered = [w for w in wishes if w.get("staffId") != sid]
+            sd = dict(solver_data)
+            sd["wishes"] = filtered
+            r = ShiftSolver(sd).solve()
+            status = r.get("status")
+            mark = "*** SOLVED ***" if status != "infeasible" else ""
+            line = f"  {name}({sid}) 除外 → {status} {mark}"
+            print(line)
+            f.write(line + "\n")
+
+    result = result_all
+else:
+    result = result_all
+    with open("test_san_result.txt", "w", encoding="utf-8") as f:
+        f.write(f"全希望: {result.get('status')}\n")
+        if result.get("shifts"):
+            f.write(f"シフト数: {len(result['shifts'])}件\n")
 
 status = result.get("status")
 print(f"\nステータス: {status}")
@@ -158,24 +175,4 @@ if status in ("FEASIBLE", "OPTIMAL"):
 elif status == "INFEASIBLE":
     print("*** 解なし ***")
 
-# 結果をファイルに書き出し
-with open("test_san_result.txt", "w", encoding="utf-8") as f:
-    f.write(f"=== 切り分け結果 ===\n")
-    f.write(f"希望なし: {result_nw.get('status')}\n")
-    if result_nw.get("message"):
-        f.write(f"  msg: {result_nw['message'][:500]}\n")
-    f.write(f"前月なし: {result_np.get('status')}\n")
-    if result_np.get("message"):
-        f.write(f"  msg: {result_np['message'][:500]}\n")
-    f.write(f"全データ: {status}\n")
-    if result.get("message"):
-        f.write(f"メッセージ:\n{result['message']}\n")
-    f.write(f"\n前月引継ぎ: {len(prev_month_data)}名\n")
-    for sid, pd in prev_month_data.items():
-        name = next((s["name"] for s in staff_list if s["id"] == sid), sid)
-        f.write(f"  {name}: last={pd['lastDay']} cWork={pd['consecutiveWork']} cJun={pd['consecutiveJunnya']}\n")
-    f.write(f"\n希望データ: {len(wishes)}件\n")
-    for w in wishes:
-        name = next((s["name"] for s in staff_list if s["id"] == w.get("staffId")), w.get("staffId"))
-        f.write(f"  {name}: {w.get('type')} {w.get('shift')} days={w.get('days')}\n")
 print("\n結果を test_san_result.txt に書き出しました")
