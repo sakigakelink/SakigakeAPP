@@ -1048,17 +1048,15 @@ class ShiftSolver:
                     )
                 # 夜勤専従は ake→off 不要（夜明夜明...の連続勤務が可能）
 
-                # maxNight = 夜勤帯スロット数（night2+ake）、night2回数は maxNight//2
-                # キャリーオーバーakeがある場合、その1日分を除いた有効日数でクランプ
-                # （例: 28日月でキャリーオーバーあり → 27日中で最大13ペア）
-                available_days = self.num_days - carryover_ake
-                night2_target = min(max_night // 2, available_days // 2)
+                # maxNight = 夜勤帯スロット数（night2+ake）を直接指定
+                # 例: maxNight=21 → 当月のnight2+ake合計が21日
+                effective_night = min(max_night, self.num_days)
                 night2_list = [self.shifts[(s,d,SHIFT_IDX["night2"])] for d in range(self.num_days)]
-                self.model.Add(sum(night2_list) == night2_target)
+                ake_list = [self.shifts[(s,d,SHIFT_IDX["ake"])] for d in range(self.num_days)]
+                self.model.Add(sum(night2_list) + sum(ake_list) == effective_night)
 
-                # 公休日数: 月日数 - キャリーオーバーake - night2回数×2
-                # キャリーオーバーakeを考慮しないと日数合計がオーバーしINFEASIBLEになる
-                night_only_rest_days = max(0, self.num_days - carryover_ake - night2_target * 2)
+                # 公休日数: 月日数 - 夜勤スロット数
+                night_only_rest_days = max(0, self.num_days - effective_night)
                 _night_only_rest_days[s] = night_only_rest_days
                 off_list = [self.shifts[(s,d,SHIFT_IDX["off"])] for d in range(self.num_days)]
                 paid_list = [self.shifts[(s,d,SHIFT_IDX["paid"])] for d in range(self.num_days)]
