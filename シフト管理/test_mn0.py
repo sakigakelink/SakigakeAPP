@@ -65,20 +65,23 @@ all_w = json.load(open("shared/wishes_data.json", "r", encoding="utf-8"))
 wishes = [w for w in all_w.get("2026-4", []) if w.get("staffId") in san_ids]
 
 cases = [
-    ("reqJ3_S2", 3, 2),
-    ("reqJ2_S2", 2, 2),
-    ("reqJ3_S1", 3, 1),
-    ("reqJ2_S1", 2, 1),
+    ("baseline", 3, 2, 9, True),
+    ("monthlyOff=8", 3, 2, 8, True),
+    ("monthlyOff=10", 3, 2, 10, True),
+    ("no_prev", 3, 2, 9, False),
+    ("no_prev_mOff8", 3, 2, 8, False),
 ]
 with open("test_mn0_result.txt", "w", encoding="utf-8") as f:
-    for label, rj, rs in cases:
+    for label, rj, rs, mo, use_prev in cases:
         cfg = dict(config)
         cfg["reqJunnya"] = rj
         cfg["reqShinya"] = rs
+        cfg["monthlyOff"] = mo
         for s in san:
             s["minNight"] = 0
+        pm = prev_month_data if use_prev else {}
         r = ShiftSolver({"year": 2026, "month": 4, "staff": san, "config": cfg,
-                          "wishes": wishes, "prevMonthData": prev_month_data}).solve()
+                          "wishes": wishes, "prevMonthData": pm}).solve()
         line = f"{label}: {r.get('status')}"
         if r.get("shifts"):
             line += f" ({len(r['shifts'])}件)"
