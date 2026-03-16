@@ -151,15 +151,21 @@ class ShiftSolver:
                 # demand_after_no - slots_2k <= cap_3k  →  slots_2k >= demand_after_no - cap_3k
                 floor_slots_2k = max(0, math.ceil(demand_after_no - cap_3k))
 
-                if floor_slots_2k <= cap_2k:
-                    # 通常ケース: 2kohtai容量内に収まる
-                    # 10%マージンを加えるが cap_2k を超えない
-                    min_total_slots_2k = min(math.ceil(floor_slots_2k * 1.10), cap_2k)
+                # min_total_slots_2k は cap_2k の 85% を上限とし、ソルバーに柔軟性を残す
+                cap_2k_ceiling = int(cap_2k * 0.85)
+                if floor_slots_2k <= cap_2k_ceiling:
+                    # 通常ケース: 2kohtai容量内に余裕あり
+                    # 10%マージンを加えるが上限は cap_2k の 85%
+                    min_total_slots_2k = min(math.ceil(floor_slots_2k * 1.10), cap_2k_ceiling)
                     # 3kohtai残り需要の確認
                     remaining_check = demand_after_no - min_total_slots_2k
                     if remaining_check > cap_3k:
                         # マージン分でオーバーした場合、floorに戻す
                         min_total_slots_2k = floor_slots_2k
+                elif floor_slots_2k <= cap_2k:
+                    # タイトケース: floor は容量内だが85%を超える
+                    # floorそのものを使うが cap_2k の 85% で切る
+                    min_total_slots_2k = cap_2k_ceiling
                 else:
                     # 供給不足ケース
                     # 2kohtai は maxNight の 70% を下限として確保（控えめに）
@@ -191,8 +197,9 @@ class ShiftSolver:
                     if "minNight" not in s:
                         s["minNight"] = 0
             else:
-                # cap_3kを超えないようクランプ
-                remaining_for_3k = min(remaining_for_3k, cap_3k)
+                # cap_3kの85%を上限としてクランプ（ソルバーに柔軟性を残す）
+                cap_3k_ceiling = int(cap_3k * 0.85)
+                remaining_for_3k = min(remaining_for_3k, cap_3k_ceiling)
 
                 # 供給不足の場合は70%に抑える
                 if total_supply < demand_after_no:
@@ -379,6 +386,7 @@ class ShiftSolver:
             causes.append("【公休・希望の矛盾】\n" + "\n".join(off_issues))
 
         # === 原因5: 全体夜勤供給不足 ===
+        # maxNight はスロット数に統一済み（2kohtai/night_only: night2+ake, 3kohtai: junnya+shinya）
         night_supply = 0
         for s in self.staff_list:
             wt = s.get("workType", "2kohtai")
@@ -386,10 +394,7 @@ class ShiftSolver:
                 continue
             default_max = 10 if wt in ("2kohtai", "night_only") else 5
             mn = s.get("maxNight", default_max)
-            if wt in ("2kohtai", "night_only"):
-                night_supply += mn // 2  # night2回数（各回で1日分の夜勤カバー）
-            else:
-                night_supply += mn  # junnya+shinya の合計スロット
+            night_supply += mn
         night_demand = req_night_total * self.num_days
         if night_supply < night_demand:
             causes.append(f"【夜勤供給不足】月間夜勤需要{night_demand}枠 > 供給可能{night_supply}枠")
