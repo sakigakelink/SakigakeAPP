@@ -475,13 +475,9 @@ class ShiftSolver:
                 continue
             staff_name = staff.get("name", sid)
             max_night = staff.get("maxNight", 0)
-            staff_id = staff["id"]
-            prev_data = self.prev_month_data.get(staff_id, {})
-            last_day = prev_data.get("lastDay", "")
-            carryover_ake = 1 if last_day == "night2" else 0
-            available_days = self.num_days - carryover_ake
-            night2_target = min(max_night, available_days // 2)
-            quota = max(0, self.num_days - carryover_ake - night2_target * 2)
+            # maxNight はスロット数（night2+ake）。公休 = 月日数 - スロット数
+            effective_night = min(max_night, self.num_days)
+            quota = max(0, self.num_days - effective_night)
 
             new_days = {d for d in w.get("days", []) if 1 <= d <= self.num_days}
             already = _night_only_rest_wish_pre.get(sidx, set())
