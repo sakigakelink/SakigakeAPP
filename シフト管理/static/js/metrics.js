@@ -383,8 +383,16 @@ export function calculateFairnessMetrics(staff, shifts, days, year, month) {
             var wd = dt.getDay();
             var isWeekend = (wd === 0 || wd === 6 || HOLIDAYS[year + "-" + month + "-" + d]);
 
-            // 夜勤カウント（night2/junnya/shinyaを夜勤入りとしてカウント）
-            if (["night2", "junnya", "shinya"].indexOf(sh) >= 0) {
+            // 夜勤スロット数カウント（workType別: 2kohtai/night_only: night2+ake, 3kohtai: junnya+shinya）
+            var isNightSlot = false;
+            if (wt === "2kohtai" || wt === "night_only") {
+                isNightSlot = (sh === "night2" || sh === "ake");
+            } else if (wt === "3kohtai") {
+                isNightSlot = (sh === "junnya" || sh === "shinya");
+            } else {
+                isNightSlot = (["night2", "junnya", "shinya"].indexOf(sh) >= 0);
+            }
+            if (isNightSlot) {
                 nightCount++;
                 nightDays.push(d);
                 consNight++;
@@ -1074,7 +1082,13 @@ export function calculateVersionMetrics(shifts) {
             var wd = dt.getDay();
             var isWeekend = (wd === 0 || wd === 6 || HOLIDAYS[Y + "-" + M + "-" + d]);
 
-            if (["night2", "junnya", "shinya", "ake"].indexOf(sh) >= 0) nightCount++;
+            if (wt === "2kohtai" || wt === "night_only") {
+                if (sh === "night2" || sh === "ake") nightCount++;
+            } else if (wt === "3kohtai") {
+                if (sh === "junnya" || sh === "shinya") nightCount++;
+            } else {
+                if (["night2", "junnya", "shinya"].indexOf(sh) >= 0) nightCount++;
+            }
             if (sh === "late") lateCount++;
             if (isWeekend && sh && ["off", "paid", "refresh"].indexOf(sh) < 0) weekendWork++;
             if (sh && ["off", "paid", "refresh"].indexOf(sh) < 0) { cons++; if (cons > consMax) consMax = cons; }
