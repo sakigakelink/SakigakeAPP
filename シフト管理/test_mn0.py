@@ -77,9 +77,16 @@ for w in wishes:
         continue
     wishes_no_kunie_day.append(w)
 
+# off/paid/refresh希望のみ（day assign除去）
+wishes_off_only = [w for w in wishes if w.get("shift") in ("off","paid","refresh")]
+
+# 全希望なし
+wishes_none = []
+
 cases = [
     ("baseline", wishes, {}),
-    ("no_kunie_day", wishes_no_kunie_day, {}),
+    ("off_only", wishes_off_only, {}),
+    ("no_wishes", wishes_none, {}),
 ]
 with open("test_mn0_result.txt", "w", encoding="utf-8") as f:
     for label, ws, extra_cfg in cases:
