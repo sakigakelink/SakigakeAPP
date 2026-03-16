@@ -86,88 +86,121 @@ def _supplement_transfer_prevdata(staff_list, ward_code, year, month, prev_month
     result = dict(prev_month_data)
     prev_days = calendar.monthrange(prev_year, prev_month)[1]
 
+    # 全病棟の前月シフトデータを読み込み（必要に応じて）
+    shifts_dir = os.path.join(os.path.dirname(__file__), "shifts")
+    prev_shift_file = f"{prev_year}-{prev_month:02d}.json"
+    ward_shift_cache = {}  # ward_id -> shift_data
+
+    def _load_ward_shifts(ward_id):
+        if ward_id in ward_shift_cache:
+            return ward_shift_cache[ward_id]
+        filepath = os.path.join(shifts_dir, ward_id, prev_shift_file)
+        if not os.path.exists(filepath):
+            ward_shift_cache[ward_id] = None
+            return None
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                ward_shift_cache[ward_id] = pyjson.load(f)
+        except (OSError, IOError, pyjson.JSONDecodeError):
+            ward_shift_cache[ward_id] = None
+        return ward_shift_cache[ward_id]
+
+    def _extract_staff_shifts(shift_data, staff_id):
+        """確定 or 選択済みドラフトからスタッフのシフトを取得"""
+        if shift_data.get("status") == "confirmed" and shift_data.get("confirmed"):
+            s = shift_data["confirmed"]["shifts"].get(staff_id)
+            if s:
+                return s
+        selected = shift_data.get("selectedDraft")
+        if selected and selected in shift_data.get("drafts", {}):
+            return shift_data["drafts"][selected]["shifts"].get(staff_id)
+        return None
+
+    def _calc_prev_stats(staff_shifts, prev_days):
+        """前月シフトから引継ぎ統計を計算"""
+        last_day = staff_shifts.get(str(prev_days), "")
+        second_last = staff_shifts.get(str(prev_days - 1), "")
+        c_work = 0
+        for k in range(10):
+            d = prev_days - k
+            if d < 1:
+                break
+            sh = staff_shifts.get(str(d), "")
+            if not sh or sh in _REST_TYPES:
+                break
+            c_work += 1
+        c_jun = 0
+        for k in range(10):
+            d = prev_days - k
+            if d < 1:
+                break
+            sh = staff_shifts.get(str(d), "")
+            if not sh or sh != "junnya":
+                break
+            c_jun += 1
+        c_off = 0
+        for k in range(10):
+            d = prev_days - k
+            if d < 1:
+                break
+            sh = staff_shifts.get(str(d), "")
+            if not sh or sh not in _REST_TYPES:
+                break
+            c_off += 1
+        if last_day or second_last or c_work > 0 or c_jun > 0 or c_off > 0:
+            return {
+                "lastDay": last_day,
+                "secondLastDay": second_last,
+                "consecutiveWork": c_work,
+                "consecutiveJunnya": c_jun,
+                "consecutiveOff": c_off,
+            }
+        return None
+
+    still_missing = set(missing_ids)
+
+    # Phase 1: transferHistory がある職員を旧病棟から補完
     for emp in employees:
         staff_id = emp["id"]
-        if staff_id not in missing_ids:
+        if staff_id not in still_missing:
             continue
-
-        # 最新の転入記録を探す（当病棟宛・threshold以降）
         for h in sorted(emp.get("transferHistory", []), key=lambda x: x.get("date", ""), reverse=True):
             if h.get("to") != current_ward_id:
                 continue
             if h.get("date", "") < threshold:
                 break
-
             from_ward_id = h.get("from", "")
             if from_ward_id not in WARD_ID_TO_CODE:
                 break
-
-            filepath = os.path.join(
-                os.path.dirname(__file__), "shifts", from_ward_id,
-                f"{prev_year}-{prev_month:02d}.json"
-            )
-            if not os.path.exists(filepath):
+            shift_data = _load_ward_shifts(from_ward_id)
+            if not shift_data:
                 break
-
-            try:
-                with open(filepath, "r", encoding="utf-8") as f:
-                    shift_data = pyjson.load(f)
-            except (OSError, IOError, pyjson.JSONDecodeError):
-                break
-
-            staff_shifts = None
-            if shift_data.get("status") == "confirmed" and shift_data.get("confirmed"):
-                staff_shifts = shift_data["confirmed"]["shifts"].get(staff_id)
-            if staff_shifts is None:
-                selected = shift_data.get("selectedDraft")
-                if selected and selected in shift_data.get("drafts", {}):
-                    staff_shifts = shift_data["drafts"][selected]["shifts"].get(staff_id)
-
+            staff_shifts = _extract_staff_shifts(shift_data, staff_id)
             if not staff_shifts:
                 break
+            stats = _calc_prev_stats(staff_shifts, prev_days)
+            if stats:
+                result[staff_id] = stats
+                still_missing.discard(staff_id)
+            break
 
-            last_day = staff_shifts.get(str(prev_days), "")
-            second_last = staff_shifts.get(str(prev_days - 1), "")
-
-            c_work = 0
-            for k in range(10):
-                d = prev_days - k
-                if d < 1:
-                    break
-                sh = staff_shifts.get(str(d), "")
-                if not sh or sh in _REST_TYPES:
-                    break
-                c_work += 1
-
-            c_jun = 0
-            for k in range(10):
-                d = prev_days - k
-                if d < 1:
-                    break
-                sh = staff_shifts.get(str(d), "")
-                if not sh or sh != "junnya":
-                    break
-                c_jun += 1
-
-            c_off = 0
-            for k in range(10):
-                d = prev_days - k
-                if d < 1:
-                    break
-                sh = staff_shifts.get(str(d), "")
-                if not sh or sh not in _REST_TYPES:
-                    break
-                c_off += 1
-
-            if last_day or second_last or c_work > 0 or c_jun > 0 or c_off > 0:
-                result[staff_id] = {
-                    "lastDay": last_day,
-                    "secondLastDay": second_last,
-                    "consecutiveWork": c_work,
-                    "consecutiveJunnya": c_jun,
-                    "consecutiveOff": c_off,
-                }
-            break  # 最新の1件のみ処理
+    # Phase 2: まだ見つからない職員は全病棟を検索
+    if still_missing:
+        all_ward_ids = [w for w in WARD_ID_TO_CODE if w != current_ward_id]
+        for ward_id in all_ward_ids:
+            shift_data = _load_ward_shifts(ward_id)
+            if not shift_data:
+                continue
+            for staff_id in list(still_missing):
+                staff_shifts = _extract_staff_shifts(shift_data, staff_id)
+                if not staff_shifts:
+                    continue
+                stats = _calc_prev_stats(staff_shifts, prev_days)
+                if stats:
+                    result[staff_id] = stats
+                    still_missing.discard(staff_id)
+            if not still_missing:
+                break
 
     return result
 
