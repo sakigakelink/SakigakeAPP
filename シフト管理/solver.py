@@ -388,6 +388,7 @@ class ShiftSolver:
         # === 原因5: 全体夜勤供給不足 ===
         # maxNight はスロット数に統一済み（2kohtai/night_only: night2+ake, 3kohtai: junnya+shinya）
         night_supply = 0
+        supply_detail = {"2kohtai": 0, "3kohtai": 0, "night_only": 0}
         for s in self.staff_list:
             wt = s.get("workType", "2kohtai")
             if wt in ("day_only", "fixed"):
@@ -395,9 +396,22 @@ class ShiftSolver:
             default_max = 10 if wt in ("2kohtai", "night_only") else 5
             mn = s.get("maxNight", default_max)
             night_supply += mn
+            if wt in supply_detail:
+                supply_detail[wt] += mn
         night_demand = req_night_total * self.num_days
         if night_supply < night_demand:
-            causes.append(f"【夜勤供給不足】月間夜勤需要{night_demand}枠 > 供給可能{night_supply}枠")
+            causes.append(
+                f"【夜勤供給不足】月間夜勤需要{night_demand}枠 > 供給可能{night_supply}枠"
+                f"（2交代={supply_detail['2kohtai']} + 3交代={supply_detail['3kohtai']} + 夜専={supply_detail['night_only']}）"
+            )
+        elif night_supply <= night_demand * 1.05:
+            # 供給≒需要: 希望休・ake→off制約で実質不足になる可能性大
+            causes.append(
+                f"【夜勤供給余裕なし】月間夜勤需要{night_demand}枠 ≒ 供給{night_supply}枠"
+                f"（2交代={supply_detail['2kohtai']} + 3交代={supply_detail['3kohtai']} + 夜専={supply_detail['night_only']}）\n"
+                f"  希望休・ake→off（明け休み）の消費で不足します。"
+                f"夜勤可能な職員の追加またはmaxNight引き上げを検討してください"
+            )
 
         return causes
 
@@ -455,8 +469,6 @@ class ShiftSolver:
         _supply_no = sum(s.get("maxNight", 0) for s in self.staff_list if s.get("workType") == "night_only")
         _total_supply = _cap_2k + _cap_3k + _supply_no
         _total_demand = (_req_j + _req_s) * self.num_days
-        # 供給/需要比率を保存（夜勤帯制約のソフト化判定に使用）
-        self._night_supply_ratio = _total_supply / _total_demand if _total_demand > 0 else 999
         if _total_supply < _total_demand:
             msg = (
                 f"夜勤供給不足のため解なし: "
@@ -859,41 +871,21 @@ class ShiftSolver:
             if is_holiday_target:
                 self.model.Add(sum(dw) <= max(0, adjusted_target + 1))
 
-        # 準夜帯の必要人数（夜勤専従含む全職員でカウント）
+        # 準夜帯の必要人数（夜勤専従含む全職員でカウント）【ハード制約・緩和禁止】
         req_j = self.config.get("reqJunnya", 2)
-        # 供給余裕がない場合（≤110%）は1人不足までソフト制約化
-        night_tight = getattr(self, '_night_supply_ratio', 999) <= 1.10
-        if night_tight and log_queue:
-            ratio_pct = round(getattr(self, '_night_supply_ratio', 0) * 100)
-            log_queue.put({'type': 'log', 'msg': f'[夜勤帯] 供給余裕{ratio_pct}% → 夜勤帯1名不足を許容するソフト制約モードで実行'})
         for d in range(self.num_days):
             jw = [self.shifts[(s,d,SHIFT_IDX["junnya"])] for s in range(self.num_staff)]
             jw += [self.shifts[(s,d,SHIFT_IDX["night2"])] for s in range(self.num_staff)]
             adjusted_req = max(0, req_j - fixed_junnya_counts[d])
-            if night_tight and adjusted_req > 0:
-                # ソフト制約: 不足1人まで許容、不足にペナルティ
-                j_short = self.model.NewIntVar(0, 1, f"j_short_{d}")
-                self.model.Add(sum(jw) + j_short >= adjusted_req)
-                self.model.Add(sum(jw) <= adjusted_req)
-                staff_shortage_penalty += j_short * 2000  # 夜勤不足は日勤不足より重い
-                staff_shortage_info.append({"day": d+1, "type": "準夜", "var": j_short})
-            else:
-                self.model.Add(sum(jw) == adjusted_req)
+            self.model.Add(sum(jw) == adjusted_req)
 
-        # 深夜帯の必要人数（夜勤専従含む全職員でカウント、前月引き継ぎakeも含む）
+        # 深夜帯の必要人数（夜勤専従含む全職員でカウント、前月引き継ぎakeも含む）【ハード制約・緩和禁止】
         req_s = self.config.get("reqShinya", 2)
         for d in range(self.num_days):
             sw = [self.shifts[(s,d,SHIFT_IDX["shinya"])] for s in range(self.num_staff)]
             sw += [self.shifts[(s,d,SHIFT_IDX["ake"])] for s in range(self.num_staff)]
             adjusted_req = max(0, req_s - fixed_shinya_counts[d])
-            if night_tight and adjusted_req > 0:
-                s_short = self.model.NewIntVar(0, 1, f"s_short_{d}")
-                self.model.Add(sum(sw) + s_short >= adjusted_req)
-                self.model.Add(sum(sw) <= adjusted_req)
-                staff_shortage_penalty += s_short * 2000
-                staff_shortage_info.append({"day": d+1, "type": "深夜", "var": s_short})
-            else:
-                self.model.Add(sum(sw) == adjusted_req)
+            self.model.Add(sum(sw) == adjusted_req)
 
         # --- 職種別制約（config駆動、全病棟共通フレームワーク） ---
         nurseaide_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurseaide"]
@@ -1260,11 +1252,8 @@ class ShiftSolver:
                 # 当月1日=off（強制）
                 forced_by_prev[(s, 0)] = "off"
 
-        # 希望反映
+        # 希望反映（全てハード制約・緩和禁止）
         # 不正な希望は事前チェックC/D/Eで弾き済み
-        # night_tight時はoff/refresh希望をソフト制約化（夜勤帯に余裕がなく解なし防止）
-        _soft_wish_shifts = {"off", "refresh", "paid"} if night_tight else set()
-        wish_violation_penalty = 0
         for w in self.wishes:
             sid = w.get("staffId")
             sidx = self.staff_id_to_idx.get(sid)
@@ -1273,7 +1262,6 @@ class ShiftSolver:
             wt = w.get("type")
             days = w.get("days", [])
             sh = w.get("shift")
-            is_fixed = w.get("isFixed", False)
             if sh not in SHIFT_IDX:
                 continue
 
@@ -1283,16 +1271,9 @@ class ShiftSolver:
                     continue
 
                 if wt == "assign":
-                    if not is_fixed and sh in _soft_wish_shifts:
-                        # ソフト制約: 希望逸脱にペナルティ
-                        wish_met = self.model.NewBoolVar(f"wish_{sidx}_{di}_{sh}")
-                        self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1).OnlyEnforceIf(wish_met)
-                        wish_violation_penalty += wish_met.Not() * 300
-                    else:
-                        self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1)
+                    self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1)
                 elif wt == "avoid":
                     self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 0)
-        staff_shortage_penalty += wish_violation_penalty
 
         # 目的関数：夜勤平準化（ソルバー対象職員のみ）
         # maxNight が異なる職員間の公平性のため、稼働率ベースで比較
