@@ -35,16 +35,18 @@ config = {
 }
 print(f"\n設定: reqJ={config['reqJunnya']} reqS={config['reqShinya']} reqLate={config['reqLate']}")
 
-# 3. 前月シフトデータ読み込み
+# 3. 前月シフトデータ読み込み（confirmed.shifts: {staffId: {day: shift}} → flatten to {staffId-day: shift}）
 prev_shifts = {}
 prev_file = "shifts/sanbyoutou/2026-03.json"
 if os.path.exists(prev_file):
     prev_data_raw = json.load(open(prev_file, "r", encoding="utf-8"))
-    if "shifts" in prev_data_raw:
-        prev_shifts = prev_data_raw["shifts"]
-    elif isinstance(prev_data_raw, dict):
-        prev_shifts = prev_data_raw
-    print(f"前月シフト: {len(prev_shifts)}件")
+    confirmed = prev_data_raw.get("confirmed", {})
+    nested = confirmed.get("shifts", {})
+    for sid, day_map in nested.items():
+        if isinstance(day_map, dict):
+            for d, sh in day_map.items():
+                prev_shifts[f"{sid}-{d}"] = sh
+    print(f"前月シフト: {len(prev_shifts)}件 ({len(nested)}名分)")
 
 # 前月引継ぎデータ構築
 prev_days = 31  # 2026年3月
@@ -99,13 +101,15 @@ for sid, pd in prev_month_data.items():
     if pd["lastDay"] or pd["consecutiveWork"] >= 4:
         print(f"  {name}: last={pd['lastDay']} cWork={pd['consecutiveWork']} cJun={pd['consecutiveJunnya']}")
 
-# 4. 希望データ読み込み
+# 4. 希望データ読み込み（トップレベル "2026-4" にフラットリスト、三病棟職員でフィルタ）
 wishes = []
+san_ids = {s["id"] for s in staff_list}
 wishes_file = "shared/wishes_data.json"
 if os.path.exists(wishes_file):
     all_wishes = json.load(open(wishes_file, "r", encoding="utf-8"))
-    wishes = all_wishes.get("sanbyoutou", {}).get("2026-4", [])
-    print(f"\n希望データ: {len(wishes)}件")
+    all_april = all_wishes.get("2026-4", [])
+    wishes = [w for w in all_april if w.get("staffId") in san_ids]
+    print(f"\n希望データ: {len(wishes)}件 (全体{len(all_april)}件から三病棟分抽出)")
     for w in wishes:
         name = next((s["name"] for s in staff_list if s["id"] == w.get("staffId")), w.get("staffId"))
         print(f"  {name}: {w.get('type')} {w.get('shift')} days={w.get('days')}")
@@ -124,9 +128,12 @@ print("\n=== ソルバー実行 ===")
 solver = ShiftSolver(solver_data)
 result = solver.solve()
 
-print(f"\nステータス: {result.get('status')}")
+status = result.get("status")
+print(f"\nステータス: {status}")
 if result.get("message"):
     print(f"メッセージ:\n{result['message']}")
-if result.get("status") == "success":
+if status in ("FEASIBLE", "OPTIMAL"):
     shifts = result.get("shifts", {})
     print(f"シフト数: {len(shifts)}件")
+elif status == "INFEASIBLE":
+    print("*** 解なし ***")
