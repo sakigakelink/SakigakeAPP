@@ -144,11 +144,36 @@ solver = ShiftSolver(config)
 
 # Debug: show computed minNight
 print(f"\nComputed minNight:")
+total_min = 0
+total_max = 0
 for s in solver.staff_list:
     wt = s.get("workType", "?")
     if wt in ("day_only", "fixed"):
         continue
-    print(f"  {s['name']} wt={wt} minN={s.get('minNight')} maxN={s.get('maxNight')}")
+    mn = s.get('minNight', 0)
+    mx = s.get('maxNight', 0)
+    total_min += mn
+    total_max += mx
+    print(f"  {s['name']} wt={wt} minN={mn} maxN={mx}")
+print(f"  合計: minN={total_min} maxN={total_max} demand={5*num_days}")
+print(f"  供給比率: {total_max}/{5*num_days} = {total_max/(5*num_days)*100:.0f}%")
+print(f"  _night_supply_ratio: {solver._night_supply_ratio:.3f}")
+
+# Count available days per staff (excluding wishes)
+print(f"\n可用日数（希望休除く）:")
+for s in solver.staff_list:
+    wt = s.get("workType", "?")
+    if wt in ("day_only", "fixed"):
+        continue
+    sid = s["id"]
+    off_days = set()
+    for w in wishes:
+        if w.get("staffId") == sid and w.get("shift") in ("off","paid","refresh"):
+            for d in w.get("days", []):
+                off_days.add(d)
+    avail = num_days - len(off_days)
+    mx = s.get('maxNight', 0)
+    print(f"  {s['name']}: avail={avail}/{num_days} maxN={mx} {'TIGHT' if avail < mx else ''}")
 
 result = solver.solve()
 
