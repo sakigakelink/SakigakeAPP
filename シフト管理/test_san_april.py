@@ -160,7 +160,14 @@ elif status == "INFEASIBLE":
 
 # 結果をファイルに書き出し
 with open("test_san_result.txt", "w", encoding="utf-8") as f:
-    f.write(f"ステータス: {status}\n")
+    f.write(f"=== 切り分け結果 ===\n")
+    f.write(f"希望なし: {result_nw.get('status')}\n")
+    if result_nw.get("message"):
+        f.write(f"  msg: {result_nw['message'][:500]}\n")
+    f.write(f"前月なし: {result_np.get('status')}\n")
+    if result_np.get("message"):
+        f.write(f"  msg: {result_np['message'][:500]}\n")
+    f.write(f"全データ: {status}\n")
     if result.get("message"):
         f.write(f"メッセージ:\n{result['message']}\n")
     f.write(f"\n前月引継ぎ: {len(prev_month_data)}名\n")
