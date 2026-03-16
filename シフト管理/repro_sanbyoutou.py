@@ -157,7 +157,7 @@ for s in solver.staff_list:
     print(f"  {s['name']} wt={wt} minN={mn} maxN={mx}")
 print(f"  合計: minN={total_min} maxN={total_max} demand={5*num_days}")
 print(f"  供給比率: {total_max}/{5*num_days} = {total_max/(5*num_days)*100:.0f}%")
-print(f"  _night_supply_ratio: {solver._night_supply_ratio:.3f}")
+print(f"  _night_supply_ratio: {getattr(solver, '_night_supply_ratio', 'N/A (set during solve)')}")
 
 # Count available days per staff (excluding wishes)
 print(f"\n可用日数（希望休除く）:")
