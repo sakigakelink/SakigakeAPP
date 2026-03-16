@@ -32,11 +32,13 @@ def _base_data(staff, **kwargs):
 # === _diagnose_infeasible() 単体テスト ===
 class TestDiagnoseInfeasible:
     def test_no_issues(self):
-        """十分な人数 → 診断ヒントなし"""
-        staff = [_make_staff(f"s{i}", f"職員{i}") for i in range(15)]
+        """十分な人数・夜勤供給 → 人員不足・夜勤不足の診断なし"""
+        # 15人 maxNight=10 → 供給75 vs 需要124 で不足する。20人にする
+        staff = [_make_staff(f"s{i}", f"職員{i}") for i in range(20)]
         solver = ShiftSolver(_base_data(staff))
-        hints = solver._diagnose_infeasible()
-        assert len(hints) == 0
+        causes = solver._diagnose_infeasible()
+        assert not any("人員不足" in c for c in causes)
+        assert not any("夜勤人員不足" in c for c in causes)
 
     def test_staff_shortage(self):
         """極端に少ない人数 → 人員不足検出"""
@@ -59,20 +61,21 @@ class TestDiagnoseInfeasible:
         assert any("5日" in h for h in hints)
 
     def test_prev_month_night_concentration(self):
-        """前月末に多数が夜勤 → 1日に強制休集中を検出"""
+        """前月末に多数が夜勤 → 前月引継ぎ制約を検出"""
         staff = [_make_staff(f"s{i}", f"職員{i}") for i in range(10)]
         prev = {f"s{i}": {"lastDay": "night2", "consecutiveWork": 1} for i in range(5)}
         solver = ShiftSolver(_base_data(staff, prevMonthData=prev))
-        hints = solver._diagnose_infeasible()
-        assert any("前月夜勤者" in h or "強制休" in h for h in hints)
+        causes = solver._diagnose_infeasible()
+        assert any("前月引継ぎ" in c for c in causes)
+        assert any("night2" in c for c in causes)
 
     def test_consecutive_work_high(self):
-        """前月から4連勤以上のスタッフが多い → 月初休み必須を検出"""
+        """前月から4連勤以上のスタッフが多い → 引継ぎ制約に連勤情報を検出"""
         staff = [_make_staff(f"s{i}", f"職員{i}") for i in range(10)]
         prev = {f"s{i}": {"lastDay": "day", "consecutiveWork": 4} for i in range(4)}
         solver = ShiftSolver(_base_data(staff, prevMonthData=prev))
-        hints = solver._diagnose_infeasible()
-        assert any("4連勤" in h for h in hints)
+        causes = solver._diagnose_infeasible()
+        assert any("連勤" in c for c in causes)
 
     def test_night_tight_day(self):
         """夜勤可能人数が必要枠と同数 → 夜勤余裕ゼロを検出"""
@@ -85,8 +88,8 @@ class TestDiagnoseInfeasible:
             {"staffId": "s1", "type": "assign", "shift": "off", "days": [10]},
         ]
         solver = ShiftSolver(_base_data(staff, wishes=wishes))
-        hints = solver._diagnose_infeasible()
-        assert any("夜勤" in h and "10日" in h for h in hints)
+        causes = solver._diagnose_infeasible()
+        assert any("夜勤" in c and "10日" in c for c in causes)
 
 
 # === ソルバー事前チェック テスト ===
