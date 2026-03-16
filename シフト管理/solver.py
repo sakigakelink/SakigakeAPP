@@ -1260,8 +1260,11 @@ class ShiftSolver:
                 # 当月1日=off（強制）
                 forced_by_prev[(s, 0)] = "off"
 
-        # 希望反映（全てハード制約）
+        # 希望反映
         # 不正な希望は事前チェックC/D/Eで弾き済み
+        # night_tight時はoff/refresh希望をソフト制約化（夜勤帯に余裕がなく解なし防止）
+        _soft_wish_shifts = {"off", "refresh", "paid"} if night_tight else set()
+        wish_violation_penalty = 0
         for w in self.wishes:
             sid = w.get("staffId")
             sidx = self.staff_id_to_idx.get(sid)
@@ -1270,6 +1273,7 @@ class ShiftSolver:
             wt = w.get("type")
             days = w.get("days", [])
             sh = w.get("shift")
+            is_fixed = w.get("isFixed", False)
             if sh not in SHIFT_IDX:
                 continue
 
@@ -1279,9 +1283,16 @@ class ShiftSolver:
                     continue
 
                 if wt == "assign":
-                    self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1)
+                    if not is_fixed and sh in _soft_wish_shifts:
+                        # ソフト制約: 希望逸脱にペナルティ
+                        wish_met = self.model.NewBoolVar(f"wish_{sidx}_{di}_{sh}")
+                        self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1).OnlyEnforceIf(wish_met)
+                        wish_violation_penalty += wish_met.Not() * 300
+                    else:
+                        self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 1)
                 elif wt == "avoid":
                     self.model.Add(self.shifts[(sidx, di, SHIFT_IDX[sh])] == 0)
+        staff_shortage_penalty += wish_violation_penalty
 
         # 目的関数：夜勤平準化（ソルバー対象職員のみ）
         # maxNight が異なる職員間の公平性のため、稼働率ベースで比較
