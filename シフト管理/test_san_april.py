@@ -137,3 +137,18 @@ if status in ("FEASIBLE", "OPTIMAL"):
     print(f"シフト数: {len(shifts)}件")
 elif status == "INFEASIBLE":
     print("*** 解なし ***")
+
+# 結果をファイルに書き出し
+with open("test_san_result.txt", "w", encoding="utf-8") as f:
+    f.write(f"ステータス: {status}\n")
+    if result.get("message"):
+        f.write(f"メッセージ:\n{result['message']}\n")
+    f.write(f"\n前月引継ぎ: {len(prev_month_data)}名\n")
+    for sid, pd in prev_month_data.items():
+        name = next((s["name"] for s in staff_list if s["id"] == sid), sid)
+        f.write(f"  {name}: last={pd['lastDay']} cWork={pd['consecutiveWork']} cJun={pd['consecutiveJunnya']}\n")
+    f.write(f"\n希望データ: {len(wishes)}件\n")
+    for w in wishes:
+        name = next((s["name"] for s in staff_list if s["id"] == w.get("staffId")), w.get("staffId"))
+        f.write(f"  {name}: {w.get('type')} {w.get('shift')} days={w.get('days')}\n")
+print("\n結果を test_san_result.txt に書き出しました")
