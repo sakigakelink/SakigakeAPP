@@ -41,6 +41,7 @@
 </div>
 <div style="display:flex;align-items:center;gap:.5rem">
 <button class="btn btn-primary" id="btnSolve">生成開始</button>
+<label style="display:inline-flex;align-items:center;gap:.3rem;font-size:.8rem;color:#f59e0b;cursor:pointer;margin-left:.3rem" title="解が見つからない場合、準夜人数や希望を1つ緩和して再試行します"><input type="checkbox" id="chkRelaxMode"> 制約緩和</label>
 <button class="btn btn-success" id="pdfBtn">PDF出力</button>
 <button class="btn btn-info" id="jsonBtn" style="background:#3b82f6">JSON出力</button>
 <button class="btn btn-secondary" id="clearBtn">クリア</button>
@@ -95,6 +96,7 @@
 <div style="display:flex;align-items:center;gap:.5rem">
 <span id="shiftStatusBadge" class="status-badge draft">仮</span>
 <span id="currentDraftName" style="font-size:1.1rem;font-weight:600;color:var(--text1)">-</span>
+<span id="solverCompleteness" style="font-size:.75rem;padding:.15rem .5rem;border-radius:4px;display:none"></span>
 </div>
 <div id="shiftStatusContext" style="font-size:.85rem;color:var(--text2);background:var(--bg1);padding:.3rem .6rem;border-radius:4px"></div>
 <span id="shiftStatusDetail" style="font-size:.8rem;color:var(--text2);margin-left:auto"></span>
@@ -147,11 +149,22 @@
 </div>
 <div class="ward-tabs" id="staffWardTabs"></div>
 <div class="staff-list" id="staffList"></div>
+</div>
+</div>
 
-<!-- 日勤人数設定（曜日別） -->
-<div class="card" style="margin-top:1rem">
-<div class="card-header"><span>日勤人数設定（病棟別・曜日別）</span></div>
-<div style="padding:1rem;overflow-x:auto">
+<div id="tab-constraints" class="tab-content">
+<div class="card">
+<div class="card-header">
+<span>制約ルール一覧</span>
+<div class="ward-tabs" id="constraintWardTabs"></div>
+</div>
+<div id="constraintSettings" style="padding:1rem;border-bottom:1px solid var(--border)">
+<!-- 人員配置設定（入力欄） -->
+<div style="margin-bottom:.5rem;padding:1rem;background:var(--bg2);border-radius:8px;border:1px solid var(--border)">
+<div style="font-weight:bold;font-size:1rem;margin-bottom:.8rem;color:var(--blue)">📋 人員配置設定</div>
+<div style="margin-bottom:1rem">
+<div style="font-weight:600;font-size:.9rem;margin-bottom:.5rem">日勤人数（曜日別）</div>
+<div style="overflow-x:auto">
 <table style="width:100%;text-align:center;font-size:.85rem;border-collapse:collapse">
 <thead>
 <tr>
@@ -192,13 +205,12 @@
 </tr>
 </tbody>
 </table>
-<p style="font-size:.75rem;color:var(--text3);margin:.5rem 0 0">空欄 = 制限なし</p>
+<p style="font-size:.75rem;color:var(--text3);margin:.3rem 0 0">空欄 = 制限なし</p>
 </div>
 </div>
-<!-- 夜勤・遅出・公休設定 -->
-<div class="card" style="margin-top:1rem">
-<div class="card-header"><span>夜勤・その他設定（病棟別）</span></div>
-<div style="padding:1rem;display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem">
+<hr style="margin:.5rem 0;border:none;border-top:1px solid var(--border)">
+<div style="font-weight:600;font-size:.9rem;margin-bottom:.5rem">夜勤・その他設定</div>
+<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.75rem">
 <input type="hidden" id="reqDayWeekday" value="7">
 <input type="hidden" id="reqDayHoliday" value="5">
 <div>
@@ -224,18 +236,10 @@
 </div>
 </div>
 </div>
-
-<div id="tab-constraints" class="tab-content">
-<div class="card">
-<div class="card-header">
-<span>制約ルール一覧</span>
-<div class="ward-tabs" id="constraintWardTabs"></div>
-</div>
 <div style="padding:1rem" id="constraintsBody"></div>
 </div>
 </div>
 
-</div>
 </main>
 <div class="modal-overlay" id="shiftModal">
 <div class="modal">
@@ -417,6 +421,6 @@
 </div>
 </div>
 </div>
-<script type="module" src="/static/js/app.js?v=89"></script>
+<script type="module" src="/static/js/app.js?v=95"></script>
 </body>
 </html>

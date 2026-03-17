@@ -9,9 +9,11 @@ ShiftSolverクラス
 - 固定シフト (fixed): ソルバー対象外、評価値計算からも除外
 """
 import calendar
+import copy
 import json
 import math
 import os
+import time as _time
 from datetime import date
 from ortools.sat.python import cp_model
 from utils import HOLIDAYS
@@ -56,10 +58,15 @@ DAY_SHIFTS = ["day", "late"]
 
 class ShiftSolver:
     def __init__(self, data):
+        self._original_data = data  # solve_relaxed用に元データ保持
         self.year = data["year"]
         self.month = data["month"]
         self.num_days = calendar.monthrange(self.year, self.month)[1]
         self.all_staff_list = data["staff"]  # 全職員リスト
+        # ID→名前マップ（診断メッセージ用、全職員マスタがあれば優先）
+        self._id_to_name = {s["id"]: s.get("name", s["id"]) for s in data["staff"]}
+        for s in data.get("allEmployees", []):
+            self._id_to_name.setdefault(s["id"], s.get("name", s["id"]))
         self.config = data.get("config", {})
         self.wishes = data.get("wishes", [])
         self.prev_month_data = data.get("prevMonthData", {})
@@ -83,6 +90,13 @@ class ShiftSolver:
                 self.staff_list.append(s)
         self.locked_shifts = data.get("lockedShifts", {})
 
+        # fixed_staffからもID→名前マップを補完（allEmployeesが空の場合のフォールバック）
+        for s in self.fixed_staff:
+            self._id_to_name.setdefault(s["id"], s.get("name", s["id"]))
+
+        # employees.json の maxPerMonth で maxNight を補正（LocalStorage残留値対策）
+        self._sync_max_night_from_backend()
+
         self.num_staff = len(self.staff_list)
         self.staff_id_to_idx = {s["id"]: i for i, s in enumerate(self.staff_list)}
 
@@ -99,6 +113,35 @@ class ShiftSolver:
             if os.path.exists(config_path):
                 with open(config_path, encoding="utf-8") as f:
                     self.ward_engine_config = json.load(f)
+
+    def _sync_max_night_from_backend(self):
+        """employees.json の maxPerMonth で各職員の maxNight を補正する。
+        フロントエンドの LocalStorage に古い値が残留するケースへの対策。"""
+        employees_path = os.path.join(os.path.dirname(__file__), 'shared', 'employees.json')
+        if not os.path.exists(employees_path):
+            return
+        try:
+            with open(employees_path, 'r', encoding='utf-8') as f:
+                employees = json.load(f)
+            backend_max = {}
+            for emp in employees:
+                pr = emp.get("personalRules", {})
+                mn = pr.get("nightShift", {}).get("maxPerMonth")
+                if mn is not None:
+                    backend_max[str(emp.get("id", ""))] = mn
+            corrected = []
+            for s in self.staff_list + self.fixed_staff:
+                sid = str(s.get("id", ""))
+                if sid in backend_max:
+                    be_val = backend_max[sid]
+                    fe_val = s.get("maxNight")
+                    if fe_val is not None and fe_val != be_val:
+                        corrected.append(f"{s.get('name', sid)}: {fe_val}→{be_val}")
+                        s["maxNight"] = be_val
+            if corrected:
+                print(f"[solver] maxNight補正({len(corrected)}名): {', '.join(corrected)}", flush=True)
+        except Exception as e:
+            print(f"[solver] maxNight補正スキップ: {e}", flush=True)
 
     def _compute_default_min_night(self):
         """病棟の構成（2交代/3交代の人数・配置要件）に基づきminNightデフォルトを自動計算
@@ -274,10 +317,13 @@ class ShiftSolver:
         req_late = self.config.get("reqLate", 1) if shift_restrictions.get("late", True) else 0
         req_night_total = req_j + req_s
 
-        # 希望休マップ
+        # 希望休マップ（当該病棟の職員のみ）
         wish_off = {}  # day -> set of staffId
         wish_assign = {}  # day -> set of staffId (勤務指定)
+        diag_ward_ids = {s["id"] for s in self.all_staff_list}
         for w in self.wishes:
+            if w.get("staffId") not in diag_ward_ids:
+                continue
             wt = w.get("type")
             sh = w.get("shift", "")
             for d in w.get("days", []):
@@ -347,6 +393,30 @@ class ShiftSolver:
             causes.append("【人員不足】以下の日で出勤可能人数が必要人数を下回っています:\n" + "\n".join(shortage_days[:5]))
 
         # === 原因2: 夜勤可能人数不足 ===
+        # 固定職員の日別夜勤カバー数を事前計算
+        fixed_night_by_day = {}
+        active_fixed_diag = [
+            fs for fs in self.fixed_staff
+            if (fs.get("id") in self.fixed_shifts_data and self.fixed_shifts_data[fs["id"]])
+            or fs.get("fixedPattern")
+        ]
+        for d in range(1, self.num_days + 1):
+            cnt = 0
+            for fs in active_fixed_diag:
+                sh = self._get_fixed_shift(fs, d)
+                if sh in ("night2", "junnya"):
+                    cnt += 1  # 準夜帯カバー
+            fixed_night_by_day[d] = cnt
+        # 深夜帯も同様にカウント
+        fixed_shinya_by_day = {}
+        for d in range(1, self.num_days + 1):
+            cnt = 0
+            for fs in active_fixed_diag:
+                sh = self._get_fixed_shift(fs, d)
+                if sh in ("shinya", "ake"):
+                    cnt += 1
+            fixed_shinya_by_day[d] = cnt
+
         night_tight = []
         for d in range(1, self.num_days + 1):
             unavail = set()
@@ -356,19 +426,25 @@ class ShiftSolver:
                                 if s["id"] not in unavail
                                 and s["id"] not in fixed_ids
                                 and s["id"] not in day_only_ids)
-            if night_capable < req_night_total:
+            # 固定職員の夜勤分を需要から差し引く
+            effective_req = max(0, req_night_total - fixed_night_by_day.get(d, 0) - fixed_shinya_by_day.get(d, 0))
+            if night_capable < effective_req:
                 fo_cnt = len((forced_off.get(d, set()) - day_only_ids - fixed_ids))
                 wo_cnt = len((wish_off.get(d, set()) - day_only_ids - fixed_ids))
+                fixed_n = fixed_night_by_day.get(d, 0) + fixed_shinya_by_day.get(d, 0)
+                fixed_note2 = f", 固定{fixed_n}人充当" if fixed_n > 0 else ""
                 night_tight.append(
-                    f"  {d}日: 夜勤可能{night_capable}人 < 必要{req_night_total}枠"
-                    f"（前月引継{fo_cnt}人不可, 希望休{wo_cnt}人不可）"
+                    f"  {d}日: 夜勤可能{night_capable}人 < 必要{effective_req}枠"
+                    f"（前月引継{fo_cnt}人不可, 希望休{wo_cnt}人不可{fixed_note2}）"
                 )
-            elif night_capable == req_night_total:
+            elif night_capable == effective_req:
                 fo_cnt = len((forced_off.get(d, set()) - day_only_ids - fixed_ids))
                 wo_cnt = len((wish_off.get(d, set()) - day_only_ids - fixed_ids))
+                fixed_n = fixed_night_by_day.get(d, 0) + fixed_shinya_by_day.get(d, 0)
+                fixed_note2 = f", 固定{fixed_n}人充当" if fixed_n > 0 else ""
                 night_tight.append(
-                    f"  {d}日: 夜勤可能{night_capable}人 = 必要{req_night_total}枠（余裕なし）"
-                    f"（前月引継{fo_cnt}人, 希望休{wo_cnt}人）"
+                    f"  {d}日: 夜勤可能{night_capable}人 = 必要{effective_req}枠（余裕なし）"
+                    f"（前月引継{fo_cnt}人, 希望休{wo_cnt}人{fixed_note2}）"
                 )
 
         if night_tight:
@@ -393,18 +469,20 @@ class ShiftSolver:
         # 希望休が多い日をソート
         day_wish_counts.sort(key=lambda x: -x[1])
         for d, cnt, na, names in day_wish_counts[:5]:
+            eff_req = max(0, req_night_total - fixed_night_by_day.get(d, 0) - fixed_shinya_by_day.get(d, 0))
             wish_concentrate.append(
                 f"  {d}日: 希望休{cnt}人（{', '.join(names[:6])}）"
-                f" → 夜勤可能{na}人（必要{req_night_total}）"
+                f" → 夜勤可能{na}人（必要{eff_req}）"
             )
         if wish_concentrate:
             # 集中日に希望休を入れている職員を特定（集中日のみに絞る）
             concentrate_days = {d for d, _, _, _ in day_wish_counts[:5]}
             staff_on_concentrate = {}  # sid -> [days in concentrate_days]
+            ward_ids = {s["id"] for s in self.all_staff_list}
             for w in self.wishes:
                 if w.get("type") == "assign" and w.get("shift", "") in rest_shifts:
                     sid = w.get("staffId")
-                    if sid and sid not in fixed_ids:
+                    if sid and sid not in fixed_ids and sid in ward_ids:
                         for d in w.get("days", []):
                             if d in concentrate_days:
                                 staff_on_concentrate.setdefault(sid, []).append(d)
@@ -413,7 +491,7 @@ class ShiftSolver:
             overlap_staff.sort(key=lambda x: -len(x[1]))
             overlap_lines = []
             for sid, ds in overlap_staff[:5]:
-                name = next((s["name"] for s in self.staff_list if s["id"] == sid), sid)
+                name = self._id_to_name.get(sid, sid)
                 overlap_lines.append(f"  {name}: {','.join(str(d) for d in ds)}日")
             msg = "【希望休集中】以下の日で希望休が集中しています:\n" + "\n".join(wish_concentrate)
             if overlap_lines:
@@ -455,6 +533,7 @@ class ShiftSolver:
 
         # === 原因5: 全体夜勤供給不足 ===
         # maxNight はスロット数に統一済み（2kohtai/night_only: night2+ake, 3kohtai: junnya+shinya）
+        # 固定職員の夜勤枠も需要から差し引いて正確に計算
         night_supply = 0
         supply_detail = {"2kohtai": 0, "3kohtai": 0, "night_only": 0}
         for s in self.staff_list:
@@ -466,17 +545,44 @@ class ShiftSolver:
             night_supply += mn
             if wt in supply_detail:
                 supply_detail[wt] += mn
+
+        # 固定職員が埋める夜勤枠を計算
+        fixed_night_slots = 0
+        fixed_night_names = []
+        active_fixed = [
+            fs for fs in self.fixed_staff
+            if (fs.get("id") in self.fixed_shifts_data and self.fixed_shifts_data[fs["id"]])
+            or fs.get("fixedPattern")
+        ]
+        for fs in active_fixed:
+            cnt = 0
+            for d in range(1, self.num_days + 1):
+                sh = self._get_fixed_shift(fs, d)
+                if sh in ("night2", "junnya", "shinya", "ake"):
+                    cnt += 1
+            if cnt > 0:
+                fixed_night_slots += cnt
+                fixed_night_names.append(f"{fs.get('name', fs['id'])}({cnt}枠)")
+
         night_demand = req_night_total * self.num_days
-        if night_supply < night_demand:
+        # 需要から固定職員の供給を引く（ソルバーと同じロジック）
+        effective_demand = night_demand - fixed_night_slots
+        fixed_note = ""
+        if fixed_night_slots > 0:
+            fixed_note = f"  固定職員の夜勤: {fixed_night_slots}枠（{', '.join(fixed_night_names)}）→ ソルバー対象需要={effective_demand}枠\n"
+
+        if night_supply < effective_demand:
             causes.append(
-                f"【夜勤供給不足】月間夜勤需要{night_demand}枠 > 供給可能{night_supply}枠"
-                f"（2交代={supply_detail['2kohtai']} + 3交代={supply_detail['3kohtai']} + 夜専={supply_detail['night_only']}）"
-            )
-        elif night_supply <= night_demand * 1.05:
-            # 供給≒需要: 希望休・ake→off制約で実質不足になる可能性大
-            causes.append(
-                f"【夜勤供給余裕なし】月間夜勤需要{night_demand}枠 ≒ 供給{night_supply}枠"
+                f"【夜勤供給不足】ソルバー対象: 需要{effective_demand}枠 > 供給{night_supply}枠"
                 f"（2交代={supply_detail['2kohtai']} + 3交代={supply_detail['3kohtai']} + 夜専={supply_detail['night_only']}）\n"
+                f"{fixed_note}"
+                f"  夜勤可能な職員の追加またはmaxNight引き上げを検討してください"
+            )
+        elif night_supply <= effective_demand * 1.05:
+            causes.append(
+                f"【夜勤供給余裕なし】ソルバー対象: 需要{effective_demand}枠 ≒ 供給{night_supply}枠"
+                f"（2交代={supply_detail['2kohtai']} + 3交代={supply_detail['3kohtai']} + 夜専={supply_detail['night_only']}）\n"
+                f"{fixed_note}"
                 f"  希望休・ake→off（明け休み）の消費で不足します。"
                 f"夜勤可能な職員の追加またはmaxNight引き上げを検討してください"
             )
@@ -895,6 +1001,7 @@ class ShiftSolver:
         req_day_weekday = self.config.get("reqDayWeekday", 7)
         req_day_holiday = self.config.get("reqDayHoliday", 5)
         day_staff_by_day = self.config.get("dayStaffByDay", {})
+        day_date_overrides = self.config.get("dayDateOverrides", {})
         WD_KEYS_SHORT = ["mon", "tue", "wed", "thu", "fri", "sat"]
 
         staff_shortage_info = []
@@ -949,15 +1056,11 @@ class ShiftSolver:
 
         # 深夜帯の必要人数（夜勤専従含む全職員でカウント、前月引き継ぎakeも含む）【ハード制約・緩和禁止】
         req_s = self.config.get("reqShinya", 2)
-        shinya_ge_mode = self.config.get("_shinya_ge", False)
         for d in range(self.num_days):
             sw = [self.shifts[(s,d,SHIFT_IDX["shinya"])] for s in range(self.num_staff)]
             sw += [self.shifts[(s,d,SHIFT_IDX["ake"])] for s in range(self.num_staff)]
             adjusted_req = max(0, req_s - fixed_shinya_counts[d])
-            if shinya_ge_mode:
-                self.model.Add(sum(sw) >= adjusted_req)
-            else:
-                self.model.Add(sum(sw) == adjusted_req)
+            self.model.Add(sum(sw) == adjusted_req)
 
         # --- 職種別制約（config駆動、全病棟共通フレームワーク） ---
         nurseaide_indices = [i for i, st in enumerate(self.staff_list) if st.get("type") == "nurseaide"]
@@ -989,10 +1092,13 @@ class ShiftSolver:
                 self.model.Add(sum(jk_shinya) <= 1)
 
             # --- 有資格者(nurse+junkango)の日勤最低人数（ハード制約） ---
-            # UI設定優先、なければengine config.jsonからフォールバック
+            # 日付別オーバーライド → UI曜日設定 → engine config フォールバック
             ui_min_qual = self.config.get("minQualifiedByDay", {})
+            date_ovr = day_date_overrides.get(str(d + 1), {})
             if qualified_indices:
-                if ui_min_qual:
+                if "minQualified" in date_ovr:
+                    min_q = date_ovr["minQualified"]
+                elif ui_min_qual:
                     if is_sun or is_hol:
                         min_q = ui_min_qual.get("sun")
                     else:
@@ -1014,31 +1120,38 @@ class ShiftSolver:
                              for qi in qualified_indices]
                     self.model.Add(sum(q_day) >= min_q)
 
-            # --- 全時間帯で正看護師(nurse)が最低1名（ハード制約） ---
+            # --- 全時間帯で正看護師(nurse)が最低1名 ---
+            # 日勤帯はハード制約、夜勤帯はソフト制約（nurse供給がタイトなため）
             nm_config = self.ward_engine_config.get("nurseMinimumPerBand", {})
             if nm_config.get("enabled") and nurse_indices:
                 min_nurse_day = nm_config.get("day", 1)
                 min_nurse_junnya = nm_config.get("junnya", 1)
                 min_nurse_shinya = nm_config.get("shinya", 1)
 
-                # 日勤帯
+                # 日勤帯（ハード制約）
                 n_day = [self.shifts[(ni, d, SHIFT_IDX["day"])]
                          for ni in nurse_indices]
                 self.model.Add(sum(n_day) >= min_nurse_day)
 
-                # 準夜帯 (junnya + night2)
-                n_junnya = [self.shifts[(ni, d, SHIFT_IDX["junnya"])]
-                            for ni in nurse_indices]
-                n_night2 = [self.shifts[(ni, d, SHIFT_IDX["night2"])]
-                            for ni in nurse_indices]
-                self.model.Add(sum(n_junnya) + sum(n_night2) >= min_nurse_junnya)
+                # 準夜帯 (junnya + night2) - ソフト制約
+                if min_nurse_junnya > 0:
+                    n_junnya = [self.shifts[(ni, d, SHIFT_IDX["junnya"])]
+                                for ni in nurse_indices]
+                    n_night2 = [self.shifts[(ni, d, SHIFT_IDX["night2"])]
+                                for ni in nurse_indices]
+                    nurse_jun_ok = self.model.NewBoolVar(f"nurse_jun_ok_d{d}")
+                    self.model.Add(sum(n_junnya) + sum(n_night2) >= min_nurse_junnya).OnlyEnforceIf(nurse_jun_ok)
+                    staff_shortage_penalty += nurse_jun_ok.Not() * 800
 
-                # 深夜帯 (shinya + ake)
-                n_shinya = [self.shifts[(ni, d, SHIFT_IDX["shinya"])]
-                            for ni in nurse_indices]
-                n_ake = [self.shifts[(ni, d, SHIFT_IDX["ake"])]
-                         for ni in nurse_indices]
-                self.model.Add(sum(n_shinya) + sum(n_ake) >= min_nurse_shinya)
+                # 深夜帯 (shinya + ake) - ソフト制約
+                if min_nurse_shinya > 0:
+                    n_shinya = [self.shifts[(ni, d, SHIFT_IDX["shinya"])]
+                                for ni in nurse_indices]
+                    n_ake = [self.shifts[(ni, d, SHIFT_IDX["ake"])]
+                             for ni in nurse_indices]
+                    nurse_shi_ok = self.model.NewBoolVar(f"nurse_shi_ok_d{d}")
+                    self.model.Add(sum(n_shinya) + sum(n_ake) >= min_nurse_shinya).OnlyEnforceIf(nurse_shi_ok)
+                    staff_shortage_penalty += nurse_shi_ok.Not() * 800
 
             # --- 看護補助者の夜勤人数制限（ハード制約） ---
             na_night_config = self.ward_engine_config.get("nurseAideNightLimits", {})
@@ -1058,17 +1171,29 @@ class ShiftSolver:
                           for na_idx in nurseaide_indices]
                 self.model.Add(sum(na_shinya) + sum(na_ake) <= max_na_shinya)
 
-            # --- 看護補助者の日勤最低人数（ハード制約、UI設定） ---
+            # --- 看護補助者の日勤最低人数（UI設定） ---
+            # 制約緩和モード時はソフト制約、通常時はハード制約
+            # 日付別オーバーライド → UI曜日設定
             ui_min_aide = self.config.get("minAideByDay", {})
-            if ui_min_aide and nurseaide_indices:
-                if is_sun or is_hol:
-                    min_a = ui_min_aide.get("sun")
+            if nurseaide_indices:
+                if "minAide" in date_ovr:
+                    min_a = date_ovr["minAide"]
+                elif ui_min_aide:
+                    if is_sun or is_hol:
+                        min_a = ui_min_aide.get("sun")
+                    else:
+                        min_a = ui_min_aide.get(WD_KEYS_SHORT[weekday]) if weekday < 6 else None
                 else:
-                    min_a = ui_min_aide.get(WD_KEYS_SHORT[weekday]) if weekday < 6 else None
+                    min_a = None
                 if min_a is not None and min_a > 0:
                     a_day = [self.shifts[(ai, d, SHIFT_IDX["day"])]
                              for ai in nurseaide_indices]
-                    self.model.Add(sum(a_day) >= min_a)
+                    if self.config.get("relaxMode"):
+                        aide_short = self.model.NewIntVar(0, min_a, f"aide_short_d{d}")
+                        self.model.Add(sum(a_day) >= min_a - aide_short)
+                        staff_shortage_penalty += aide_short * 300
+                    else:
+                        self.model.Add(sum(a_day) >= min_a)
 
         # 夜勤制約: nightRestrictionはforbidden_mapで処理済み
 
@@ -1990,7 +2115,7 @@ class ShiftSolver:
         solver.parameters.use_lns_only = False
         solver.parameters.max_presolve_iterations = 3
 
-        # 全コア使用
+        # 全コア使用（サブプロセス隔離によりクラッシュは親プロセスに波及しない）
         num_cores = os.cpu_count() or 4
         solver.parameters.num_search_workers = num_cores
 
@@ -2032,7 +2157,8 @@ class ShiftSolver:
                     "objective_value": solver.ObjectiveValue()
                 }
         else:
-            result["status"] = "infeasible"
+            is_true_infeasible = (status == cp_model.INFEASIBLE)
+            result["status"] = "infeasible" if is_true_infeasible else "unknown"
             causes = self._diagnose_infeasible()
             if causes:
                 result["message"] = "解が見つかりません。\n\n" + "\n\n".join(causes)
@@ -2165,6 +2291,8 @@ class ShiftSolver:
 
         best_res = None
         best_obj = None
+        best_attempt = n
+        all_unknown = True  # 全シードがタイムアウトかどうか
         for i, seed in enumerate(seeds[:n]):
             self.config["seed"] = seed
             if log_queue:
@@ -2175,6 +2303,7 @@ class ShiftSolver:
             debug_log.append(f"試行{i+1}(seed={seed}): {res['status']}")
 
             if status in ["optimal", "feasible"]:
+                all_unknown = False
                 obj = res.get("optimization_score", {}).get("objective_value")
                 if best_res is None or (obj is not None and (best_obj is None or obj < best_obj)):
                     best_res = res
@@ -2182,22 +2311,148 @@ class ShiftSolver:
                     best_attempt = i + 1
                 if status == "optimal":
                     break  # 最適解確定、これ以上改善しない
+            elif status == "infeasible" and res.get("message"):
+                # 真のinfeasible（事前チェックエラー）は即return
+                all_unknown = False
+                res["debug_log"] = debug_log
+                res["attempt"] = i + 1
+                return res
             else:
-                # infeasible/事前チェックエラーは即return
-                if res.get("message"):
-                    res["debug_log"] = debug_log
-                    res["attempt"] = i + 1
-                    return res
+                # UNKNOWN(タイムアウト) → 次のシードも試す
                 if best_res is None:
                     best_res = res
+
+        # 全シードがタイムアウト → 延長試行（45秒×1回）
+        if all_unknown and best_obj is None:
+            if log_queue:
+                log_queue.put({'type': 'log', 'msg': '全試行タイムアウト。延長探索中(45秒)...'})
+            self.config["seed"] = 7
+            debug_log.append("延長試行(45秒)")
+            res = self._solve_core(log_queue=log_queue, timeout=45)
+            status = res["status"].lower()
+            debug_log.append(f"延長: {res['status']}")
+            if status in ["optimal", "feasible"]:
+                best_res = res
+                best_obj = res.get("optimization_score", {}).get("objective_value")
+                best_attempt = n + 1
 
         res = best_res
         res["debug_log"] = debug_log
         res["attempt"] = best_attempt if best_obj is not None else n
 
         if res["status"].lower() not in ["optimal", "feasible"]:
-            if not res.get("message"):
+            causes = self._diagnose_infeasible()
+            if causes:
+                res["message"] = "失敗: 解が見つかりません。\n\n" + "\n\n".join(causes)
+            else:
                 debug_info = " / ".join(debug_log)
                 res["message"] = f"失敗: 解が見つかりません。職員数・公休日数・必要人数の設定を確認してください。[{debug_info}]"
 
         return res
+
+    def solve_relaxed(self, log_queue=None):
+        """制約緩和モード: 通常solve → infeasibleなら1つだけ緩和して再試行"""
+
+        result = self.solve(log_queue=log_queue)
+        if result["status"].lower() in ("optimal", "feasible"):
+            return result  # 緩和不要
+
+        if log_queue:
+            log_queue.put({"type": "log", "msg": "制約緩和モード: 緩和戦略を試行します"})
+
+        data = self._original_data
+
+        # --- 戦略1: 希望休を1件ずつ除外（集中日×希望の多い職員優先） ---
+        wishes = data.get("wishes", [])
+        rest_shifts = {"off", "paid", "refresh"}
+
+        # ソルバー対象職員のIDのみ（固定シフト・flexRequest職員は除外）
+        solver_staff_ids = {s["id"] for s in data.get("staff", [])
+                           if s.get("workType") not in ("fixed", "flexRequest")
+                           and s.get("shiftCategory") not in ("fixed", "flexRequest")}
+        staff_name_map = {s["id"]: s.get("name", s["id"]) for s in data.get("staff", [])}
+        # 日別の希望休人数（ソルバー対象のみ）
+        day_off_count = {}
+        for w in wishes:
+            if w.get("type") == "assign" and w.get("shift") in rest_shifts and w.get("staffId") in solver_staff_ids:
+                for d in w.get("days", []):
+                    day_off_count[d] = day_off_count.get(d, 0) + 1
+
+        # 各職員の希望休日数
+        staff_wish_count = {}
+        for w in wishes:
+            if w.get("type") == "assign" and w.get("shift") in rest_shifts and w.get("staffId") in solver_staff_ids:
+                sid = w.get("staffId")
+                staff_wish_count[sid] = staff_wish_count.get(sid, 0) + len(w.get("days", []))
+
+        # 候補リスト: (集中度, 職員希望数, staffId, day, wish_index, day_index)
+        candidates = []
+        for wi, w in enumerate(wishes):
+            if w.get("type") == "assign" and w.get("shift") in rest_shifts and w.get("staffId") in solver_staff_ids:
+                sid = w.get("staffId")
+                for di, d in enumerate(w.get("days", [])):
+                    score = (day_off_count.get(d, 0), staff_wish_count.get(sid, 0))
+                    candidates.append((score, sid, d, wi, di))
+
+        # スコア降順（集中日・希望の多い職員を優先）
+        candidates.sort(key=lambda x: x[0], reverse=True)
+
+        for ci, (score, sid, day, wi, di) in enumerate(candidates):
+            name = staff_name_map.get(sid, sid)
+            if log_queue:
+                log_queue.put({"type": "log", "msg": f"[緩和試行 {ci+1}/{len(candidates)}] {name}の{day}日の希望休を除外"})
+            d2 = dict(data)
+            d2["wishes"] = [copy.copy(w) for w in data.get("wishes", [])]
+            target_wish = d2["wishes"][wi]
+            target_wish["days"] = [dd for dd in target_wish["days"] if dd != day]
+            if not target_wish["days"]:
+                d2["wishes"] = [w for i, w in enumerate(d2["wishes"]) if i != wi]
+
+            # クイックプローブ: 1シード2秒
+            _t0 = _time.time()
+            probe = ShiftSolver(d2)
+            probe.config["seed"] = 7
+            probe_res = probe._solve_core(log_queue=None, timeout=2)
+            _elapsed = _time.time() - _t0
+            if log_queue:
+                log_queue.put({"type": "log", "msg": f"  → {probe_res['status']} ({_elapsed:.1f}秒)"})
+            if probe_res["status"].lower() in ("optimal", "feasible"):
+                if log_queue:
+                    log_queue.put({"type": "log", "msg": f"✓ {name}の{day}日除外で解発見。本格解法を実行..."})
+                full_solver = ShiftSolver(d2)
+                full_res = full_solver.solve(log_queue=log_queue)
+                if full_res["status"].lower() in ("optimal", "feasible"):
+                    full_res["relaxation"] = {
+                        "type": "wish_removed",
+                        "staffId": sid,
+                        "staffName": name,
+                        "day": day,
+                        "label": f"{name}の{day}日の希望休を除外"
+                    }
+                    return full_res
+
+        # --- 戦略2: 日勤帯人数を1名減（平日→休日の順で試行） ---
+        for key, label, default in [("reqDayWeekday", "日勤(平日)", 7), ("reqDayHoliday", "日勤(休日)", 5)]:
+            req_val = data.get("config", {}).get(key, default)
+            if req_val > 1:
+                if log_queue:
+                    log_queue.put({"type": "log", "msg": f"[緩和試行] {label}人数 {req_val}→{req_val - 1}"})
+                d1 = dict(data)
+                d1["config"] = dict(data.get("config", {}))
+                d1["config"][key] = req_val - 1
+                probe = ShiftSolver(d1)
+                probe_res = probe.solve(log_queue=log_queue)
+                if probe_res["status"].lower() in ("optimal", "feasible"):
+                    probe_res["relaxation"] = {
+                        "type": key,
+                        "original": req_val,
+                        "relaxed": req_val - 1,
+                        "label": f"{label}人数 {req_val}→{req_val - 1}"
+                    }
+                    return probe_res
+
+        # 全滅
+        if log_queue:
+            log_queue.put({"type": "log", "msg": "制約緩和モードでも解が見つかりませんでした"})
+        result["message"] = (result.get("message", "") or "") + "\n※制約緩和モードでも解が見つかりませんでした。"
+        return result

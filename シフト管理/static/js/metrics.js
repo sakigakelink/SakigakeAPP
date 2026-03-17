@@ -1,6 +1,6 @@
 import { D, W, Y, M, compareDraftShifts, compareDraftName, setCompareDraftShifts, setCompareDraftName, currentViewDraft, HOLIDAYS } from './state.js';
 import { ABBR, WARDS, PENALTY_KEYS } from './constants.js';
-import { escHtml, isHoliday, getMonthlyOff, getWorkTypeBadge, getStaffTypeBadge } from './util.js';
+import { escHtml, isHoliday, getMonthlyOff, getWorkTypeBadge, getStaffTypeBadge, mergePrevWithConfirmed } from './util.js';
 import { save } from './api.js';
 
 export function checkConstraints() {
@@ -52,6 +52,7 @@ export function checkConstraints() {
         // 固定シフト者は全チェック対象外
         if (s.workType === "fixed") continue;
         var wt = s.workType || "2kohtai";
+        var sType = s.type || "nurse";
         var defaultMax = (wt === "2kohtai" || wt === "night_only") ? 10 : 5;
         var maxNight = s.maxNight !== undefined ? s.maxNight : defaultMax;
 
@@ -213,7 +214,8 @@ export function checkConstraints() {
         }
 
         // 準深バランスチェック（三交代のみ: ソルバーC6準拠）
-        if (wt === "3kohtai") {
+        // 三病棟の補助者は準夜専なので除外（一病棟は準夜・深夜両方あり）
+        if (wt === "3kohtai" && !(sType === "nurseaide" && W === "3")) {
             var pJun = 0, pShin = 0;
             for (var d = 0; d < days; d++) {
                 if (shArr[d] === "junnya") pJun++;
@@ -537,71 +539,16 @@ export function calculateFairnessMetrics(staff, shifts, days, year, month) {
         // 公平性指標（ジニ係数）
         html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #8b5cf6"><b>🎯 夜勤</b><br>Gini: ' + nightGini.toFixed(4) + ' ' + evalGini(nightGini) + '<br>範囲: ' + nightMin + '~' + nightMax + 'pt</div>';
         html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #3b82f6"><b>📅 週末</b><br>Gini: ' + weekendGini.toFixed(4) + ' ' + evalGini(weekendGini) + '<br>休率: ' + avgWeekendOff.toFixed(0) + '%</div>';
-        if (W === "2") {
-            html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #f59e0b"><b>🌙 遅出</b><br>Gini: ' + lateGini.toFixed(4) + ' ' + evalGini(lateGini) + '<br>範囲: ' + lateMin + '~' + lateMax + '回</div>';
-        }
 
         // 負担指標
         html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #ec4899"><b>📆 連勤</b><br>平均: ' + avgConsMax.toFixed(1) + '日<br>最大: ' + Math.max.apply(null, consMaxes) + '日</div>';
         html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #14b8a6"><b>🌃 夜勤間隔</b><br>平均: ' + avgNightInterval.toFixed(1) + '日<br>連続夜勤: ' + maxConsNight + '回</div>';
 
-        // 希望達成
-        var wishMet = wishTotal - wishViolated;
-        html += '<div style="background:var(--card);padding:.6rem;border-radius:6px;border-left:3px solid #6366f1"><b>✨ 希望</b><br>達成率: ' + wishSatisfaction.toFixed(0) + '%<br><span style="font-size:.75rem">達成' + wishMet + '件 / 登録' + wishTotal + '件</span></div>';
-
         grid.innerHTML = html;
 
-        // ===== 公平性バーチャート =====
+        // バーチャート非表示
         var chartEl = document.getElementById("metricsChart");
-        if (chartEl) {
-            var ch = "";
-            // 夜勤分布バー
-            var maxNight = Math.max.apply(null, nightCounts.concat([1]));
-            ch += "<div style='margin-bottom:.8rem'><b style='font-size:.8rem'>🌙 夜勤回数分布</b>";
-            for (var ci = 0; ci < staff.length; ci++) {
-                var cs = staff[ci];
-                if (cs.workType === "fixed" || cs.workType === "day_only") continue;
-                var nc = nightCounts[ci] || 0;
-                var pct = (nc / maxNight * 100).toFixed(0);
-                ch += "<div style='display:flex;align-items:center;gap:.3rem;font-size:.75rem'>"
-                    + "<span style='width:4.5em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escHtml(cs.name) + "</span>"
-                    + "<div style='flex:1;background:var(--bg3);border-radius:3px;height:14px'>"
-                    + "<div style='width:" + pct + "%;background:#8b5cf6;border-radius:3px;height:100%;min-width:1px'></div></div>"
-                    + "<span style='width:2em;text-align:right'>" + nc + "</span></div>";
-            }
-            ch += "</div>";
-            // 週末休み率分布バー
-            ch += "<div style='margin-bottom:.8rem'><b style='font-size:.8rem'>📅 週末休み率分布</b>";
-            for (var ci = 0; ci < staff.length; ci++) {
-                var cs = staff[ci];
-                if (cs.workType === "fixed") continue;
-                var wr = weekendOffRatios[ci] || 0;
-                ch += "<div style='display:flex;align-items:center;gap:.3rem;font-size:.75rem'>"
-                    + "<span style='width:4.5em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escHtml(cs.name) + "</span>"
-                    + "<div style='flex:1;background:var(--bg3);border-radius:3px;height:14px'>"
-                    + "<div style='width:" + wr.toFixed(0) + "%;background:#3b82f6;border-radius:3px;height:100%;min-width:1px'></div></div>"
-                    + "<span style='width:3em;text-align:right'>" + wr.toFixed(0) + "%</span></div>";
-            }
-            ch += "</div>";
-            // 遅出分布バー（2病棟のみ）
-            if (W === "2") {
-                var maxLate = Math.max.apply(null, lateCounts.concat([1]));
-                ch += "<div><b style='font-size:.8rem'>🌆 遅出回数分布</b>";
-                for (var ci = 0; ci < staff.length; ci++) {
-                    var cs = staff[ci];
-                    if (cs.workType === "fixed" || cs.workType === "day_only") continue;
-                    var lc = lateCounts[ci] || 0;
-                    var lpct = (lc / maxLate * 100).toFixed(0);
-                    ch += "<div style='display:flex;align-items:center;gap:.3rem;font-size:.75rem'>"
-                        + "<span style='width:4.5em;text-align:right;white-space:nowrap;overflow:hidden;text-overflow:ellipsis'>" + escHtml(cs.name) + "</span>"
-                        + "<div style='flex:1;background:var(--bg3);border-radius:3px;height:14px'>"
-                        + "<div style='width:" + lpct + "%;background:#f59e0b;border-radius:3px;height:100%;min-width:1px'></div></div>"
-                        + "<span style='width:2em;text-align:right'>" + lc + "</span></div>";
-                }
-                ch += "</div>";
-            }
-            chartEl.innerHTML = ch;
-        }
+        if (chartEl) chartEl.innerHTML = "";
 
         // ===== 個人負荷スコア計算・表示 (v2カテゴリ対応) =====
         // 希望データをキー形式に変換
@@ -629,7 +576,7 @@ export function calculateFairnessMetrics(staff, shifts, days, year, month) {
             var wt = s.workType || "2kohtai";
             if (wt === "fixed" || wt === "day_only") continue;
 
-            var ps = calculatePersonalLoad(s.id, shifts, days, wt, year, month, wishMap, getPrevMonthStaffData(s.id, year, month, W));
+            var ps = calculatePersonalLoad(s.id, shifts, days, wt, year, month, wishMap, getPrevMonthStaffData(s.id, year, month, W), s.type || "nurse");
             personalScores[s.id] = {
                 name: s.name,
                 score: ps.score,
@@ -761,6 +708,8 @@ export function getPrevMonthStaffData(staffId, year, month, wardId) {
     var prevDays = new Date(prevY, prevM, 0).getDate();
     var prevSk = prevY + "-" + prevM + "-" + wardId;
     var prevShifts = D.shifts[prevSk] || {};
+    // サーバーの確定シフトで補完（異動職員対応）
+    prevShifts = mergePrevWithConfirmed(prevShifts).shifts;
 
     var lastDay = prevShifts[staffId + "-" + prevDays] || "";
     var secondLastDay = prevDays >= 2 ? (prevShifts[staffId + "-" + (prevDays - 1)] || "") : "";
@@ -778,7 +727,7 @@ export function getPrevMonthStaffData(staffId, year, month, wardId) {
     return { lastDay: lastDay, secondLastDay: secondLastDay, consecutiveWork: consecutiveWork };
 }
 
-export function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, wishes, prevData) {
+export function calculatePersonalLoad(staffId, shifts, numDays, workType, year, month, wishes, prevData, staffType) {
     var REST_TYPES = ["off", "paid", "refresh"];
     var NIGHT_TYPES = ["night2", "junnya", "shinya"];
 
@@ -870,13 +819,17 @@ export function calculatePersonalLoad(staffId, shifts, numDays, workType, year, 
         // 月またぎ: shinya(前月末)→rest(day0)→junnya(day1) 好ローテ
         if (prevLast === "shinya" && numDays >= 2 && REST_TYPES.indexOf(shiftList[0]) >= 0 && shiftList[1] === "junnya") p.good_rotation++;
 
-        // 準深バランス
-        p.junnya_shinya_balance = Math.abs(junyaCount - shinyaCount);
+        // 準深バランス（三病棟の補助者は準夜専なので除外）
+        if (!(staffType === "nurseaide" && W === "3")) {
+            p.junnya_shinya_balance = Math.abs(junyaCount - shinyaCount);
+        }
     }
 
-    // 夜勤間隔（2交代/3交代共通）
+    // 夜勤間隔（2交代/3交代共通、夜勤専従者は除外）
     // 月またぎ: 前月末の夜勤との間隔チェック
-    if (workType === "2kohtai") {
+    if (workType === "night_only") {
+        // 夜勤専従者は連続夜勤が前提なので間隔ペナルティなし
+    } else if (workType === "2kohtai") {
         if (prevLast === "night2") {
             for (var ni = 0; ni < nightDays.length; ni++) {
                 var gap = nightDays[ni] + 1;
@@ -891,10 +844,12 @@ export function calculatePersonalLoad(staffId, shifts, numDays, workType, year, 
     } else if (workType === "3kohtai") {
         if (prevLast === "shinya" && shiftList[0] === "shinya") p.night_interval_close++;
     }
-    // 当月内の間隔チェック
-    for (var i = 1; i < nightDays.length; i++) {
-        var gap = nightDays[i] - nightDays[i - 1];
-        if (gap >= 2 && gap <= 3) p.night_interval_close++;
+    // 当月内の間隔チェック（夜勤専従者は連続夜勤が前提なので除外）
+    if (workType !== "night_only") {
+        for (var i = 1; i < nightDays.length; i++) {
+            var gap = nightDays[i] - nightDays[i - 1];
+            if (gap >= 2 && gap <= 3) p.night_interval_close++;
+        }
     }
 
     // 希望休前後の夜勤
@@ -981,6 +936,23 @@ export function renderPenaltySummary(penalties) {
     return '<span style="font-size:.7rem;color:#94a3b8">' + items.join(" ") + '</span>';
 }
 
+// ドラフトのshifts（職員別形式{staffId:{day:shift}}）をフラット形式{staffId-day:shift}に変換
+function flattenDraftShifts(draftShifts) {
+    var flat = {};
+    for (var staffId in draftShifts) {
+        var daysMap = draftShifts[staffId];
+        for (var day in daysMap) {
+            flat[staffId + "-" + day] = daysMap[day];
+        }
+    }
+    return flat;
+}
+
+// ドラフトのshifts（職員別形式）からtotalScoreを再計算
+export function getDraftScore(draftShifts) {
+    return calculateVersionMetrics(flattenDraftShifts(draftShifts)).totalScore;
+}
+
 // ドラフトのshifts（職員別形式）からペナルティ合計を軽量集計してバッジHTMLを返す
 export function getDraftPenaltySummary(draftShifts) {
     var staff = [];
@@ -1001,14 +973,7 @@ export function getDraftPenaltySummary(draftShifts) {
         }
     }
 
-    // フラット形式に変換
-    var flatShifts = {};
-    for (var staffId in draftShifts) {
-        var daysMap = draftShifts[staffId];
-        for (var day in daysMap) {
-            flatShifts[staffId + "-" + day] = daysMap[day];
-        }
-    }
+    var flatShifts = flattenDraftShifts(draftShifts);
 
     // 全スタッフのペナルティを合算
     var totals = {
@@ -1022,7 +987,7 @@ export function getDraftPenaltySummary(draftShifts) {
         var wt = s.workType || "2kohtai";
         if (wt === "fixed" || wt === "day_only") continue;
         var prevData = getPrevMonthStaffData(s.id, Y, M, W);
-        var ps = calculatePersonalLoad(s.id, flatShifts, days, wt, Y, M, wishMap, prevData);
+        var ps = calculatePersonalLoad(s.id, flatShifts, days, wt, Y, M, wishMap, prevData, s.type || "nurse");
         for (var k in totals) totals[k] += (ps.penalties[k] || 0);
     }
     return renderPenaltySummary(totals);
@@ -1258,7 +1223,7 @@ export function calculateVersionMetrics(shifts) {
         var wt = s.workType || "2kohtai";
         if (wt === "fixed" || wt === "day_only") continue; // 固定・日勤のみは除外
 
-        var ps = calculatePersonalLoad(s.id, shifts, days, wt, Y, M, wishMap, getPrevMonthStaffData(s.id, Y, M, W));
+        var ps = calculatePersonalLoad(s.id, shifts, days, wt, Y, M, wishMap, getPrevMonthStaffData(s.id, Y, M, W), s.type || "nurse");
         personalScores[s.id] = {
             name: s.name,
             score: ps.score,
@@ -1303,13 +1268,13 @@ export function calculateVersionMetrics(shifts) {
 
     // 総合スコア計算 (100点満点) - ペナルティ件数ベース
     var score = 100;
-    score -= maxPersonal * 3;             // 最悪ケース
-    score -= avgPersonal * 2;             // 平均ペナルティ
-    score -= personalStd * 2;             // ばらつき
+    score -= maxPersonal * 1.5;           // 最悪ケース
+    score -= avgPersonal * 1;             // 平均ペナルティ
+    score -= personalStd * 1;             // ばらつき
     // 従来の減点要素
-    score -= m.errors * 15;
-    score -= m.warnings * 5;
-    score -= (100 - m.wishSatisfaction) * 0.5;
+    score -= m.errors * 8;
+    score -= m.warnings * 2;
+    score -= (100 - m.wishSatisfaction) * 0.3;
 
     m.totalScore = Math.max(0, Math.min(100, Math.round(score)));
 
@@ -1367,15 +1332,10 @@ export function renderVersions() {
 
     var versions = vk.versions;
 
-    // 旧形式の案のメトリクスを再計算
-    var needsSave = false;
+    // メトリクスを常に再計算（計算式変更時にも反映されるように）
     for (var vi = 0; vi < versions.length; vi++) {
-        if (versions[vi].metrics.totalScore === undefined) {
-            versions[vi].metrics = calculateVersionMetrics(versions[vi].shifts);
-            needsSave = true;
-        }
+        versions[vi].metrics = calculateVersionMetrics(versions[vi].shifts);
     }
-    if (needsSave) save();
 
     // シフト表上部のクイックリスト with ツールチップ
     var qHtml = '<span style="font-weight:bold;color:var(--blue);margin-right:.5rem">📁 保存済み:</span>';
@@ -1397,9 +1357,7 @@ export function renderVersions() {
         tooltip += "エラー: " + (m.errors || 0) + " / 警告: " + (m.warnings || 0) + nl;
         tooltip += "夜勤Gini: " + (m.nightGini || 0).toFixed(3) + nl;
         tooltip += "週末Gini: " + (m.weekendGini || 0).toFixed(3) + nl;
-        if (W === "2") tooltip += "遅出Gini: " + (m.lateGini || 0).toFixed(3) + nl;
-        tooltip += "連勤最大: " + (m.consWorkMax || 0) + "日" + nl;
-        tooltip += "希望達成: " + (m.wishSatisfaction || 100).toFixed(0) + "%";
+        tooltip += "連勤最大: " + (m.consWorkMax || 0) + "日";
 
         qHtml += '<div style="display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .7rem;background:' + bgColor + ';border:2px solid ' + borderColor + ';border-radius:8px;font-size:.85rem;cursor:default" title="' + tooltip + '">';
         qHtml += '<span style="font-weight:bold">' + v.name + '</span>';

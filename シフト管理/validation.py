@@ -277,6 +277,34 @@ def validate_solve_request(data):
             except (ValueError, TypeError):
                 raise ValidationError("monthlyOff は整数である必要があります", "monthlyOff")
 
+    # dayDateOverrides（日付別オーバーライド）
+    if isinstance(config, dict) and "dayDateOverrides" in config:
+        ddo = config["dayDateOverrides"]
+        if isinstance(ddo, dict):
+            validated_ddo = {}
+            for day_key, ovr in ddo.items():
+                try:
+                    dk = int(day_key)
+                except (ValueError, TypeError):
+                    continue
+                if dk < 1 or dk > 31:
+                    continue
+                if not isinstance(ovr, dict):
+                    continue
+                validated_ovr = {}
+                for field, hi in [("minQualified", 10), ("minAide", 10)]:
+                    if field in ovr and ovr[field] is not None:
+                        try:
+                            v = int(ovr[field])
+                        except (ValueError, TypeError):
+                            raise ValidationError(f"dayDateOverrides.{day_key}.{field} は整数である必要があります")
+                        if v < 0 or v > hi:
+                            raise ValidationError(f"dayDateOverrides.{day_key}.{field} は0〜{hi}の範囲で指定してください")
+                        validated_ovr[field] = v
+                if validated_ovr:
+                    validated_ddo[str(dk)] = validated_ovr
+            validated["config"]["dayDateOverrides"] = validated_ddo
+
     # prevMonthData (そのまま渡す、各フィールドは使用時に検証)
     if "prevMonthData" in data:
         validated["prevMonthData"] = data["prevMonthData"]

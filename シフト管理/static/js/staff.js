@@ -180,13 +180,16 @@ export function saveStaff(e) {
             fp[String(i)] = document.getElementById("fp" + i).value;
         }
     }
+    var maxN = parseInt(document.getElementById("staffMaxNight").value) || 5;
+    var minN = parseInt(document.getElementById("staffMinNight").value) || 0;
+    if (wt === "day_only" || wt === "fixed") { maxN = 0; minN = 0; }
     var data = {
         id: id,
         name: document.getElementById("staffName").value,
         ward: document.getElementById("staffWard").value,
         workType: wt,
-        maxNight: parseInt(document.getElementById("staffMaxNight").value) || 5,
-        minNight: parseInt(document.getElementById("staffMinNight").value) || 0,
+        maxNight: maxN,
+        minNight: minN,
         type: document.getElementById("staffType").value,
         nightRestriction: nr || null,
         fixedPattern: fp
@@ -218,6 +221,14 @@ export function deleteStaff(id) {
 }
 
 export function syncStaffToBackend() {
+    // day_only/fixed 職員の maxNight を 0 に正規化（LocalStorage残留データ対策）
+    for (var i = 0; i < D.staff.length; i++) {
+        var wt = D.staff[i].workType;
+        if (wt === "day_only" || wt === "fixed") {
+            D.staff[i].maxNight = 0;
+            D.staff[i].minNight = 0;
+        }
+    }
     fetch("/api/staff/migrate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -285,13 +296,17 @@ export function execImport() {
             for (var j = 0; j < D.staff.length; j++) {
                 if (D.staff[j].id === id) { existIdx = j; break; }
             }
+            var impWt = e.workType || "2kohtai";
+            var impMaxN = e.maxNight !== undefined ? e.maxNight : 5;
+            var impMinN = e.minNight !== undefined ? e.minNight : 0;
+            if (impWt === "day_only" || impWt === "fixed") { impMaxN = 0; impMinN = 0; }
             var staffData = {
                 id: id,
                 name: name,
                 ward: ward,
-                workType: e.workType || "2kohtai",
-                maxNight: e.maxNight !== undefined ? e.maxNight : 5,
-                minNight: e.minNight !== undefined ? e.minNight : 0,
+                workType: impWt,
+                maxNight: impMaxN,
+                minNight: impMinN,
                 type: e.type || "nurse",
                 nightRestriction: e.nightRestriction || null,
                 fixedPattern: e.fixedPattern || null

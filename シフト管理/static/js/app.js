@@ -3,7 +3,7 @@ import { D, W, Y, M, setW, setY, setM, sel, HOLIDAYS, setHOLIDAYS, currentViewDr
 import { SHIFT_BTNS, WARDS } from './constants.js';
 import { load, save, cleanupOldData, backupToServer, checkBackupStatus, saveWardSettings, loadWardSettings, loadWardSettingsFromServer, migrateStaffToBackend, restoreFromBackup, exportSettings, importSettings, updateBackupStatus, restartServer, shutdownApp } from './api.js';
 import { renderStaff, openStaffModal, saveStaff, openImportModal, showImportSample, previewImport, execImport, syncStaffToBackend } from './staff.js';
-import { render, changeMonth, updateMonth, renderConstraintRules, renderConstraintsTab } from './render.js';
+import { render, changeMonth, updateMonth, loadConfirmedPrevShiftsForRender, renderConstraintRules, renderConstraintsTab } from './render.js';
 import { loadDraftList, saveDraft, confirmShift, checkConfirmStatus, migrateShiftsToFiles } from './draft.js';
 import { solve, openShift, setShift } from './shift.js';
 import { exportPdf, exportJson } from './export.js';
@@ -26,18 +26,31 @@ function init() {
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.status === "success" && res.staff && res.staff.length > 0) {
-                    var localIds = {};
+                    var localById = {};
                     for (var i = 0; i < D.staff.length; i++) {
-                        localIds[D.staff[i].id] = true;
+                        localById[D.staff[i].id] = D.staff[i];
                     }
-                    var added = 0;
+                    var changed = 0;
                     for (var j = 0; j < res.staff.length; j++) {
-                        if (!localIds[res.staff[j].id]) {
-                            D.staff.push(res.staff[j]);
-                            added++;
+                        var be = res.staff[j];
+                        var local = localById[be.id];
+                        if (!local) {
+                            D.staff.push(be);
+                            changed++;
+                        } else {
+                            // バックエンドのmaxNightを正とする（LocalStorage残留値の上書き防止）
+                            if (be.maxNight !== undefined && be.maxNight !== null && local.maxNight !== be.maxNight) {
+                                local.maxNight = be.maxNight;
+                                changed++;
+                            }
+                            // workTypeもバックエンドを正とする
+                            if (be.workType && local.workType !== be.workType) {
+                                local.workType = be.workType;
+                                changed++;
+                            }
                         }
                     }
-                    if (added > 0) {
+                    if (changed > 0) {
                         save();
                     }
                 }
@@ -286,6 +299,7 @@ function setupWardTabs() {
 
             // 病棟切替時にサーバーからシフトデータを再取得
             setCurrentViewDraft(null);
+            loadConfirmedPrevShiftsForRender();
 
             render();
             renderStaff();

@@ -1,6 +1,6 @@
 import { D, W, Y, M, setY, setM, sel, currentViewDraft, setCurrentViewDraft, compareDraftShifts, compareDraftName, ACTUAL_MODE, actualData, confirmedData, HOLIDAYS } from './state.js';
 import { ABBR, WARDS, SHIFT_BTNS, PENALTY_KEYS } from './constants.js';
-import { escHtml, isHoliday, getMonthlyOff, getWorkTypeBadge, getStaffTypeBadge, getStaffTypeColor } from './util.js';
+import { escHtml, isHoliday, getMonthlyOff, getWorkTypeBadge, getStaffTypeBadge, getStaffTypeColor, mergePrevWithConfirmed } from './util.js';
 
 function changeMonth(d) {
     setM(M + d);
@@ -162,7 +162,7 @@ function renderConstraintsTab() {
     h += "<td style='" + tdStyle + "'>各職員は1日に1つのシフトのみ割当</td><td style='" + tdStyle + "'>全員</td></tr>";
 
     h += "<tr><td style='" + tdStyle + "'><span style='" + tagH + ";background:#dc2626'>H2</span>公休日数</td>";
-    h += "<td style='" + tdStyle + "'>月間公休 = <b>" + mo + "日</b>（リフレッシュ休暇分は加算）</td><td style='" + tdStyle + "'>固定以外</td></tr>";
+    h += "<td style='" + tdStyle + "'>月間公休 = <b>" + mo + "日</b>（リフレッシュ休暇分は加算）<br><span style=\"font-size:.8rem;color:var(--text2)\">基本9日 / 2月=8日 / 5月=10日</span></td><td style='" + tdStyle + "'>固定以外</td></tr>";
 
     h += "<tr><td style='" + tdStyle + "'><span style='" + tagH + ";background:#dc2626'>H3</span>有給は希望日のみ</td>";
     h += "<td style='" + tdStyle + "'>希望登録のない日は有給を割り当てない</td><td style='" + tdStyle + "'>全員</td></tr>";
@@ -400,10 +400,8 @@ function render() {
     var prevDays = new Date(prevY, prevM, 0).getDate();
     var prevSk = prevY + "-" + prevM + "-" + W;
     var prevShifts = D.shifts[prevSk] || {};
-    // ローカルに前月データがない場合、サーバーの確定シフトを使用
-    if (Object.keys(prevShifts).length === 0 && window.confirmedPrevShifts) {
-        prevShifts = window.confirmedPrevShifts;
-    }
+    // サーバーの確定シフトでローカルデータを補完（異動職員対応）
+    prevShifts = mergePrevWithConfirmed(prevShifts).shifts;
     var hasPrevData = Object.keys(prevShifts).length > 0;
 
     // シフト作成番号の表示
@@ -440,8 +438,9 @@ function render() {
     html += "<th>日</th><th>夜</th><th>休</th></tr></thead><tbody>";
     // 各日の集計を事前に1パスで計算（日勤/準夜/深夜/遅出/日勤換算）
     var dailyDayCount = [], dailyDayWeighted = [], dailyJunnya = [], dailyShinya = [], dailyLate = [];
+    var dailyNurseCount = [], dailyAideCount = [];
     for (var d = 1; d <= days; d++) {
-        var cDay = 0, cWeighted = 0, cJun = 0, cShin = 0, cLate = 0;
+        var cDay = 0, cWeighted = 0, cJun = 0, cShin = 0, cLate = 0, cNurse = 0, cAide = 0;
         for (var si2 = 0; si2 < staff.length; si2++) {
             var sh2 = D.shifts[sk][staff[si2].id + "-" + d] || "";
             if (sh2 === "day" || sh2 === "late") {
@@ -450,6 +449,9 @@ function render() {
                 var dh2 = D.dayHours && D.dayHours[dhKey2];
                 cWeighted += (dh2 && dh2 < 7.5) ? dh2 / 7.5 : 1;
                 if (sh2 === "late") cLate++;
+                var sType2 = staff[si2].type || "nurse";
+                if (sType2 === "nurse" || sType2 === "junkango") cNurse++;
+                else if (sType2 === "nurseaide") cAide++;
             }
             if (sh2 === "night2" || sh2 === "junnya") cJun++;
             if (sh2 === "ake" || sh2 === "shinya") cShin++;
@@ -459,6 +461,8 @@ function render() {
         dailyJunnya[d] = cJun;
         dailyShinya[d] = cShin;
         dailyLate[d] = cLate;
+        dailyNurseCount[d] = cNurse;
+        dailyAideCount[d] = cAide;
     }
     for (var si = 0; si < staff.length; si++) {
         var s = staff[si];
@@ -472,7 +476,7 @@ function render() {
         var hardPatternDays = [];
         var noConsecutiveRest = false;
         if (wt !== "day_only" && wt !== "fixed") {
-            var loadResult = window.calculatePersonalLoad(s.id, D.shifts[sk], days, wt, Y, M, wishMap, window.getPrevMonthStaffData(s.id, Y, M, W));
+            var loadResult = window.calculatePersonalLoad(s.id, D.shifts[sk], days, wt, Y, M, wishMap, window.getPrevMonthStaffData(s.id, Y, M, W), sType);
             var issueDays = loadResult.issueDays || {};
             nightIntervalIssues = issueDays.nightInterval || [];
             hardPatternDays = issueDays.hardPatterns || [];
@@ -685,31 +689,87 @@ function render() {
         }
         html += "<td>" + dc + "</td><td style=\"" + ncStyle + "\">" + nc + "</td><td>" + oc + "</td></tr>";
     }
+    // 看護師目標・補助者目標（日付別オーバーライド入力行）- hidden要素として保持（shift.jsの差分検出で使用）
+    var WDKEYS = ["sun","mon","tue","wed","thu","fri","sat"];
+    var mqByDay = {}, maByDay = {};
+    var UDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    var UKEYS = ["sun","mon","tue","wed","thu","fri","sat"];
+    for (var wi = 0; wi < UDAYS.length; wi++) {
+        var qEl = document.getElementById("minQual" + UDAYS[wi]);
+        var aEl = document.getElementById("minAide" + UDAYS[wi]);
+        mqByDay[UKEYS[wi]] = qEl && qEl.value !== "" ? parseInt(qEl.value) : null;
+        maByDay[UKEYS[wi]] = aEl && aEl.value !== "" ? parseInt(aEl.value) : null;
+    }
+    var ddOverrides = window._dayDateOverrides || {};
+    var defQArr = [], defAArr = [];
+    html += "<tr class=\"override-row\" style=\"display:none\"><td class=\"staff-cell\"><b>看護師目標</b></td>";
+    if (hasPrevData) html += "<td></td><td></td>";
+    for (var d = 1; d <= days; d++) {
+        var ddt2 = new Date(Y, M - 1, d);
+        var ddw2 = ddt2.getDay();
+        var isHol2 = ddw2 === 0 || HOLIDAYS[Y + "-" + M + "-" + d];
+        var defQ = isHol2 ? mqByDay["sun"] : mqByDay[WDKEYS[ddw2]];
+        defQArr[d] = defQ != null ? defQ : 0;
+        var ovr = ddOverrides[String(d)];
+        var val = ovr && ovr.minQualified != null ? ovr.minQualified : defQArr[d];
+        var isOvr = ovr && ovr.minQualified != null && ovr.minQualified !== defQArr[d];
+        html += "<td data-day=\"" + d + "\"><input type=\"number\" class=\"override-input" + (isOvr ? " overridden" : "") + "\" id=\"ovrQ_" + d + "\" data-default=\"" + defQArr[d] + "\" min=\"0\" max=\"10\" value=\"" + val + "\"></td>";
+    }
+    html += "<td></td><td></td><td></td></tr>";
+    html += "<tr class=\"override-row\" style=\"display:none\"><td class=\"staff-cell\"><b>補助者目標</b></td>";
+    if (hasPrevData) html += "<td></td><td></td>";
+    for (var d = 1; d <= days; d++) {
+        var ddt3 = new Date(Y, M - 1, d);
+        var ddw3 = ddt3.getDay();
+        var isHol3 = ddw3 === 0 || HOLIDAYS[Y + "-" + M + "-" + d];
+        var defA = isHol3 ? maByDay["sun"] : maByDay[WDKEYS[ddw3]];
+        defAArr[d] = defA != null ? defA : 0;
+        var ovr2 = ddOverrides[String(d)];
+        var val2 = ovr2 && ovr2.minAide != null ? ovr2.minAide : defAArr[d];
+        var isOvr2 = ovr2 && ovr2.minAide != null && ovr2.minAide !== defAArr[d];
+        html += "<td data-day=\"" + d + "\"><input type=\"number\" class=\"override-input" + (isOvr2 ? " overridden" : "") + "\" id=\"ovrA_" + d + "\" data-default=\"" + defAArr[d] + "\" min=\"0\" max=\"10\" value=\"" + val2 + "\"></td>";
+    }
+    html += "<td></td><td></td><td></td></tr>";
     // 集計行（事前計算済みキャッシュを使用）
     html += "<tr><td class=\"staff-cell\"><b>日勤計</b></td>";
     if (hasPrevData) html += "<td></td><td></td>";
+    // dayStaffByDay UIフィールドから曜日別必要数を取得（solver.pyと同一ロジック）
     var rdw = parseInt(document.getElementById("reqDayWeekday").value) || 7;
     var rdh = parseInt(document.getElementById("reqDayHoliday").value) || 5;
+    var dsByDay = {};
+    var _DSDAYS = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    var _DSKEYS = ["sun","mon","tue","wed","thu","fri","sat"];
+    for (var di2 = 0; di2 < _DSDAYS.length; di2++) {
+        var dsEl = document.getElementById("dayStaff" + _DSDAYS[di2]);
+        dsByDay[_DSKEYS[di2]] = dsEl && dsEl.value !== "" ? parseInt(dsEl.value) : null;
+    }
     for (var d = 1; d <= days; d++) {
         var c = dailyDayWeighted[d];
         var ddt = new Date(Y, M - 1, d);
         var ddw = ddt.getDay();
-        var dreq = rdw;
-        if (ddw === 0 || HOLIDAYS[Y + "-" + M + "-" + d]) { dreq = rdh; }
-        else if (W === "2") {
-            if (ddw === 1 || ddw === 5) { /* 月金: 基準 */ }
-            else if (ddw === 4) dreq += 1;
-            else if (ddw === 2 || ddw === 3 || ddw === 6) dreq -= 1;
+        var isHolD = ddw === 0 || HOLIDAYS[Y + "-" + M + "-" + d];
+        var dreq;
+        if (isHolD) {
+            dreq = dsByDay["sun"] != null ? dsByDay["sun"] : rdh;
+        } else {
+            dreq = dsByDay[_DSKEYS[ddw]] != null ? dsByDay[_DSKEYS[ddw]] : rdw;
         }
-        else if (W === "1") {
-            if (ddw === 1 || ddw === 4) { /* 月木: 基準 */ }
-            else if (ddw === 3 || ddw === 5) { dreq -= 1; }
-            else if (ddw === 2) { dreq -= 2; }
-            else if (ddw === 6) { dreq -= 2; }
-        }
-        else { if (ddw === 3) dreq -= 1; }
         var cDisp = (c % 1 === 0) ? c : c.toFixed(1);
         html += "<td class=\"" + (c >= dreq ? "check-ok" : "check-ng") + "\" data-day=\"" + d + "\">" + cDisp + "</td>";
+    }
+    html += "<td></td><td></td><td></td></tr>";
+    // 看護師計
+    html += "<tr><td class=\"staff-cell\"><b>看護師計</b></td>";
+    if (hasPrevData) html += "<td></td><td></td>";
+    for (var d = 1; d <= days; d++) {
+        html += "<td data-day=\"" + d + "\">" + dailyNurseCount[d] + "</td>";
+    }
+    html += "<td></td><td></td><td></td></tr>";
+    // 補助者計
+    html += "<tr><td class=\"staff-cell\"><b>補助者計</b></td>";
+    if (hasPrevData) html += "<td></td><td></td>";
+    for (var d = 1; d <= days; d++) {
+        html += "<td data-day=\"" + d + "\">" + dailyAideCount[d] + "</td>";
     }
     html += "<td></td><td></td><td></td></tr>";
     // 準夜帯（事前計算済み）
@@ -743,6 +803,16 @@ function render() {
     }
     html += "</tbody>";
     t.innerHTML = html;
+
+    // オーバーライド入力のハイライト更新
+    t.querySelectorAll(".override-input").forEach(function(inp) {
+        inp.addEventListener("input", function() {
+            var def = parseInt(this.getAttribute("data-default")) || 0;
+            var cur = this.value !== "" ? parseInt(this.value) : def;
+            if (cur !== def) this.classList.add("overridden");
+            else this.classList.remove("overridden");
+        });
+    });
 
     // 比較中バナー表示
     var bannerEl = document.getElementById("compareBanner");

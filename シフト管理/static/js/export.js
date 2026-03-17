@@ -82,11 +82,30 @@ function exportPdf() {
                 id: s.id,
                 name: s.name,
                 type: s.type,
+                workType: s.workType || "2kohtai",
                 shifts: shifts,
                 dayHours: hours
             };
         }),
-        wishMap: wishMap // Add wishMap to payload
+        wishMap: wishMap,
+        config: (function() {
+            var cfg = {
+                reqDayWeekday: parseInt(document.getElementById("reqDayWeekday").value) || 7,
+                reqDayHoliday: parseInt(document.getElementById("reqDayHoliday").value) || 5,
+                reqJunnya: parseInt(document.getElementById("reqJunnya").value) || 2,
+                reqShinya: parseInt(document.getElementById("reqShinya").value) || 2,
+                reqLate: parseInt(document.getElementById("reqLate").value) || 1
+            };
+            var dsbd = {};
+            var _days = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+            var _keys = ["sun","mon","tue","wed","thu","fri","sat"];
+            for (var i = 0; i < _days.length; i++) {
+                var el = document.getElementById("dayStaff" + _days[i]);
+                dsbd[_keys[i]] = el && el.value !== "" ? parseInt(el.value) : null;
+            }
+            cfg.dayStaffByDay = dsbd;
+            return cfg;
+        })()
     };
 
     fetch("/export_pdf", {

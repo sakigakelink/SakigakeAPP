@@ -1,6 +1,6 @@
 import { D, W, Y, M, sel, setSel, solveTimer, setSolveTimer, solveStartTime, setSolveStartTime, solveChartData, setSolveChartData, solveAttemptNum, setSolveAttemptNum, _solveRetryCount, set_solveRetryCount, _solveMaxRetry, currentViewDraft, setCurrentViewDraft, ACTUAL_MODE } from './state.js';
 import { ABBR, SHIFT_BTNS, WARDS } from './constants.js';
-import { escHtml, isHoliday, getMonthlyOff } from './util.js';
+import { escHtml, isHoliday, getMonthlyOff, mergePrevWithConfirmed } from './util.js';
 import { save } from './api.js';
 import { render } from './render.js';
 import { autoSaveDraft } from './draft.js';
@@ -375,13 +375,11 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
     var prevSk = prevY + "-" + prevM + "-" + W;
     var prevShifts = D.shifts[prevSk] || {};
 
-    // ローカルに前月データがない場合、サーバーの確定シフトを使用
-    if (Object.keys(prevShifts).length === 0 && window.confirmedPrevShifts) {
-        prevShifts = window.confirmedPrevShifts;
-        addProgressLog("前月データ読込(確定): " + Object.keys(prevShifts).length + "件");
-    } else {
-        addProgressLog("前月データ読込: " + Object.keys(prevShifts).length + "件");
-    }
+    // サーバーの確定シフトでローカルデータを補完（異動職員対応）
+    var mergeResult = mergePrevWithConfirmed(prevShifts);
+    prevShifts = mergeResult.shifts;
+    var merged = mergeResult.merged;
+    addProgressLog("前月データ読込: " + Object.keys(prevShifts).length + "件" + (merged > 0 ? " (異動補完" + merged + "件)" : ""));
     for (var i = 0; i < staff.length; i++) {
         var sid = staff[i].id;
         var lastDay = prevShifts[sid + "-" + prevDays] || "";
@@ -490,6 +488,34 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             cfg.dayStaffByDay = dayStaffByDay;
             cfg.minQualifiedByDay = minQualifiedByDay;
             cfg.minAideByDay = minAideByDay;
+            // 日付別オーバーライド（デフォルトと異なる値のみ送信）
+            var dayDateOverrides = {};
+            var daysInMonth = new Date(Y, M, 0).getDate();
+            for (var dd = 1; dd <= daysInMonth; dd++) {
+                var qIn = document.getElementById("ovrQ_" + dd);
+                var aIn = document.getElementById("ovrA_" + dd);
+                var ov = {};
+                if (qIn && qIn.value !== "") {
+                    var qv2 = parseInt(qIn.value);
+                    var qDef = parseInt(qIn.getAttribute("data-default")) || 0;
+                    if (qv2 !== qDef) ov.minQualified = qv2;
+                }
+                if (aIn && aIn.value !== "") {
+                    var av2 = parseInt(aIn.value);
+                    var aDef = parseInt(aIn.getAttribute("data-default")) || 0;
+                    if (av2 !== aDef) ov.minAide = av2;
+                }
+                if (Object.keys(ov).length > 0) {
+                    dayDateOverrides[String(dd)] = ov;
+                }
+            }
+            if (Object.keys(dayDateOverrides).length > 0) {
+                cfg.dayDateOverrides = dayDateOverrides;
+            }
+            var chkRelax = document.getElementById("chkRelaxMode");
+            if (chkRelax && chkRelax.checked) {
+                cfg.relaxMode = true;
+            }
             return cfg;
         })(),
         wishes: D.wishes[wk] || [],
@@ -581,6 +607,30 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             log.style.display = "flex";
 
             addLog("完了: " + r.status + " (" + finalTime + "秒)", "success");
+            // ステータスバーにソルバー結果を表示
+            var compEl = document.getElementById("solverCompleteness");
+            if (compEl) {
+                var st = r.status.toLowerCase();
+                window._lastSolverStatus = st;
+                if (st === "optimal") {
+                    compEl.textContent = "最適解";
+                    compEl.style.background = "#166534";
+                    compEl.style.color = "#fff";
+                } else {
+                    compEl.textContent = "暫定解";
+                    compEl.style.background = "#854d0e";
+                    compEl.style.color = "#fff";
+                }
+                if (r.relaxation) {
+                    compEl.textContent = "緩和解";
+                    compEl.style.background = "#d97706";
+                    compEl.style.color = "#fff";
+                }
+                compEl.style.display = "inline";
+            }
+            if (r.relaxation) {
+                addLog("⚠ 制約緩和: " + r.relaxation.label, "error");
+            }
             if (r.attempt) {
                 if (r.attempt === 4) {
                     addLog("⚠ 試行4: 勤務間インターバル違反の可能性あり", "error");
@@ -637,9 +687,6 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             var metrics = calculateVersionMetrics(D.shifts[sk]);
             var scoreType = metrics.totalScore >= 90 ? "success" : metrics.totalScore >= 70 ? "info" : "error";
             addLog("評価: " + metrics.totalScore + "点 " + metrics.stars, scoreType);
-            if (metrics.errors > 0 || metrics.warnings > 0) {
-                addLog("❌" + metrics.errors + " ⚠" + metrics.warnings, metrics.errors > 0 ? "error" : "info");
-            }
             renderVersions();
 
             // ハード制約違反チェック → 自動再試行

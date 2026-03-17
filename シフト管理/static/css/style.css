@@ -52,6 +52,10 @@ th{background:var(--bg3);font-weight:600}
 .holiday{background:rgba(239,68,68,0.05)}
 .check-ok{background:rgba(16,185,129,0.1);color:#065f46}
 .check-ng{background:rgba(239,68,68,0.1);color:#991b1b;font-weight:bold}
+.override-row td{padding:1px}
+.override-input{width:32px;border:1px solid var(--border);border-radius:3px;text-align:center;font-size:.8rem;padding:1px 0;background:var(--bg2);color:var(--text)}
+.override-input:focus{outline:2px solid var(--blue);border-color:var(--blue)}
+.override-input.overridden{background:#fef3c7;font-weight:bold}
 .ward-tabs{display:flex;gap:.5rem;margin-bottom:1rem}
 .ward-tab{padding:.4rem .8rem;background:var(--bg2);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-size:.9rem;color:var(--text2)}
 .ward-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}

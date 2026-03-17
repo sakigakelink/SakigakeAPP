@@ -9,6 +9,7 @@ import calendar
 import json as pyjson
 import logging
 import subprocess
+import tempfile
 import threading
 from datetime import date, datetime, timedelta
 from flask import Response, request, jsonify, send_file, render_template, stream_with_context
@@ -20,7 +21,6 @@ from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.pdfbase.cidfonts import UnicodeCIDFont
 from io import BytesIO
 
-from queue import Queue, Empty
 from solver import ShiftSolver
 from utils import HOLIDAYS
 from validation import (
@@ -294,6 +294,7 @@ def register_routes(app, BACKUP_DIR):
             validated_data = validate_solve_request(data)
             # 元のデータにバリデーション済みフィールドをマージ
             data.update(validated_data)
+            # maxNight補正はShiftSolver.__init__内で実施（employees.json読込は1回のみ）
             # 異動職員の前月引継ぎデータを旧病棟から補完
             ward_code = data.get("config", {}).get("ward", "")
             if ward_code:
@@ -324,6 +325,8 @@ def register_routes(app, BACKUP_DIR):
             data.update(validated_data)
         except ValidationError as e:
             return _error_response(e.message, 400, e.field)
+
+        # maxNight補正はShiftSolver.__init__内で実施（employees.json読込は1回のみ）
 
         # 固定シフト職員: 希望入力（assign）をfixedShiftsにマージ
         # 直接入力と希望入力どちらで入れても同等に扱う
@@ -377,10 +380,25 @@ def register_routes(app, BACKUP_DIR):
 
         solve_mode = data.get("config", {}).get("solveMode", "quick")
 
+        # 全職員マスタを診断メッセージ用に追加（ID→名前解決）
+        try:
+            emp_path = os.path.join(os.path.dirname(__file__), "shared", "employees.json")
+            with open(emp_path, "r", encoding="utf-8") as f:
+                data["allEmployees"] = pyjson.load(f)
+        except Exception:
+            data["allEmployees"] = []
+
         def generate():
             cfg = data.get("config", {})
-            solver = ShiftSolver(data)
             num_cores = os.cpu_count() or 4
+
+            # 職員数を事前計算（サブプロセス起動前のinfo表示用）
+            staff = data.get("staff", [])
+            solver_staff = [s for s in staff if s.get("workType") not in ("fixed", "flexRequest")]
+            fixed_staff = [s for s in staff if s.get("workType") == "fixed"]
+            flex_staff = [s for s in staff if s.get("workType") == "flexRequest"]
+            num_staff = len(solver_staff)
+            num_days = calendar.monthrange(data.get("year", 2026), data.get("month", 1))[1]
 
             # モード別の表示
             mode_labels = {
@@ -393,43 +411,96 @@ def register_routes(app, BACKUP_DIR):
             # 初期情報
             monthly_off_val = cfg.get('monthlyOff', '?')
             month_val = data.get('month', '?')
-            yield f"data: {pyjson.dumps({'type': 'info', 'msg': f'職員{solver.num_staff}名、{solver.num_days}日間（{num_cores}コア）- {mode_label}【公休{monthly_off_val}日/月={month_val}】'})}\n\n"
-
-            # solver.solve() が厳密解法で実行（制約緩和なし）
-            total_start = time.time()
-            log_queue = Queue()
-            result_holder = [None]
+            yield f"data: {pyjson.dumps({'type': 'info', 'msg': f'職員{num_staff}名、{num_days}日間（{num_cores}コア）- {mode_label}【公休{monthly_off_val}日/月={month_val}】'})}\n\n"
 
             yield f"data: {pyjson.dumps({'type': 'attempt', 'num': 1, 'msg': '厳密解法で開始（制約緩和なし）'})}\n\n"
 
-            def worker():
+            # サブプロセスでソルバー実行（OR-Tools C++ abort隔離）
+            total_start = time.time()
+            solver_script = os.path.join(os.path.dirname(__file__), "solver_subprocess.py")
+            input_json = pyjson.dumps(data, ensure_ascii=False).encode("utf-8")
+
+            # 結果ファイル（stdout汚染を回避するためファイル経由で受け渡し）
+            result_fd, result_path = tempfile.mkstemp(suffix=".json", prefix="solver_result_")
+            os.close(result_fd)
+
+            try:
+                env = os.environ.copy()
+                env["PYTHONIOENCODING"] = "utf-8"
+                creation_flags = 0
+                if sys.platform == "win32":
+                    creation_flags = subprocess.CREATE_NO_WINDOW
+                # stderrはDEVNULL（バッファ溢れによるデッドロック防止）
+                # クラッシュ時はresult_path不在＋returncodeで検知
+                proc = subprocess.Popen(
+                    [sys.executable, solver_script, result_path],
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.DEVNULL,
+                    cwd=os.path.dirname(__file__),
+                    env=env,
+                    creationflags=creation_flags,
+                )
+                def _feed_stdin(p, data_bytes):
+                    try:
+                        p.stdin.write(data_bytes)
+                        p.stdin.close()
+                    except Exception:
+                        pass
+                feeder = threading.Thread(target=_feed_stdin, args=(proc, input_json), daemon=True)
+                feeder.start()
+            except Exception as e:
+                logger.exception("ソルバーサブプロセス起動失敗: %s", e)
+                yield f"data: {pyjson.dumps({'type': 'error', 'msg': f'ソルバー起動失敗: {e}'})}\n\n"
+                yield f"data: {pyjson.dumps({'type': 'result', 'data': {'status': 'error', 'message': str(e)}})}\n\n"
                 try:
-                    result_holder[0] = solver.solve(log_queue=log_queue)
-                except Exception as e:
-                    logger.exception("ソルバーワーカーエラー: %s", e)
-                    result_holder[0] = {"status": "error", "message": "ソルバー実行中にエラーが発生しました"}
-                finally:
-                    log_queue.put({"type": "done"})
+                    os.unlink(result_path)
+                except Exception:
+                    pass
+                return
 
-            thread = threading.Thread(target=worker)
-            thread.start()
+            res = None
+            try:
+                # stdoutからJSONLを逐次読み取り（進捗メッセージのみ）
+                for raw_line in proc.stdout:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line:
+                        continue
+                    try:
+                        msg = pyjson.loads(line)
+                    except pyjson.JSONDecodeError:
+                        continue
 
-            # キューをポーリングして進捗イベントをストリーミング
-            while True:
+                    msg_type = msg.get("type")
+                    if msg_type == "progress":
+                        yield f"data: {pyjson.dumps({'type': 'progress', 'obj': msg.get('obj'), 'time': msg.get('time'), 'improvement': msg.get('improvement'), 'solutions': msg.get('solutions')})}\n\n"
+                    elif msg_type == "log":
+                        yield f"data: {pyjson.dumps({'type': 'attempt', 'num': 0, 'msg': msg.get('msg', '')})}\n\n"
+
+                proc.wait(timeout=120)
+            except Exception as e:
+                logger.exception("ソルバーサブプロセス読み取りエラー: %s", e)
                 try:
-                    msg = log_queue.get(timeout=0.3)
-                except Empty:
-                    yield ": heartbeat\n\n"
-                    continue
-                if msg.get("type") == "done":
-                    break
-                if msg.get("type") == "progress":
-                    yield f"data: {pyjson.dumps({'type': 'progress', 'obj': msg['obj'], 'time': msg['time'], 'improvement': msg['improvement'], 'solutions': msg['solutions']})}\n\n"
-                elif msg.get("type") == "log":
-                    yield f"data: {pyjson.dumps({'type': 'attempt', 'num': 0, 'msg': msg['msg']})}\n\n"
+                    proc.kill()
+                except Exception:
+                    pass
 
-            thread.join()
-            res = result_holder[0]
+            # 結果ファイルから読み取り
+            try:
+                with open(result_path, "r", encoding="utf-8") as rf:
+                    res = pyjson.load(rf)
+            except Exception as e:
+                logger.error("結果ファイル読み取り失敗: %s", e)
+            finally:
+                try:
+                    os.unlink(result_path)
+                except Exception:
+                    pass
+
+            # プロセスがクラッシュして結果ファイルもない場合
+            if res is None:
+                logger.error("ソルバーサブプロセス失敗 (code=%s)", proc.returncode)
+                res = {"status": "error", "message": "ソルバーが異常終了しました。OR-Toolsの内部エラーの可能性があります。"}
 
             total_elapsed = round(time.time() - total_start, 2)
 
@@ -935,6 +1006,13 @@ def register_routes(app, BACKUP_DIR):
         wish_map = data.get("wishMap", {})
         prev_month_days = data.get("prevMonthDays", [])
         creation_num = data.get("creationNum", 0)
+        pdf_config = data.get("config", {})
+        req_day_weekday = pdf_config.get("reqDayWeekday", 7)
+        req_day_holiday = pdf_config.get("reqDayHoliday", 5)
+        day_staff_by_day = pdf_config.get("dayStaffByDay", {})
+        req_junnya = pdf_config.get("reqJunnya", 2)
+        req_shinya = pdf_config.get("reqShinya", 2)
+        req_late = pdf_config.get("reqLate", 1)
 
         num_days = calendar.monthrange(year, month)[1]
 
@@ -1018,6 +1096,11 @@ def register_routes(app, BACKUP_DIR):
             row.append(str(off_count))
             table_data.append(row)
 
+        # 集計行の色付け用: (row_index, col_offset, day_values, required_values, mode)
+        # mode: "gte" (>=で緑), "eq" (==で緑)
+        summary_color_info = []
+        num_staff_rows = len(staff_data)  # ヘッダー除く職員行数
+
         # 小計行を追加
         # 一病棟の場合は日勤を看護とNAに分ける
         if ward == "1":
@@ -1055,10 +1138,26 @@ def register_routes(app, BACKUP_DIR):
             day_na_summary.extend(["", "", ""])
             table_data.append(day_na_summary)
 
+        # 曜日別の日勤必要数を事前計算（solver.pyと同一ロジック）
+        # dayStaffByDay UIフィールドから曜日別必要数を取得
+        _DS_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]
+        def calc_day_req(day_of_month):
+            dt = date(year, month, day_of_month)
+            wd = dt.weekday()  # 0=Mon..6=Sun
+            is_hol = (year, month, day_of_month) in HOLIDAYS
+            if wd == 6 or is_hol:  # 日曜 or 祝日
+                v = day_staff_by_day.get("sun")
+                return v if v is not None else req_day_holiday
+            key = _DS_KEYS[wd]
+            v = day_staff_by_day.get(key)
+            return v if v is not None else req_day_weekday
+
         # 日勤計集計
         day_summary = ["日勤計"]
+        day_counts = []
+        day_reqs = []
         for _ in range(num_prev):
-            day_summary.append("")  # 前月分は空
+            day_summary.append("")
         for d in range(1, num_days + 1):
             count = 0
             for s in staff_data:
@@ -1068,11 +1167,52 @@ def register_routes(app, BACKUP_DIR):
                     if sh in ["day", "late"]:
                         count += 1
             day_summary.append(str(count))
-        day_summary.extend(["", "", ""])  # 集計列は空
+            day_counts.append(count)
+            day_reqs.append(calc_day_req(d))
+        day_summary.extend(["", "", ""])
         table_data.append(day_summary)
+        day_summary_row = len(table_data) - 1
+        summary_color_info.append((day_summary_row, day_counts, day_reqs, "gte"))
+
+        # 看護師計
+        nurse_summary = ["看護師計"]
+        for _ in range(num_prev):
+            nurse_summary.append("")
+        for d in range(1, num_days + 1):
+            count = 0
+            for s in staff_data:
+                shifts = s.get("shifts", [])
+                if d <= len(shifts):
+                    sh = shifts[d - 1]
+                    if sh in ["day", "late"]:
+                        stype = s.get("staffType", "nurse")
+                        if stype in ["nurse", "junkango"]:
+                            count += 1
+            nurse_summary.append(str(count))
+        nurse_summary.extend(["", "", ""])
+        table_data.append(nurse_summary)
+
+        # 補助者計
+        aide_summary = ["補助者計"]
+        for _ in range(num_prev):
+            aide_summary.append("")
+        for d in range(1, num_days + 1):
+            count = 0
+            for s in staff_data:
+                shifts = s.get("shifts", [])
+                if d <= len(shifts):
+                    sh = shifts[d - 1]
+                    if sh in ["day", "late"]:
+                        stype = s.get("staffType", "nurse")
+                        if stype == "nurseaide":
+                            count += 1
+            aide_summary.append(str(count))
+        aide_summary.extend(["", "", ""])
+        table_data.append(aide_summary)
 
         # 準夜帯集計
         junnya_summary = ["準夜帯"]
+        junnya_counts = []
         for _ in range(num_prev):
             junnya_summary.append("")
         for d in range(1, num_days + 1):
@@ -1084,11 +1224,15 @@ def register_routes(app, BACKUP_DIR):
                     if sh in ["night2", "junnya"]:
                         count += 1
             junnya_summary.append(str(count))
+            junnya_counts.append(count)
         junnya_summary.extend(["", "", ""])
         table_data.append(junnya_summary)
+        junnya_row = len(table_data) - 1
+        summary_color_info.append((junnya_row, junnya_counts, [req_junnya] * num_days, "eq"))
 
         # 深夜帯集計
         shinya_summary = ["深夜帯"]
+        shinya_counts = []
         for _ in range(num_prev):
             shinya_summary.append("")
         for d in range(1, num_days + 1):
@@ -1100,12 +1244,16 @@ def register_routes(app, BACKUP_DIR):
                     if sh in ["ake", "shinya"]:
                         count += 1
             shinya_summary.append(str(count))
+            shinya_counts.append(count)
         shinya_summary.extend(["", "", ""])
         table_data.append(shinya_summary)
+        shinya_row = len(table_data) - 1
+        summary_color_info.append((shinya_row, shinya_counts, [req_shinya] * num_days, "eq"))
 
         # 遅出集計（二病棟のみ）
         if ward == "2":
             late_summary = ["遅出"]
+            late_counts = []
             for _ in range(num_prev):
                 late_summary.append("")
             for d in range(1, num_days + 1):
@@ -1117,8 +1265,11 @@ def register_routes(app, BACKUP_DIR):
                         if sh == "late":
                             count += 1
                 late_summary.append(str(count))
+                late_counts.append(count)
             late_summary.extend(["", "", ""])
             table_data.append(late_summary)
+            late_row = len(table_data) - 1
+            summary_color_info.append((late_row, late_counts, [req_late] * num_days, "gte"))
 
         # テーブルスタイル
         # 列幅: 名前60, 前月分18*num_prev, 当月分18*num_days, 集計22*3
@@ -1140,9 +1291,9 @@ def register_routes(app, BACKUP_DIR):
         for d_idx in range(num_prev, num_prev + num_days): # 当月の日付の列インデックス
             day_of_month = d_idx - num_prev + 1
             dt = date(year, month, day_of_month)
-            is_weekend = dt.weekday() >= 5
+            is_sunday = dt.weekday() == 6
             is_holiday = (year, month, day_of_month) in HOLIDAYS
-            if is_weekend or is_holiday:
+            if is_sunday or is_holiday:
                 style.add('BACKGROUND', (d_idx + 1, 0), (d_idx + 1, -1), colors.Color(1, 0.9, 0.9)) # +1は氏名列の分
 
         # 希望の反映（背景色）
@@ -1167,6 +1318,57 @@ def register_routes(app, BACKUP_DIR):
         for idx in range(num_prev):
             style.add('BACKGROUND', (idx + 1, 0), (idx + 1, -1), colors.Color(0.95, 0.95, 0.95))
 
+        # 集計行の色付け（日勤不足=赤、充足=緑）
+        color_ok = colors.Color(0.85, 0.95, 0.85)    # 薄緑
+        color_ng = colors.Color(1.0, 0.85, 0.85)      # 薄赤
+        for row_idx, counts, reqs, mode in summary_color_info:
+            for di, (cnt, req) in enumerate(zip(counts, reqs)):
+                col_idx = num_prev + di + 1  # +1 for 氏名列
+                if mode == "gte":
+                    ok = cnt >= req
+                else:  # "eq"
+                    ok = cnt == req
+                bg = color_ok if ok else color_ng
+                style.add('BACKGROUND', (col_idx, row_idx), (col_idx, row_idx), bg)
+                if not ok:
+                    style.add('TEXTCOLOR', (col_idx, row_idx), (col_idx, row_idx), colors.Color(0.6, 0.1, 0.1))
+                    style.add('FONTSIZE', (col_idx, row_idx), (col_idx, row_idx), 7)  # 少し大きく
+
+        # 5連勤の赤下線（各職員の連勤検出）
+        rest_shifts = {"off", "paid", "ake", "refresh"}
+        for s_idx, s in enumerate(staff_data):
+            if s.get("workType") == "fixed":
+                continue
+            row_idx = s_idx + 1  # ヘッダー行が0
+            shifts = s.get("shifts", [])
+            # 前月末からの連勤数
+            prev_work = 0
+            for pd in reversed(prev_month_days):
+                pd_shifts = pd.get("shifts", {})
+                psh = pd_shifts.get(s["id"], "")
+                if not psh or psh in rest_shifts:
+                    break
+                prev_work += 1
+            # 当月の連勤検出
+            streak_start = 1
+            current_streak = prev_work
+            for d in range(1, num_days + 1):
+                sh = shifts[d - 1] if d <= len(shifts) else ""
+                is_work = sh and sh not in rest_shifts
+                if is_work:
+                    current_streak += 1
+                else:
+                    if current_streak >= 5:
+                        for dd in range(streak_start, d):
+                            col = num_prev + dd  # +1 for name col, but dd is 1-based
+                            style.add('LINEBELOW', (col, row_idx), (col, row_idx), 1.5, colors.red)
+                    current_streak = 0
+                    streak_start = d + 1
+            # 月末で終わる連勤
+            if current_streak >= 5:
+                for dd in range(streak_start, num_days + 1):
+                    col = num_prev + dd
+                    style.add('LINEBELOW', (col, row_idx), (col, row_idx), 1.5, colors.red)
 
         table.setStyle(style)
         elements.append(table)
@@ -1307,6 +1509,7 @@ def register_routes(app, BACKUP_DIR):
 
             validated_data = validate_solve_request(data)
             data.update(validated_data)
+            # maxNight補正はShiftSolver.__init__内で実施
             return jsonify(ShiftSolver(data).solve())
         except ValidationError as e:
             return _error_response(e.message, 400, e.field)
@@ -1534,11 +1737,15 @@ def register_routes(app, BACKUP_DIR):
                     staff_shifts[staff_id][day] = shift_val
 
             # 下書き追加
-            shift_data['drafts'][name] = {
+            solver_status = data.get('solverStatus', '')
+            draft_obj = {
                 "createdAt": datetime.now().isoformat(),
                 "score": score,
                 "shifts": staff_shifts
             }
+            if solver_status:
+                draft_obj["solverStatus"] = solver_status
+            shift_data['drafts'][name] = draft_obj
 
             # 保存した案を自動的に仮選択
             shift_data['selectedDraft'] = name
@@ -1777,7 +1984,7 @@ def register_routes(app, BACKUP_DIR):
 
     @app.route("/api/shift/prev-month", methods=["GET"])
     def get_prev_month_shifts():
-        """前月参照データを取得（確定 > 仮 > なし）"""
+        """前月参照データを取得（確定 > 仮 > なし）+ 異動職員の旧病棟データ補完"""
         try:
             # バリデーション
             try:
@@ -1795,65 +2002,87 @@ def register_routes(app, BACKUP_DIR):
                 prev_year, prev_month = year, month - 1
 
             filepath = get_shift_filepath(ward, prev_year, prev_month)
+            flat_shifts = {}
+            source = 'none'
+            draft_name = None
 
-            if not os.path.exists(filepath):
-                return jsonify({
-                    'status': 'success',
-                    'source': 'none',
-                    'prevYear': prev_year,
-                    'prevMonth': prev_month,
-                    'shifts': {},
-                    'hasData': False
-                })
+            if os.path.exists(filepath):
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    shift_data = pyjson.load(f)
 
-            with open(filepath, 'r', encoding='utf-8') as f:
-                shift_data = pyjson.load(f)
+                # 確定版があればそれを使用（statusに関わらずconfirmedデータを優先）
+                if shift_data.get('confirmed') and isinstance(shift_data['confirmed'], dict) and 'shifts' in shift_data['confirmed']:
+                    staff_shifts = shift_data['confirmed']['shifts']
+                    for staff_id, days in staff_shifts.items():
+                        for day, shift in days.items():
+                            flat_shifts[f"{staff_id}-{day}"] = shift
+                    source = 'confirmed'
 
-            # 確定版があればそれを使用
-            if shift_data.get('status') == 'confirmed' and shift_data.get('confirmed'):
-                staff_shifts = shift_data['confirmed']['shifts']
-                # フラット形式に変換 (staffId-day: shift)
-                flat_shifts = {}
-                for staff_id, days in staff_shifts.items():
-                    for day, shift in days.items():
-                        flat_shifts[f"{staff_id}-{day}"] = shift
+                # なければ仮選択中のドラフト
+                elif shift_data.get('selectedDraft') and shift_data['selectedDraft'] in shift_data.get('drafts', {}):
+                    selected = shift_data['selectedDraft']
+                    staff_shifts = shift_data['drafts'][selected]['shifts']
+                    for staff_id, days in staff_shifts.items():
+                        for day, shift in days.items():
+                            flat_shifts[f"{staff_id}-{day}"] = shift
+                    source = 'draft'
+                    draft_name = selected
 
-                return jsonify({
-                    'status': 'success',
-                    'source': 'confirmed',
-                    'prevYear': prev_year,
-                    'prevMonth': prev_month,
-                    'shifts': flat_shifts,
-                    'hasData': True
-                })
+            # 異動職員の旧病棟シフトを補完
+            prev_days = calendar.monthrange(prev_year, prev_month)[1]
+            ward_id = get_ward_id(ward)
+            try:
+                emp_path = os.path.join(os.path.dirname(__file__), "shared", "employees.json")
+                with open(emp_path, "r", encoding="utf-8") as f:
+                    all_employees = pyjson.load(f)
+                # 当病棟の職員IDを取得
+                ward_staff_ids = {e["id"] for e in all_employees if e.get("ward") == ward_id}
+                # flat_shiftsに前月データがない職員を特定
+                staff_with_data = set()
+                for key in flat_shifts:
+                    sid = key.rsplit("-", 1)[0]
+                    staff_with_data.add(sid)
+                missing_ids = ward_staff_ids - staff_with_data
+                if missing_ids:
+                    shifts_dir = os.path.join(os.path.dirname(__file__), "shifts")
+                    prev_shift_file = f"{prev_year}-{prev_month:02d}.json"
+                    # transferHistoryから旧病棟を特定、またはward全検索
+                    other_wards = [w for w in WARD_ID_TO_CODE if w != ward_id]
+                    for ow in other_wards:
+                        if not missing_ids:
+                            break
+                        ow_path = os.path.join(shifts_dir, ow, prev_shift_file)
+                        if not os.path.exists(ow_path):
+                            continue
+                        with open(ow_path, "r", encoding="utf-8") as f:
+                            ow_data = pyjson.load(f)
+                        ow_shifts = None
+                        if ow_data.get("confirmed") and isinstance(ow_data["confirmed"], dict) and "shifts" in ow_data["confirmed"]:
+                            ow_shifts = ow_data["confirmed"]["shifts"]
+                        elif ow_data.get("selectedDraft") and ow_data["selectedDraft"] in ow_data.get("drafts", {}):
+                            ow_shifts = ow_data["drafts"][ow_data["selectedDraft"]]["shifts"]
+                        if not ow_shifts:
+                            continue
+                        for sid in list(missing_ids):
+                            if sid in ow_shifts:
+                                for day, shift in ow_shifts[sid].items():
+                                    flat_shifts[f"{sid}-{day}"] = shift
+                                missing_ids.discard(sid)
+            except Exception as e:
+                logger.warning("異動職員の前月データ補完エラー: %s", e)
 
-            # なければ仮選択中のドラフト
-            selected = shift_data.get('selectedDraft')
-            if selected and selected in shift_data.get('drafts', {}):
-                staff_shifts = shift_data['drafts'][selected]['shifts']
-                flat_shifts = {}
-                for staff_id, days in staff_shifts.items():
-                    for day, shift in days.items():
-                        flat_shifts[f"{staff_id}-{day}"] = shift
-
-                return jsonify({
-                    'status': 'success',
-                    'source': 'draft',
-                    'draftName': selected,
-                    'prevYear': prev_year,
-                    'prevMonth': prev_month,
-                    'shifts': flat_shifts,
-                    'hasData': True
-                })
-
-            return jsonify({
+            has_data = len(flat_shifts) > 0
+            resp = {
                 'status': 'success',
-                'source': 'none',
+                'source': source,
                 'prevYear': prev_year,
                 'prevMonth': prev_month,
-                'shifts': {},
-                'hasData': False
-            })
+                'shifts': flat_shifts,
+                'hasData': has_data
+            }
+            if draft_name:
+                resp['draftName'] = draft_name
+            return jsonify(resp)
 
         except (OSError, IOError, pyjson.JSONDecodeError) as e:
             logger.exception("前月シフト取得エラー: %s", e)

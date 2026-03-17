@@ -2,7 +2,7 @@ import { D, W, Y, M, currentViewDraft, setCurrentViewDraft, compareDraftName } f
 import { escHtml } from './util.js';
 import { save } from './api.js';
 import { render } from './render.js';
-import { calculateMetrics, getDraftPenaltySummary } from './metrics.js';
+import { calculateMetrics, getDraftPenaltySummary, getDraftScore } from './metrics.js';
 import { updateActualButtons } from './actual.js';
 
 // ========== ドラフト管理機能 ==========
@@ -66,13 +66,29 @@ function loadDraftList() {
                 statusDetail.textContent = data.selectedDraft ? "" : "下の一覧から案を選択してください";
             }
 
+            // ソルバーステータス復元表示
+            var drafts = data.drafts || {};
+            var compEl = document.getElementById("solverCompleteness");
+            if (compEl) {
+                var selDraft = data.selectedDraft && drafts[data.selectedDraft];
+                var ss = selDraft && selDraft.solverStatus;
+                if (ss === "optimal") {
+                    compEl.textContent = "最適解"; compEl.style.background = "#166534";
+                    compEl.style.color = "#fff"; compEl.style.display = "inline";
+                } else if (ss === "feasible") {
+                    compEl.textContent = "暫定解"; compEl.style.background = "#854d0e";
+                    compEl.style.color = "#fff"; compEl.style.display = "inline";
+                } else {
+                    compEl.style.display = "none";
+                }
+            }
+
             // ドラフト一覧
             var html = "";
-            var drafts = data.drafts || {};
             for (var name in drafts) {
                 var draft = drafts[name];
                 var isSelected = name === data.selectedDraft;
-                var score = draft.score || 0;
+                var score = draft.shifts ? getDraftScore(draft.shifts) : (draft.score || 0);
                 var createdAt = draft.createdAt ? draft.createdAt.slice(0, 16).replace("T", " ") : "";
 
                 html += "<div class='draft-item" + (isSelected ? " selected" : "") + "'>";
@@ -235,7 +251,8 @@ function autoSaveDraft(shifts) {
             month: M,
             name: name,
             shifts: shifts,
-            score: score
+            score: score,
+            solverStatus: window._lastSolverStatus || ""
         })
     })
         .then(function(r) { return r.json(); })

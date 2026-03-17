@@ -1,26 +1,107 @@
 {
   "2": {
-    "reqDayWeekday": 7,
-    "reqDayHoliday": 5,
+    "reqDayWeekday": 8,
+    "reqDayHoliday": 6,
     "reqJunnya": 2,
     "reqShinya": 2,
     "reqLate": 1,
-    "maxLate": 4
+    "maxLate": 4,
+    "dayStaffByDay": {
+      "mon": 8,
+      "tue": 8,
+      "wed": 7,
+      "thu": 8,
+      "fri": 8,
+      "sat": 6,
+      "sun": 6
+    },
+    "minQualifiedByDay": {
+      "mon": 6,
+      "tue": 6,
+      "wed": 6,
+      "thu": 6,
+      "fri": 6,
+      "sat": 6,
+      "sun": 6
+    },
+    "minAideByDay": {
+      "mon": 0,
+      "tue": 0,
+      "wed": 0,
+      "thu": 0,
+      "fri": 0,
+      "sat": 0,
+      "sun": 0
+    }
   },
   "1": {
     "reqDayWeekday": 7,
     "reqDayHoliday": 5,
     "reqJunnya": 2,
     "reqShinya": 2,
-    "reqLate": 0,
-    "maxLate": 0
+    "reqLate": 1,
+    "maxLate": 4,
+    "dayStaffByDay": {
+      "mon": 7,
+      "tue": 6,
+      "wed": 6,
+      "thu": 7,
+      "fri": 6,
+      "sat": 5,
+      "sun": 5
+    },
+    "minQualifiedByDay": {
+      "mon": 2,
+      "tue": 2,
+      "wed": 2,
+      "thu": 2,
+      "fri": 2,
+      "sat": 2,
+      "sun": 2
+    },
+    "minAideByDay": {
+      "mon": 2,
+      "tue": 2,
+      "wed": 2,
+      "thu": 2,
+      "fri": 2,
+      "sat": 2,
+      "sun": 2
+    }
   },
   "3": {
     "reqDayWeekday": 7,
-    "reqDayHoliday": 5,
+    "reqDayHoliday": 6,
     "reqJunnya": 3,
     "reqShinya": 2,
-    "reqLate": 0,
-    "maxLate": 0
+    "reqLate": 1,
+    "maxLate": 4,
+    "dayStaffByDay": {
+      "mon": 7,
+      "tue": 7,
+      "wed": 7,
+      "thu": 7,
+      "fri": 7,
+      "sat": 6,
+      "sun": 6
+    },
+    "minQualifiedByDay": {
+      "mon": 5,
+      "tue": 5,
+      "wed": 5,
+      "thu": 5,
+      "fri": 5,
+      "sat": 5,
+      "sun": 5
+    },
+    "minAideByDay": {
+      "mon": 2,
+      "tue": 2,
+      "wed": 2,
+      "thu": 2,
+      "fri": 2,
+      "sat": 2,
+      "sun": 2
+    }
   }
 }

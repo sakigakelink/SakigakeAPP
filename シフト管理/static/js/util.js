@@ -39,3 +39,24 @@ export function getStaffTypeColor(t) {
     if (t === "nurseaide") return "#f3e8ff";
     return "#f3f4f6";
 }
+
+/**
+ * prevShiftsにwindow.confirmedPrevShiftsをマージ（異動職員対応）
+ * @param {Object} prevShifts - ローカルの前月シフト（変更される）
+ * @returns {{ shifts: Object, merged: number }} マージ後のシフトと補完件数
+ */
+export function mergePrevWithConfirmed(prevShifts) {
+    var merged = 0;
+    if (!window.confirmedPrevShifts) return { shifts: prevShifts, merged: 0 };
+    if (Object.keys(prevShifts).length === 0) {
+        return { shifts: window.confirmedPrevShifts, merged: Object.keys(window.confirmedPrevShifts).length };
+    }
+    var cps = window.confirmedPrevShifts;
+    for (var cpk in cps) {
+        if (cps.hasOwnProperty(cpk) && !prevShifts[cpk]) {
+            prevShifts[cpk] = cps[cpk];
+            merged++;
+        }
+    }
+    return { shifts: prevShifts, merged: merged };
+}
