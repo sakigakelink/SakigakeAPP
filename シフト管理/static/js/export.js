@@ -238,6 +238,7 @@ function generateYoshiki9(type) {
     };
 
     var btn = event.target;
+    var originalText = btn.textContent;
     btn.disabled = true;
     btn.textContent = "生成中...";
 
@@ -287,8 +288,7 @@ function generateYoshiki9(type) {
         alert("生成エラー: " + e.message);
     }).finally(function() {
         btn.disabled = false;
-        btn.textContent = btn.getAttribute("data-original-text") || btn.textContent.replace("生成中...", "");
-        // テキスト復元が難しいのでページリロードはしない
+        btn.textContent = originalText;
     });
 }
 

@@ -7,8 +7,6 @@ export var M = _now.getMonth() === 11 ? 1 : _now.getMonth() + 2;
 export var W = "2";
 export var sel = null;
 export var currentViewDraft = null;
-export var compareDraftShifts = null;
-export var compareDraftName = null;
 export var solveTimer = null;
 export var solveStartTime = null;
 export var solveChartData = [];
@@ -34,8 +32,6 @@ export function setM(v) { M = v; }
 export function setW(v) { W = v; }
 export function setSel(v) { sel = v; }
 export function setCurrentViewDraft(v) { currentViewDraft = v; }
-export function setCompareDraftShifts(v) { compareDraftShifts = v; }
-export function setCompareDraftName(v) { compareDraftName = v; }
 export function setSolveTimer(v) { solveTimer = v; }
 export function setSolveStartTime(v) { solveStartTime = v; }
 export function setSolveChartData(v) { solveChartData = v; }

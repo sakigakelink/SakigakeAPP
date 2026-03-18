@@ -141,20 +141,25 @@ function setShift(sh, dayHours) {
     document.getElementById("shiftModal").classList.remove("active");
 }
 
-function solve(seed) {
+function solve(seed, solveMode) {
     var log = document.getElementById("log");
     var btn = document.getElementById("btnSolve");
+    var btnPool = document.getElementById("btnSolvePool");
     var progress = document.getElementById("solveProgress");
     var solveLog = document.getElementById("solveLog");
     var solveStatus = document.getElementById("solveStatus");
     var solveElapsed = document.getElementById("solveElapsed");
+
+    // solveMode を保存（doSolve に引き継ぐ）
+    window._currentSolveMode = solveMode || null;
 
     log.innerHTML = "";
     log.style.display = "none";
     solveLog.innerHTML = "";
     progress.style.display = "block";
     btn.disabled = true;
-    btn.textContent = "生成中...";
+    if (btnPool) btnPool.disabled = true;
+    btn.textContent = solveMode === "pool" ? "複数案生成中..." : "生成中...";
 
     // チャートリセット
     setSolveChartData([]);
@@ -516,6 +521,11 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             if (chkRelax && chkRelax.checked) {
                 cfg.relaxMode = true;
             }
+            // 解プールモード
+            if (window._currentSolveMode === "pool") {
+                cfg.solveMode = "pool";
+                cfg.analyzeSensitivity = true;
+            }
             return cfg;
         })(),
         wishes: D.wishes[wk] || [],
@@ -601,6 +611,80 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
     function finishSolve(r) {
         if (solveTimer) { clearInterval(solveTimer); setSolveTimer(null); }
         var finalTime = ((Date.now() - solveStartTime) / 1000).toFixed(1);
+
+        // === 解プールモード ===
+        if (r.status && r.status.toLowerCase() === "pool" && r.solutions && r.solutions.length > 0) {
+            progress.style.display = "none";
+            log.style.display = "flex";
+
+            var altCount = r.solutions.length - 1;
+            addLog("🎯 ベストプラクティス + 代替" + altCount + "案を生成しました (" + finalTime + "秒)", "success");
+
+            // 最良解をメイン表示
+            var bestSol = r.solutions[0];
+            var bestObj = Infinity;
+            for (var si = 0; si < r.solutions.length; si++) {
+                var solObj = (r.solutions[si].optimization_score || {}).objective_value || Infinity;
+                if (solObj < bestObj) { bestObj = solObj; bestSol = r.solutions[si]; }
+            }
+
+            // メイン表示に最良解を適用
+            var sk = Y + "-" + M + "-" + W;
+            D.shifts[sk] = {};
+            for (var k in bestSol.shifts) D.shifts[sk][k] = bestSol.shifts[k];
+            save();
+            render();
+
+            // 各案をドラフトとして直列保存（競合防止）
+            // idx=0: ベストプラクティス、idx=1~4: 代替案B~E
+            var altLabels = ["B", "C", "D", "E"];
+            var poolSolutions = r.solutions.slice();
+            function savePoolDraftSequential(idx) {
+                if (idx >= poolSolutions.length) {
+                    addLog("📋 下書きパネルで各案を比較できます", "info");
+                    loadDraftList();
+                    return;
+                }
+                var sol = poolSolutions[idx];
+                var draftName = idx === 0
+                    ? "★ベストプラクティス"
+                    : "代替案" + altLabels[idx - 1] + "_" + (sol.profile_label || "");
+                var chars = sol.characteristics || {};
+                autoSaveDraft(sol.shifts, draftName, {
+                    solverStatus: sol.completeness || "feasible",
+                    profileLabel: sol.profile_label,
+                    nightDiff: chars.night_diff,
+                    maxConsecutive: chars.max_consecutive,
+                    objectiveValue: chars.objective_value
+                }, function() {
+                    savePoolDraftSequential(idx + 1);
+                });
+            }
+            savePoolDraftSequential(0);
+            for (var si = 0; si < r.solutions.length; si++) {
+                var sol = r.solutions[si];
+                var chars = sol.characteristics || {};
+                var label = si === 0 ? "★ベストプラクティス" : "代替案" + altLabels[si - 1] + " " + (sol.profile_label || "");
+                addLog("  " + label +
+                    " (夜勤差" + (chars.night_diff || "?") +
+                    ", 最大連勤" + (chars.max_consecutive || "?") + "日)", "info");
+            }
+
+            // 感度分析の表示
+            if (r.sensitivity && r.sensitivity.length > 0) {
+                addLog("📊 感度分析:", "info");
+                for (var ai = 0; ai < r.sensitivity.length; ai++) {
+                    var a = r.sensitivity[ai];
+                    addLog("  " + a.label + " → " + a.improvement + "点改善", "info");
+                }
+            }
+
+            btn.disabled = false;
+            btn.textContent = "生成開始";
+            var btnPoolEnd = document.getElementById("btnSolvePool");
+            if (btnPoolEnd) btnPoolEnd.disabled = false;
+            return;
+        }
 
         if (r.status && r.status.toLowerCase() in { optimal: 1, feasible: 1 }) {
             progress.style.display = "none";
@@ -732,6 +816,8 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
         }
         btn.disabled = false;
         btn.textContent = "生成開始";
+        var btnPoolRestore = document.getElementById("btnSolvePool");
+        if (btnPoolRestore) btnPoolRestore.disabled = false;
     }
 }
 

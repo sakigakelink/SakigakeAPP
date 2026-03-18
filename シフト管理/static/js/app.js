@@ -221,6 +221,7 @@ function bindEvents() {
         }
     });
     document.getElementById("btnSolve").addEventListener("click", function () { solve(Math.floor(Math.random() * 10000) + 1); });
+    document.getElementById("btnSolvePool").addEventListener("click", function () { solve(7, "pool"); });
     document.getElementById("addStaffBtn").addEventListener("click", openStaffModal);
     document.getElementById("closeStaffModal").addEventListener("click", function () {
         document.getElementById("staffModal").classList.remove("active");

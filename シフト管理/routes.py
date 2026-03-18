@@ -404,7 +404,8 @@ def register_routes(app, BACKUP_DIR):
             mode_labels = {
                 "quick": "⚡通常（15秒）",
                 "balanced": "⚡バランス（45秒）",
-                "quality": "💎品質重視（90秒）"
+                "quality": "💎品質重視（90秒）",
+                "pool": "🎯複数案生成（50秒）",
             }
             mode_label = mode_labels.get(solve_mode, "⚡通常（15秒）")
 
@@ -504,7 +505,17 @@ def register_routes(app, BACKUP_DIR):
 
             total_elapsed = round(time.time() - total_start, 2)
 
-            if res and res.get("status", "").lower() in ["optimal", "feasible"]:
+            if res and res.get("status", "").lower() == "pool":
+                # 解プールモード: 複数案を返す
+                count = res.get("count", 0)
+                res["totalTime"] = total_elapsed
+                quality_msg = f"{count}案を生成しました ({total_elapsed}秒)"
+                if res.get("sensitivity"):
+                    quality_msg += f" + 感度分析{len(res['sensitivity'])}件"
+                yield f"data: {pyjson.dumps({'type': 'success', 'msg': quality_msg})}\n\n"
+                yield f"data: {pyjson.dumps({'type': 'result', 'data': res})}\n\n"
+                return
+            elif res and res.get("status", "").lower() in ["optimal", "feasible"]:
                 attempt_num = res.get("attempt", 1)
                 res["totalTime"] = total_elapsed
                 completeness = res.get("completeness", "feasible")
@@ -1738,6 +1749,7 @@ def register_routes(app, BACKUP_DIR):
 
             # 下書き追加
             solver_status = data.get('solverStatus', '')
+            meta = data.get('meta')
             draft_obj = {
                 "createdAt": datetime.now().isoformat(),
                 "score": score,
@@ -1745,6 +1757,8 @@ def register_routes(app, BACKUP_DIR):
             }
             if solver_status:
                 draft_obj["solverStatus"] = solver_status
+            if meta and isinstance(meta, dict):
+                draft_obj["meta"] = meta
             shift_data['drafts'][name] = draft_obj
 
             # 保存した案を自動的に仮選択

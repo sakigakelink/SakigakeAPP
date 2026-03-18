@@ -1,4 +1,4 @@
-import { D, W, Y, M, currentViewDraft, setCurrentViewDraft, compareDraftName } from './state.js';
+import { D, W, Y, M, currentViewDraft, setCurrentViewDraft } from './state.js';
 import { escHtml } from './util.js';
 import { save } from './api.js';
 import { render } from './render.js';
@@ -92,12 +92,32 @@ function loadDraftList() {
                 var createdAt = draft.createdAt ? draft.createdAt.slice(0, 16).replace("T", " ") : "";
 
                 html += "<div class='draft-item" + (isSelected ? " selected" : "") + "'>";
+                html += "<div style='display:flex;align-items:center;gap:.4rem;flex-wrap:wrap'>";
                 html += "<span class='draft-name'>" + escHtml(name) + "</span>";
                 html += "<span class='draft-score'>" + score + "点</span>";
                 // ペナルティバッジ
                 if (draft.shifts) {
                     html += "<span class='draft-penalties'>" + getDraftPenaltySummary(draft.shifts) + "</span>";
                 }
+                html += "</div>";
+
+                // 特性サマリー（解プールのmeta情報がある場合）
+                var meta = draft.meta;
+                if (meta && (meta.nightDiff !== undefined || meta.maxConsecutive !== undefined)) {
+                    html += "<div style='font-size:.75rem;color:var(--text2);margin:.2rem 0;display:flex;gap:.6rem;flex-wrap:wrap'>";
+                    if (meta.nightDiff !== undefined) {
+                        var ndColor = meta.nightDiff <= 2 ? "#10b981" : meta.nightDiff <= 4 ? "#f59e0b" : "#ef4444";
+                        html += "<span style='color:" + ndColor + "'>夜勤差" + meta.nightDiff + "回</span>";
+                    }
+                    if (meta.maxConsecutive !== undefined) {
+                        var mcColor = meta.maxConsecutive <= 4 ? "#10b981" : meta.maxConsecutive <= 5 ? "#f59e0b" : "#ef4444";
+                        html += "<span style='color:" + mcColor + "'>最大連勤" + meta.maxConsecutive + "日</span>";
+                    }
+                    // obj はデバッグ用のためUIには非表示
+                    html += "</div>";
+                }
+
+                html += "<div style='display:flex;align-items:center;gap:.3rem;margin-top:.2rem'>";
                 html += "<span class='draft-date'>" + createdAt + "</span>";
                 if (isSelected) {
                     html += "<span class='draft-selected'>← 選択中</span>";
@@ -108,21 +128,13 @@ function loadDraftList() {
                 } else {
                     html += "<span class='draft-selected'>表示中</span>";
                 }
-                // 比較ボタン（表示中でない案のみ）
-                if (!isViewing) {
-                    var isComparing = (name === compareDraftName);
-                    if (isComparing) {
-                        html += "<button class='btn btn-warning' onclick=\"clearCompareDraft()\">比較解除</button>";
-                    } else {
-                        html += "<button class='btn btn-secondary' onclick=\"setCompareDraft('" + name + "')\">比較</button>";
-                    }
-                }
                 if (!isSelected) {
                     html += "<button class='btn btn-primary' onclick=\"selectDraft('" + name + "')\">仮に設定</button>";
                 }
                 if (!isViewing) {
                     html += "<button class='btn btn-danger' onclick=\"deleteDraft('" + name + "')\">削除</button>";
                 }
+                html += "</div>";
                 html += "</div>";
             }
 
@@ -229,40 +241,57 @@ function saveDraft() {
         });
 }
 
-function autoSaveDraft(shifts) {
+function autoSaveDraft(shifts, customName, extraMeta, callback) {
     // 自動保存：生成完了時に自動的にサーバーに保存
-    var now = new Date();
-    var name = "自動_" +
-        String(now.getMonth() + 1).padStart(2, "0") +
-        String(now.getDate()).padStart(2, "0") + "_" +
-        String(now.getHours()).padStart(2, "0") +
-        String(now.getMinutes()).padStart(2, "0");
+    // customName: オプション。指定があればその名前で保存（解プール用）
+    // extraMeta: オプション。追加メタデータ（profileLabel, nightDiff等）
+    // callback: オプション。保存完了時に呼ばれるコールバック（直列保存用）
+    var name;
+    if (customName) {
+        name = customName;
+    } else {
+        var now = new Date();
+        name = "自動_" +
+            String(now.getMonth() + 1).padStart(2, "0") +
+            String(now.getDate()).padStart(2, "0") + "_" +
+            String(now.getHours()).padStart(2, "0") +
+            String(now.getMinutes()).padStart(2, "0");
+    }
 
     var metrics = calculateMetrics(Y, M, shifts);
     var score = metrics.totalScore || 0;
     var wardId = W === "1" ? "ichiboutou" : W === "2" ? "nibyoutou" : "sanbyoutou";
 
+    var payload = {
+        ward: wardId,
+        year: Y,
+        month: M,
+        name: name,
+        shifts: shifts,
+        score: score,
+        solverStatus: (extraMeta && extraMeta.solverStatus) || window._lastSolverStatus || ""
+    };
+    if (extraMeta) {
+        payload.meta = extraMeta;
+    }
+
     fetch("/api/shift/save-draft", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-            ward: wardId,
-            year: Y,
-            month: M,
-            name: name,
-            shifts: shifts,
-            score: score,
-            solverStatus: window._lastSolverStatus || ""
-        })
+        body: JSON.stringify(payload)
     })
         .then(function(r) { return r.json(); })
         .then(function(res) {
             if (res.status === "success") {
                 setCurrentViewDraft(name);
-                loadDraftList();
+                if (!callback) loadDraftList();
             }
+            if (callback) callback();
         })
-        .catch(function(e) { console.warn("auto-save error:", e); });
+        .catch(function(e) {
+            console.warn("auto-save error:", e);
+            if (callback) callback();
+        });
 }
 
 function selectDraft(name) {

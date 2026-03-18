@@ -589,7 +589,7 @@ class ShiftSolver:
 
         return causes
 
-    def _solve_core(self, log_queue=None, timeout=15):
+    def _solve_core(self, log_queue=None, timeout=15, weight_profile=None):
         # モデル再作成 (毎回新しいモデルで解く)
         self.model = cp_model.CpModel()
         self.shifts = {}
@@ -2037,28 +2037,48 @@ class ShiftSolver:
                 self.model.Add(night_range_diff < thr).OnlyEnforceIf(exceeded.Not())
                 night_range_penalty += exceeded * pen
 
+            # 重みプロファイル適用
+            wp = weight_profile or {}
+            w_staff = wp.get("total_violation", 1)
+            w_night = wp.get("night_range", 1)
+            w_consec = wp.get("consecutive", 1)
+            w_weekend = wp.get("weekend", 1)
+            w_rot = wp.get("rotation", 1)
+
             self.model.Minimize(
-                total_violation
-                + night_range_penalty
-                + consecutive_work_penalty
-                + weekend_equalization_penalty
-                + night_interval_penalty
-                + junnya_shinya_balance_penalty
-                + late_equalization_penalty
-                + scattered_night_penalty
-                + shinya_off_penalty
-                + junnya_off_shinya_penalty
-                + kibou_night_penalty
-                + day_shinya_penalty
-                - good_rotation_bonus
+                total_violation * w_staff
+                + night_range_penalty * w_night
+                + consecutive_work_penalty * w_consec
+                + weekend_equalization_penalty * w_weekend
+                + night_interval_penalty * w_rot
+                + junnya_shinya_balance_penalty * w_rot
+                + late_equalization_penalty * w_weekend
+                + scattered_night_penalty * w_rot
+                + shinya_off_penalty * w_rot
+                + junnya_off_shinya_penalty * w_rot
+                + kibou_night_penalty * 1
+                + day_shinya_penalty * w_rot
+                - good_rotation_bonus * w_rot
             )
         else:
+            wp = weight_profile or {}
+            w_staff = wp.get("total_violation", 1)
+            w_consec = wp.get("consecutive", 1)
+            w_weekend = wp.get("weekend", 1)
+            w_rot = wp.get("rotation", 1)
+
             self.model.Minimize(
-                total_violation + consecutive_work_penalty
-                + weekend_equalization_penalty + late_equalization_penalty
-                + scattered_night_penalty + night_interval_penalty + shinya_off_penalty
-                + junnya_off_shinya_penalty + kibou_night_penalty + day_shinya_penalty
-                - good_rotation_bonus
+                total_violation * w_staff
+                + consecutive_work_penalty * w_consec
+                + weekend_equalization_penalty * w_weekend
+                + late_equalization_penalty * w_weekend
+                + scattered_night_penalty * w_rot
+                + night_interval_penalty * w_rot
+                + shinya_off_penalty * w_rot
+                + junnya_off_shinya_penalty * w_rot
+                + kibou_night_penalty * 1
+                + day_shinya_penalty * w_rot
+                - good_rotation_bonus * w_rot
             )
 
         # === 希望休集中日の夜勤ヒント ===
@@ -2456,3 +2476,230 @@ class ShiftSolver:
             log_queue.put({"type": "log", "msg": "制約緩和モードでも解が見つかりませんでした"})
         result["message"] = (result.get("message", "") or "") + "\n※制約緩和モードでも解が見つかりませんでした。"
         return result
+
+    # ============================================================
+    # 解プール（複数案生成）
+    # ============================================================
+
+    # 代替案用の重みプロファイル（バランス型は通常solveで生成するため除外）
+    ALT_PROFILES = [
+        {"key": "fairness",  "label": "夜勤公平重視",
+         "total_violation": 1, "night_range": 3, "consecutive": 1, "weekend": 2, "rotation": 1},
+        {"key": "comfort",   "label": "連勤抑制重視",
+         "total_violation": 1, "night_range": 1, "consecutive": 3, "weekend": 1, "rotation": 1},
+        {"key": "rotation",  "label": "ローテーション重視",
+         "total_violation": 1, "night_range": 1, "consecutive": 1, "weekend": 1, "rotation": 3},
+        {"key": "staffing",  "label": "人員充足重視",
+         "total_violation": 3, "night_range": 1, "consecutive": 1, "weekend": 1, "rotation": 1},
+    ]
+
+    def solve_pool(self, log_queue=None):
+        """ベストプラクティス(通常solve) + 代替4案を生成。"""
+        solutions = []
+
+        # === ベストプラクティス（通常solve: 3シード×15秒） ===
+        if log_queue:
+            log_queue.put({"type": "log", "msg": "ベストプラクティスを生成中（3シード×15秒）..."})
+        best_res = self.solve(log_queue=log_queue)
+        best_status = best_res.get("status", "").lower()
+        if best_status in ("optimal", "feasible"):
+            best_res["profile_key"] = "best"
+            best_res["profile_label"] = "ベストプラクティス"
+            best_res["characteristics"] = self._characterize_solution(best_res)
+            solutions.append(best_res)
+            if log_queue:
+                obj = best_res.get("optimization_score", {}).get("objective_value", "?")
+                log_queue.put({"type": "log", "msg": f"  → ベストプラクティス: {best_status} (obj={obj})"})
+        else:
+            # ベストが出ない場合は代替案も出ない
+            if log_queue:
+                log_queue.put({"type": "log", "msg": "ベストプラクティスが見つかりません。代替案の生成をスキップします。"})
+            return {
+                "status": "pool",
+                "solutions": [],
+                "sensitivity": [],
+                "count": 0,
+                "message": best_res.get("message", "解が見つかりません"),
+            }
+
+        # === 代替4案（各1シード×15秒） ===
+        if log_queue:
+            log_queue.put({"type": "log", "msg": "代替案を生成中..."})
+
+        for i, prof in enumerate(self.ALT_PROFILES):
+            label = prof["label"]
+            if log_queue:
+                log_queue.put({"type": "log", "msg": f"  代替{i+1}/4 ({label})..."})
+
+            self.config["seed"] = [31, 97, 13, 53][i % 4]
+            res = self._solve_core(
+                log_queue=log_queue,
+                timeout=15,
+                weight_profile=prof
+            )
+            status = res.get("status", "").lower()
+            if status in ("optimal", "feasible"):
+                res["profile_key"] = prof["key"]
+                res["profile_label"] = label
+                res["characteristics"] = self._characterize_solution(res)
+                solutions.append(res)
+                if log_queue:
+                    obj = res.get("optimization_score", {}).get("objective_value", "?")
+                    log_queue.put({"type": "log", "msg": f"  → {label}: {status} (obj={obj})"})
+            else:
+                if log_queue:
+                    log_queue.put({"type": "log", "msg": f"  → {label}: {status}（解なし）"})
+
+        # 類似解の除去（ベストプラクティスは常に残す、代替案同士で3%未満なら除去）
+        if len(solutions) > 1:
+            best_sol = solutions[0]  # ベストプラクティスは必ず保持
+            alts = self._deduplicate_solutions(solutions[1:], threshold=0.03)
+            before_dedup = len(solutions) - 1
+            if log_queue and before_dedup > len(alts):
+                log_queue.put({"type": "log", "msg": f"類似解除去: 代替{before_dedup}案→{len(alts)}案"})
+            solutions = [best_sol] + alts
+
+        # 感度分析（ベストプラクティスベース）
+        sensitivity = []
+        analyze_flag = self.config.get("analyzeSensitivity", False)
+        if analyze_flag and solutions:
+            if log_queue:
+                log_queue.put({"type": "log", "msg": "感度分析を実行中..."})
+            sensitivity = self._analyze_sensitivity(solutions[0], log_queue=log_queue)
+
+        return {
+            "status": "pool",
+            "solutions": solutions,
+            "sensitivity": sensitivity,
+            "count": len(solutions),
+        }
+
+    def _characterize_solution(self, result):
+        """解の特性をサマリーとして返す。"""
+        score = result.get("optimization_score", {})
+        shifts = result.get("shifts", {})
+
+        # 夜勤回数分布
+        night_shifts = {"night2", "junnya", "shinya", "ake"}
+        night_counts = {}
+        for key, val in shifts.items():
+            if val in night_shifts:
+                staff_id = key.rsplit("-", 1)[0]
+                night_counts[staff_id] = night_counts.get(staff_id, 0) + 1
+        night_values = list(night_counts.values()) if night_counts else [0]
+        night_diff = max(night_values) - min(night_values) if night_values else 0
+
+        # 最大連勤
+        staff_days = {}
+        for key, val in shifts.items():
+            parts = key.rsplit("-", 1)
+            if len(parts) == 2:
+                sid, day_s = parts
+                if val not in ("off", "paid", "refresh", ""):
+                    staff_days.setdefault(sid, set()).add(int(day_s))
+        max_consec = 0
+        for sid, days in staff_days.items():
+            sorted_days = sorted(days)
+            consec = 1
+            for j in range(1, len(sorted_days)):
+                if sorted_days[j] == sorted_days[j-1] + 1:
+                    consec += 1
+                    max_consec = max(max_consec, consec)
+                else:
+                    consec = 1
+
+        return {
+            "night_diff": night_diff,
+            "max_consecutive": max_consec,
+            "total_violation": score.get("total_violation", 0),
+            "objective_value": score.get("objective_value", 0),
+            "night_score": score.get("night_score", 0),
+        }
+
+    def _deduplicate_solutions(self, solutions, threshold=0.05):
+        """Hamming距離が threshold 未満の解を除去（objective_value の悪い方を削除）。"""
+        if len(solutions) <= 1:
+            return solutions
+        keep = []
+        for sol in solutions:
+            is_dup = False
+            for kept in keep:
+                dist = self._shift_distance(sol.get("shifts", {}), kept.get("shifts", {}))
+                if dist < threshold:
+                    is_dup = True
+                    # 良い方を残す
+                    sol_obj = sol.get("optimization_score", {}).get("objective_value", float("inf"))
+                    kept_obj = kept.get("optimization_score", {}).get("objective_value", float("inf"))
+                    if sol_obj < kept_obj:
+                        keep.remove(kept)
+                        keep.append(sol)
+                    break
+            if not is_dup:
+                keep.append(sol)
+        return keep
+
+    def _shift_distance(self, shifts_a, shifts_b):
+        """2つのシフト割当のHamming距離（0.0～1.0）。"""
+        keys = set(shifts_a.keys()) | set(shifts_b.keys())
+        if not keys:
+            return 0.0
+        diff = sum(1 for k in keys if shifts_a.get(k) != shifts_b.get(k))
+        return diff / len(keys)
+
+    # ============================================================
+    # 感度分析
+    # ============================================================
+
+    SENSITIVITY_CANDIDATES = [
+        {"penalty": "night_range",  "label": "夜勤回数の均等化を緩和"},
+        {"penalty": "consecutive",  "label": "連勤制限を緩和"},
+        {"penalty": "weekend",      "label": "土日勤務の均等化を緩和"},
+        {"penalty": "rotation",     "label": "夜勤ローテーション制約を緩和"},
+    ]
+
+    def _analyze_sensitivity(self, baseline_result, log_queue=None):
+        """ソフト制約を1つずつゼロ化して再ソルブし、改善量を測定。"""
+        baseline_obj = baseline_result.get("optimization_score", {}).get("objective_value")
+        if baseline_obj is None:
+            return []
+
+        results = []
+        for cand in self.SENSITIVITY_CANDIDATES:
+            penalty_key = cand["penalty"]
+            label = cand["label"]
+
+            if log_queue:
+                log_queue.put({"type": "log", "msg": f"  感度分析: {label}..."})
+
+            # 対象ペナルティをゼロにする重みプロファイル
+            zeroed_profile = {
+                "total_violation": 1,
+                "night_range": 1,
+                "consecutive": 1,
+                "weekend": 1,
+                "rotation": 1,
+            }
+            zeroed_profile[penalty_key] = 0
+
+            self.config["seed"] = 7
+            res = self._solve_core(
+                log_queue=None,  # 進捗ログは省略
+                timeout=3,
+                weight_profile=zeroed_profile
+            )
+            status = res.get("status", "").lower()
+            if status in ("optimal", "feasible"):
+                relaxed_obj = res.get("optimization_score", {}).get("objective_value", baseline_obj)
+                improvement = baseline_obj - relaxed_obj
+                if improvement > 0:
+                    chars = self._characterize_solution(res)
+                    results.append({
+                        "label": label,
+                        "improvement": int(improvement),
+                        "relaxed_objective": int(relaxed_obj),
+                        "characteristics": chars,
+                    })
+
+        # 改善量の大きい順にソート
+        results.sort(key=lambda x: x["improvement"], reverse=True)
+        return results[:3]

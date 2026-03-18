@@ -144,10 +144,7 @@ th{background:var(--bg3);font-weight:600}
 .draft-item .draft-penalties{font-size:.7rem;display:inline-flex;gap:.2rem;flex-wrap:wrap}
 .draft-item .draft-penalties .penalty-badge{padding:1px 4px;border-radius:3px;background:rgba(239,68,68,0.15);color:#ef4444;font-size:.65rem;white-space:nowrap}
 .draft-item .draft-penalties .penalty-badge.good{background:rgba(16,185,129,0.15);color:#10b981}
-.cell-diff{background:rgba(250,204,21,0.35) !important;box-shadow:inset 0 0 0 1px #eab308}
 .cell-violation{box-shadow:inset 0 0 0 2px #ef4444}
-.compare-banner{display:flex;align-items:center;gap:.8rem;padding:.5rem 1rem;margin-bottom:.5rem;background:rgba(250,204,21,0.15);border:1px solid #eab308;border-radius:6px;font-size:.85rem}
-.compare-banner button{margin-left:auto}
 
 .change-history{max-height:200px;overflow-y:auto;font-size:.8rem}
 .change-history-item{padding:.4rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}

@@ -1,4 +1,4 @@
-import { D, W, Y, M, compareDraftShifts, compareDraftName, setCompareDraftShifts, setCompareDraftName, currentViewDraft, HOLIDAYS } from './state.js';
+import { D, W, Y, M, currentViewDraft, HOLIDAYS } from './state.js';
 import { ABBR, WARDS, PENALTY_KEYS } from './constants.js';
 import { escHtml, isHoliday, getMonthlyOff, getWorkTypeBadge, getStaffTypeBadge, mergePrevWithConfirmed } from './util.js';
 import { save } from './api.js';
@@ -993,29 +993,6 @@ export function getDraftPenaltySummary(draftShifts) {
     return renderPenaltySummary(totals);
 }
 
-// 比較対象ドラフトを設定
-export function setCompareDraft(name) {
-    // loadDraftListのキャッシュからデータ取得
-    if (!window._lastDraftData || !window._lastDraftData.drafts[name]) return;
-    var draftShifts = window._lastDraftData.drafts[name].shifts;
-    var newCompareDraftShifts = {};
-    for (var staffId in draftShifts) {
-        var daysMap = draftShifts[staffId];
-        for (var day in daysMap) {
-            newCompareDraftShifts[staffId + "-" + day] = daysMap[day];
-        }
-    }
-    setCompareDraftShifts(newCompareDraftShifts);
-    setCompareDraftName(name);
-    window.render();
-}
-
-export function clearCompareDraft() {
-    setCompareDraftShifts(null);
-    setCompareDraftName(null);
-    window.render();
-}
-
 export function calculateVersionMetrics(shifts) {
     var staff = [];
     for (var i = 0; i < D.staff.length; i++) {
@@ -1377,8 +1354,6 @@ window.getPersonalIssues = getPersonalIssues;
 window.renderPenaltySummary = renderPenaltySummary;
 window.getDraftPenaltySummary = getDraftPenaltySummary;
 window.getPrevMonthStaffData = getPrevMonthStaffData;
-window.setCompareDraft = setCompareDraft;
-window.clearCompareDraft = clearCompareDraft;
 window.calculateVersionMetrics = calculateVersionMetrics;
 window.calculateMetrics = calculateMetrics;
 window.saveCurrentVersion = saveCurrentVersion;

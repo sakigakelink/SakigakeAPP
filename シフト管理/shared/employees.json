@@ -103,7 +103,7 @@
     "personalRules": {
       "nightShift": {
         "maxPerMonth": 21,
-        "minPerMonth": 20
+        "minPerMonth": 21
       },
       "dayOff": {
         "minPerMonth": 9
@@ -123,7 +123,7 @@
     "personalRules": {
       "nightShift": {
         "maxPerMonth": 16,
-        "minPerMonth": 18
+        "minPerMonth": 16
       },
       "dayOff": {
         "minPerMonth": 9

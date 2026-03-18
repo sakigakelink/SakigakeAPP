@@ -1,4 +1,4 @@
-import { D, W, Y, M, setY, setM, sel, currentViewDraft, setCurrentViewDraft, compareDraftShifts, compareDraftName, ACTUAL_MODE, actualData, confirmedData, HOLIDAYS } from './state.js';
+import { D, W, Y, M, setY, setM, sel, currentViewDraft, setCurrentViewDraft, ACTUAL_MODE, actualData, confirmedData, HOLIDAYS } from './state.js';
 import { ABBR, WARDS, SHIFT_BTNS, PENALTY_KEYS } from './constants.js';
 import { escHtml, isHoliday, getMonthlyOff, getWorkTypeBadge, getStaffTypeBadge, getStaffTypeColor, mergePrevWithConfirmed } from './util.js';
 
@@ -646,12 +646,6 @@ function render() {
                     cellContent += "<span class=\"day-hours-sub\">" + parseFloat(dh) + "</span>";
                 }
             }
-            // 比較差分ハイライト
-            var diffCls = "";
-            if (compareDraftShifts) {
-                var compVal = compareDraftShifts[s.id + "-" + d] || "";
-                if (compVal !== sh) diffCls = " cell-diff";
-            }
             // 制約違反ハイライト
             var violCls = "";
             var violTip = "";
@@ -672,7 +666,7 @@ function render() {
                 coBadge = "<span class=\"co-badge co-" + co.cls + "\" title=\"" + co.title + "\">" + co.label + "</span>";
             }
             var cellTip = violTip ? " title=\"" + escHtml(violTip) + "\"" : (coBadge && carryoverLabels[d] ? " title=\"" + carryoverLabels[d].title + "\"" : "");
-            html += "<td class=\"shift-cell" + cls + cellHolCls + diffCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + cellTip + ">" + cellContent + coBadge + "</td>";
+            html += "<td class=\"shift-cell" + cls + cellHolCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + cellTip + ">" + cellContent + coBadge + "</td>";
         }
         // 夜勤セル色分け: maxNightとの比率で背景色
         var ncStyle = "";
@@ -815,20 +809,6 @@ function render() {
     });
 
     // 比較中バナー表示
-    var bannerEl = document.getElementById("compareBanner");
-    if (!bannerEl) {
-        bannerEl = document.createElement("div");
-        bannerEl.id = "compareBanner";
-        t.parentNode.insertBefore(bannerEl, t);
-    }
-    if (compareDraftName) {
-        bannerEl.className = "compare-banner";
-        bannerEl.innerHTML = "&#x1F4CA; <b>" + escHtml(compareDraftName) + "</b>と比較中 <button class='btn btn-secondary' onclick='clearCompareDraft()'>比較解除</button>";
-    } else {
-        bannerEl.className = "";
-        bannerEl.innerHTML = "";
-    }
-
     var cells = document.querySelectorAll(".shift-cell[data-staff]");
     for (var i = 0; i < cells.length; i++) {
         cells[i].addEventListener("click", function () {

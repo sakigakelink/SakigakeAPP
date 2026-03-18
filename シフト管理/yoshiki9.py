@@ -13,11 +13,14 @@ import os
 import json
 import math
 import calendar
+import logging
 from io import BytesIO
 from datetime import date
 from openpyxl import Workbook
 from openpyxl.styles import Font, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
+
+logger = logging.getLogger(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -402,9 +405,19 @@ def calculate_staff_hours(staff_shifts, num_days, shift_hours_config,
 
         if shift == "day" and all_day_shifts_by_day and staff_id:
             day_staff_list = all_day_shifts_by_day.get(d, [])
-            if day_staff_list and day_staff_list[0] == staff_id:
-                moushiokuri = shift_hours_config.get("day_moushiokuri", {})
-                night_h = moushiokuri.get("night", 0.25)
+            # 申し送り対象は通常8.5h勤務者のみ（カスタム勤務時間の職員は除外）
+            override_key_m = f"{staff_id}-{d}"
+            has_override = (day_hours_override and override_key_m in day_hours_override)
+            if not has_override:
+                # 通常勤務者の中で1番手を探す
+                for candidate in day_staff_list:
+                    cand_key = f"{candidate}-{d}"
+                    if not (day_hours_override and cand_key in day_hours_override):
+                        # この候補が通常勤務の1番手
+                        if candidate == staff_id:
+                            moushiokuri = shift_hours_config.get("day_moushiokuri", {})
+                            night_h = moushiokuri.get("night", 0.25)
+                        break
 
         result.append({
             "day": d,
@@ -429,9 +442,9 @@ def build_day_shift_roster(all_shifts, staff_list, num_days):
 
 
 def truncate(value, decimals):
-    """小数点以下切り捨て"""
+    """小数点以下切り捨て（0方向への切り捨て）"""
     factor = 10 ** decimals
-    return math.floor(value * factor) / factor
+    return math.trunc(value * factor) / factor
 
 
 # ============================================================
@@ -1421,7 +1434,7 @@ class Yoshiki9Generator:
                 ws.cell(R(s["aide_ref_row"]), C(2),
                         "（参考）看護補助者配置数（必要数）")
                 ws.cell(R(s["aide_ref_row"]), vc).value = (
-                    f"=CEILING({a_cell}/{ratio_num},1)")
+                    f"=CEILING({a_cell}/{ratio_num},1)*3")
                 ws.cell(R(s["aide_ref_row"]), C(25), "人(基準値)")
                 ws.cell(R(s["aide_ref_row"]), C(28),
                         "〔(Ａ／配置区分の数)×３〕")
@@ -1430,6 +1443,13 @@ class Yoshiki9Generator:
             if s.get("aide_ref_sub_row") is not None:
                 ws.cell(R(s["aide_ref_sub_row"]), C(2),
                         " ※小数点以下切り上げ")
+
+        else:
+            # ward1/ward3: ⑧のメインは出力不要だが、
+            # aide_ref_row の必要数はGHIJK[J]から参照されるため値を書く
+            if s.get("aide_ref_row") is not None:
+                ws.cell(R(s["aide_ref_row"]), vc).value = (
+                    f"=CEILING({a_cell}/{ratio_num},1)*3")
 
         # ⑨ (全病棟出力不要)
         # ⑩ (全病棟出力不要)
@@ -1654,7 +1674,7 @@ class Yoshiki9Generator:
 
             # X (col 23, 夜勤従事者): 夜専=1 or U<>1 → 0, else MIN(1, BI_r2/BI_r3)
             ws.cell(R(r2), C(23)).value = (
-                f'=IF(OR({_c22}=1,{_c20}<>1),0,MIN(1,{_c60_r2}/{_c60_r3}))')
+                f'=IF(OR({_c22}=1,{_c20}<>1),0,IFERROR(MIN(1,{_c60_r2}/{_c60_r3}),0))')
 
             # Python 側カウント (集計用)
             total_night_hours = sum(h["night_h"] for h in hours)
@@ -2509,8 +2529,8 @@ class Yoshiki9Generator:
         try:
             ws.merge_cells(start_row=r1, start_column=c1,
                            end_row=r2, end_column=c2)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("セル結合失敗 (%d,%d)-(%d,%d): %s", r1, c1, r2, c2, e)
 
     def _apply_merges(self, ws, layout):
         """セル結合を一括適用 (ラベル・値・時間セル)"""
@@ -3066,11 +3086,15 @@ class Yoshiki9Generator:
             for slot in range(max_slots):
                 for row_offset in range(3):  # 3 rows per slot
                     row = data_start + slot * 3 + row_offset
-                    # col 60 (月延べ) — 数値書式
-                    ws.cell(R(row), C(60)).number_format = FMT_2DEC
-                    # 日付別 (col 29-59) — 数値書式
+                    # col 60 (月延べ) — フォント+数値書式
+                    cell60 = ws.cell(R(row), C(60))
+                    cell60.number_format = FMT_2DEC
+                    cell60.font = FONT_TABLE
+                    # 日付別 (col 29-59) — フォント+数値書式
                     for c in range(29, 29 + self.num_days):
-                        ws.cell(R(row), C(c)).number_format = FMT_2DEC
+                        cell = ws.cell(R(row), C(c))
+                        cell.number_format = FMT_2DEC
+                        cell.font = FONT_TABLE
 
             # 合計行 (data_start + max_slots * 3)
             total_row = data_start + max_slots * 3
