@@ -4,7 +4,7 @@
 test_regression.py および routes.py から利用。
 """
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from utils import HOLIDAYS
 
 REST_SHIFTS = {"off", "paid", "refresh"}
@@ -369,3 +369,194 @@ def format_quality(q):
             line2_parts.append(f"最多={worst['name']}{worst['score']}件")
 
     return " ".join(line1_parts) + "\n    内訳: " + " ".join(line2_parts)
+
+
+# =============================================================================
+# 労基法コンプライアンスチェッカー
+# =============================================================================
+
+# シフト別の開始・終了時刻（時間単位、0:00 = 0.0）
+# yoshiki9_config.json の shift_schedules に準拠
+SHIFT_TIMES = {
+    "day":    (8.5,  17.0),   # 08:30-17:00
+    "late":   (12.5, 21.0),   # 12:30-21:00
+    "night2": (16.5, 33.0),   # 16:30-翌09:00 (= 9.0 + 24)
+    "junnya": (16.5, 25.0),   # 16:30-翌01:00 (= 1.0 + 24)
+    "shinya": (0.5,  9.0),    # 00:30-09:00
+    "ake":    (None, 9.0),    # night2の明け日。終了09:00、開始は前日night2の続き
+}
+
+# 休息扱いのシフト（勤務なし）
+_REST_FOR_INTERVAL = {"off", "paid", "refresh", ""}
+
+
+def _calc_interval_hours(prev_shift, next_shift):
+    """前のシフト終了 → 次のシフト開始 のインターバル（時間）を計算。
+
+    計算不能の場合は None を返す。
+    prev_shift, next_shift は同日ではなく「連続する2日」のシフト。
+    prev_shift は d日、next_shift は d+1日。
+    """
+    if prev_shift not in SHIFT_TIMES or next_shift not in SHIFT_TIMES:
+        return None
+    _, prev_end = SHIFT_TIMES[prev_shift]
+    next_start, _ = SHIFT_TIMES[next_shift]
+    if prev_end is None or next_start is None:
+        return None
+
+    # prev_end は d日ベースの時間（>24なら翌日にまたがる）
+    # next_start は d+1日ベースの時間
+    # d+1日の next_start を d日起点の絶対時間に変換: +24
+    interval = (next_start + 24.0) - prev_end
+    return interval
+
+
+def check_labor_law_compliance(result, data):
+    """労基法コンプライアンスチェック（事後警告用）。
+
+    シフト表を検査し、労基法関連の違反・注意事項を返す。
+    ソルバー制約には影響しない（警告のみ）。
+
+    Args:
+        result: ソルバー結果（shifts dict を含む）
+        data: ソルバー入力データ (year, month, staff, config, wishes, prevMonthData)
+
+    Returns:
+        dict: {
+            "violations": [...],  # 個別違反リスト
+            "summary": {...},     # 種別ごとの件数
+            "compliant": bool,    # 全違反0ならTrue
+        }
+    """
+    shifts = result.get("shifts", {})
+    staff_list = data.get("staff", [])
+    year = data["year"]
+    month = data["month"]
+    num_days = calendar.monthrange(year, month)[1]
+    prev_month_data = data.get("prevMonthData", {})
+
+    violations = []
+
+    for s in staff_list:
+        sid = s["id"]
+        sname = s.get("name", sid)
+        wt = s.get("workType", "2kohtai")
+
+        if wt == "fixed":
+            continue
+
+        shift_list = [shifts.get(f"{sid}-{d}", "") for d in range(1, num_days + 1)]
+
+        prev_data = prev_month_data.get(sid, {})
+        prev_last = prev_data.get("lastDay", "")
+
+        # --- (1) 勤務間インターバル 11時間チェック ---
+        # 前月末 → 当月1日
+        if prev_last and prev_last not in _REST_FOR_INTERVAL:
+            if shift_list[0] and shift_list[0] not in _REST_FOR_INTERVAL:
+                interval = _calc_interval_hours(prev_last, shift_list[0])
+                if interval is not None and interval < 11.0:
+                    violations.append({
+                        "staff_id": sid,
+                        "staff_name": sname,
+                        "type": "interval_11h",
+                        "law": "労働時間等設定改善法",
+                        "severity": "warning",
+                        "detail": f"前月末({prev_last})→1日({shift_list[0]}): インターバル{interval:.1f}h (<11h)",
+                        "days": [0],
+                    })
+
+        # 当月内の連日チェック
+        for d in range(num_days - 1):
+            cur = shift_list[d]
+            nxt = shift_list[d + 1]
+            if cur in _REST_FOR_INTERVAL or nxt in _REST_FOR_INTERVAL:
+                continue
+            # ake は night2 の続きなので、ake→次のシフトのインターバルを計算
+            interval = _calc_interval_hours(cur, nxt)
+            if interval is not None and interval < 11.0:
+                violations.append({
+                    "staff_id": sid,
+                    "staff_name": sname,
+                    "type": "interval_11h",
+                    "law": "労働時間等設定改善法",
+                    "severity": "warning",
+                    "detail": f"{d+1}日({cur})→{d+2}日({nxt}): インターバル{interval:.1f}h (<11h)",
+                    "days": [d, d + 1],
+                })
+
+        # --- (2) 暦週1休日チェック（労基法35条） ---
+        # 日曜起点（weekday()==6）の各暦週で休日が1日もないかチェック
+        # 月の範囲内で完結する暦週のみ対象（月またぎの不完全週は除外）
+        first_date = date(year, month, 1)
+        first_weekday = first_date.weekday()  # 0=Mon ... 6=Sun
+
+        # 日曜起点の週に揃える: 月初が日曜なら0、月曜なら6、火曜なら5...
+        # days_until_sunday = 0 if first_weekday == 6 else (6 - first_weekday)
+        # → 最初の日曜の日付(1-indexed)
+        if first_weekday == 6:
+            first_sunday = 1
+        else:
+            first_sunday = 1 + (6 - first_weekday)
+
+        # 各暦週（日曜〜土曜の7日間）をチェック
+        sun = first_sunday
+        while sun + 6 <= num_days:
+            week_shifts = [shift_list[sun - 1 + i] for i in range(7)]
+            has_rest = any(
+                sh in REST_SHIFTS or sh == "ake" or sh == ""
+                for sh in week_shifts
+            )
+            if not has_rest:
+                week_start = sun
+                week_end = sun + 6
+                violations.append({
+                    "staff_id": sid,
+                    "staff_name": sname,
+                    "type": "weekly_rest",
+                    "law": "労基法35条",
+                    "severity": "warning",
+                    "detail": f"{month}/{week_start}(日)〜{month}/{week_end}(土): 暦週内に休日なし",
+                    "days": list(range(sun - 1, sun + 6)),
+                })
+            sun += 7
+
+        # --- (3) 4週4休チェック（労基法35条 変形休日制） ---
+        # 28日のスライド窓で休日が4日未満かチェック
+        # 前月データがないため、当月内のみで判定（28日以上の月のみ）
+        if num_days >= 28:
+            for start in range(num_days - 27):
+                rest_count = 0
+                for i in range(28):
+                    sh = shift_list[start + i]
+                    if sh in REST_SHIFTS or sh == "ake" or sh == "":
+                        rest_count += 1
+                if rest_count < 4:
+                    violations.append({
+                        "staff_id": sid,
+                        "staff_name": sname,
+                        "type": "four_week_rest",
+                        "law": "労基法35条(変形)",
+                        "severity": "caution",
+                        "detail": f"{month}/{start+1}日〜{month}/{start+28}日: 4週間で休日{rest_count}日 (<4日)",
+                        "days": list(range(start, start + 28)),
+                    })
+
+    # --- サマリー集計 ---
+    summary = {
+        "interval_11h": 0,
+        "weekly_rest": 0,
+        "four_week_rest": 0,
+        "total": 0,
+    }
+    for v in violations:
+        vtype = v["type"]
+        if vtype in summary:
+            summary[vtype] += 1
+    summary["total"] = sum(v for k, v in summary.items() if k != "total")
+
+    return {
+        "violations": violations,
+        "summary": summary,
+        "compliant": summary["total"] == 0,
+    }
