@@ -23,6 +23,7 @@ from io import BytesIO
 
 from solver import ShiftSolver
 from utils import HOLIDAYS
+from shift_quality import check_labor_law_compliance
 from validation import (
     ValidationError, validate_year, validate_month, validate_ward,
     validate_staff_id, validate_staff_name, validate_shift_category,
@@ -285,6 +286,16 @@ def start_daily_backup(backup_dir):
 def register_routes(app, BACKUP_DIR):
     """Flaskアプリにルートを登録"""
 
+    @app.route("/api/export-ls", methods=["POST"])
+    def export_ls():
+        """一時エンドポイント: ブラウザの localStorage を受信してファイル保存"""
+        import os as _os
+        data = request.get_data()
+        out = _os.path.join(_os.path.dirname(__file__), "shared", "ls_dump.json")
+        with open(out, "wb") as f:
+            f.write(data)
+        return jsonify({"status": "ok", "bytes": len(data)})
+
     @app.route("/solve", methods=["POST"])
     def solve_route():
         try:
@@ -509,6 +520,12 @@ def register_routes(app, BACKUP_DIR):
                 # 解プールモード: 複数案を返す
                 count = res.get("count", 0)
                 res["totalTime"] = total_elapsed
+                # 労基法コンプライアンスチェック（各案に付加）
+                for ver in res.get("versions", []):
+                    try:
+                        ver["labor_compliance"] = check_labor_law_compliance(ver, data)
+                    except Exception:
+                        pass
                 quality_msg = f"{count}案を生成しました ({total_elapsed}秒)"
                 if res.get("sensitivity"):
                     quality_msg += f" + 感度分析{len(res['sensitivity'])}件"
@@ -518,6 +535,11 @@ def register_routes(app, BACKUP_DIR):
             elif res and res.get("status", "").lower() in ["optimal", "feasible"]:
                 attempt_num = res.get("attempt", 1)
                 res["totalTime"] = total_elapsed
+                # 労基法コンプライアンスチェック
+                try:
+                    res["labor_compliance"] = check_labor_law_compliance(res, data)
+                except Exception:
+                    pass
                 completeness = res.get("completeness", "feasible")
                 if completeness == "optimal":
                     quality_msg = f"試行{attempt_num}で最適解を発見 ({total_elapsed}秒)"
@@ -978,6 +1000,20 @@ def register_routes(app, BACKUP_DIR):
         }
 
         export_data["fairnessMetrics"] = fairness_metrics
+
+        # 労基法コンプライアンスチェック
+        try:
+            compliance_result = {"shifts": shifts}
+            compliance_data = {
+                "year": year, "month": month,
+                "staff": staff_data, "config": {},
+                "wishes": wishes, "prevMonthData": {},
+            }
+            export_data["laborCompliance"] = check_labor_law_compliance(
+                compliance_result, compliance_data
+            )
+        except Exception:
+            pass
 
         # JSONレスポンスを返す
         response = app.response_class(
