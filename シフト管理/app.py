@@ -66,4 +66,4 @@ if __name__ == "__main__":
     # --no-browser 指定時はブラウザを開かない（テスト用）
     if "--no-browser" not in sys.argv:
         threading.Timer(1.0, open_browser).start()
-    app.run(host="127.0.0.1", port=5000, debug=False, threaded=True)
+    app.run(host="0.0.0.0", port=5000, debug=False, threaded=True)

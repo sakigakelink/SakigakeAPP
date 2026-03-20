@@ -3417,6 +3417,318 @@
       "days": [
         18
       ]
+    },
+    {
+      "staffId": "10060958",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        29
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        1
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        2
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        3
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        6
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        7
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        10
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        14
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        15
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        16
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        17
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        20
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        21
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        23
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        27
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        28
+      ]
+    },
+    {
+      "staffId": "10281033",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        30
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        1
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        2
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        3
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        6
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        7
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        8
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        9
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        10
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        13
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        14
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        15
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        16
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        17
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        20
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        21
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        22
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        23
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        24
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        27
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        28
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        29
+      ]
+    },
+    {
+      "staffId": "10080860",
+      "type": "assign",
+      "shift": "day",
+      "days": [
+        30
+      ]
     }
   ]
 }

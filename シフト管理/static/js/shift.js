@@ -771,6 +771,19 @@ function doSolve(seed, log, btn, progress, solveLog, solveStatus, solveElapsed) 
             var metrics = calculateVersionMetrics(D.shifts[sk]);
             var scoreType = metrics.totalScore >= 90 ? "success" : metrics.totalScore >= 70 ? "info" : "error";
             addLog("評価: " + metrics.totalScore + "点 " + metrics.stars, scoreType);
+            // 労基法コンプライアンスチェック結果表示
+            if (window._laborCompliance) {
+                var lc = window._laborCompliance;
+                if (lc.compliant) {
+                    addLog("労基法: 準拠 ✅", "success");
+                } else {
+                    var lcMsg = "労基法: 違反 " + lc.summary.total + "件";
+                    if (lc.summary.interval_11h > 0) lcMsg += " [インターバル不足" + lc.summary.interval_11h + "]";
+                    if (lc.summary.weekly_rest > 0) lcMsg += " [暦週休日なし" + lc.summary.weekly_rest + "]";
+                    if (lc.summary.four_week_rest > 0) lcMsg += " [4週4休不足" + lc.summary.four_week_rest + "]";
+                    addLog(lcMsg + " ⚠️", "error");
+                }
+            }
             renderVersions();
 
             // ハード制約違反チェック → 自動再試行

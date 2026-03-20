@@ -286,15 +286,6 @@ def start_daily_backup(backup_dir):
 def register_routes(app, BACKUP_DIR):
     """Flaskアプリにルートを登録"""
 
-    @app.route("/api/export-ls", methods=["POST"])
-    def export_ls():
-        """一時: localStorage受信→ファイル保存"""
-        data = request.get_data()
-        out = os.path.join(os.path.dirname(__file__), "shared", "ls_dump.json")
-        with open(out, "wb") as f:
-            f.write(data)
-        return jsonify({"status": "ok", "bytes": len(data)})
-
     @app.route("/solve", methods=["POST"])
     def solve_route():
         try:

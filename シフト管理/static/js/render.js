@@ -464,6 +464,33 @@ function render() {
         dailyNurseCount[d] = cNurse;
         dailyAideCount[d] = cAide;
     }
+    // 労基法コンプライアンスチェック（セルハイライト用）
+    var laborCompliance = null;
+    var laborViolationMap = {}; // "staffId-day" -> [{type, detail, law}]
+    if (typeof checkLaborLawCompliance === "function") {
+        var prevMD = {};
+        for (var pi = 0; pi < staff.length; pi++) {
+            var ps = staff[pi];
+            var pmData = window.getPrevMonthStaffData ? window.getPrevMonthStaffData(ps.id, Y, M, W) : null;
+            if (pmData) prevMD[ps.id] = pmData;
+        }
+        laborCompliance = checkLaborLawCompliance(D.shifts[sk], staff, prevMD, Y, M);
+        if (laborCompliance && laborCompliance.violations) {
+            for (var lvi = 0; lvi < laborCompliance.violations.length; lvi++) {
+                var lv = laborCompliance.violations[lvi];
+                if (lv.days) {
+                    for (var ldi = 0; ldi < lv.days.length; ldi++) {
+                        var ldKey = lv.staff_id + "-" + (lv.days[ldi] + 1); // 0-indexed -> 1-indexed
+                        if (!laborViolationMap[ldKey]) laborViolationMap[ldKey] = [];
+                        laborViolationMap[ldKey].push(lv);
+                    }
+                }
+            }
+        }
+        // グローバルに保存（app.js のバッジ表示用）
+        window._laborCompliance = laborCompliance;
+    }
+
     for (var si = 0; si < staff.length; si++) {
         var s = staff[si];
         var wt = s.workType || "2kohtai";
@@ -659,14 +686,36 @@ function render() {
                     }
                 }
             }
+            // 労基法違反マーカー
+            var laborMark = "";
+            var laborTip = "";
+            var laborViolKey = s.id + "-" + d;
+            if (laborViolationMap[laborViolKey]) {
+                var lvList = laborViolationMap[laborViolKey];
+                // インターバル違反のみマーカー表示（暦週・4週4休はサマリーで表示）
+                var hasInterval = false;
+                var tips = [];
+                for (var lvi2 = 0; lvi2 < lvList.length; lvi2++) {
+                    if (lvList[lvi2].type === "interval_11h") {
+                        hasInterval = true;
+                        tips.push("[" + lvList[lvi2].law + "] " + lvList[lvi2].detail);
+                    }
+                }
+                if (hasInterval) {
+                    laborMark = "<span style=\"position:absolute;top:0;right:1px;font-size:8px;color:#dc2626;line-height:1\" title=\"" + escHtml(tips.join("\n")) + "\">&#9650;</span>";
+                    if (!style) style = "position:relative;";
+                    else style += "position:relative;";
+                }
+                laborTip = tips.join("\n");
+            }
             // 前月引継ぎバッジ
             var coBadge = "";
             if (carryoverLabels[d]) {
                 var co = carryoverLabels[d];
                 coBadge = "<span class=\"co-badge co-" + co.cls + "\" title=\"" + co.title + "\">" + co.label + "</span>";
             }
-            var cellTip = violTip ? " title=\"" + escHtml(violTip) + "\"" : (coBadge && carryoverLabels[d] ? " title=\"" + carryoverLabels[d].title + "\"" : "");
-            html += "<td class=\"shift-cell" + cls + cellHolCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + cellTip + ">" + cellContent + coBadge + "</td>";
+            var cellTip = violTip ? " title=\"" + escHtml(violTip) + "\"" : (laborTip ? " title=\"" + escHtml(laborTip) + "\"" : (coBadge && carryoverLabels[d] ? " title=\"" + carryoverLabels[d].title + "\"" : ""));
+            html += "<td class=\"shift-cell" + cls + cellHolCls + violCls + "\" data-staff=\"" + s.id + "\" data-day=\"" + d + "\" style=\"" + style + "\"" + cellTip + ">" + cellContent + laborMark + coBadge + "</td>";
         }
         // 夜勤セル色分け: maxNightとの比率で背景色
         var ncStyle = "";

@@ -663,6 +663,49 @@ export function calculateFairnessMetrics(staff, shifts, days, year, month) {
             personalPanel.style.display = "none";
         }
     }
+
+    // ===== 労基法コンプライアンスパネル更新 =====
+    var lcPanel = document.getElementById("laborCompliancePanel");
+    var lcTitle = document.getElementById("laborComplianceTitle");
+    var lcContent = document.getElementById("laborComplianceContent");
+    if (lcPanel && lcTitle && lcContent) {
+        var lc = window._laborCompliance;
+        if (lc && !lc.compliant) {
+            lcPanel.style.display = "block";
+            lcPanel.style.borderLeftColor = "#dc2626";
+            lcTitle.innerHTML = "<span style='color:#dc2626'>&#9888;&#65039; \u52b4\u57fa\u6cd5\u30b3\u30f3\u30d7\u30e9\u30a4\u30a2\u30f3\u30b9: \u9055\u53cd " + lc.summary.total + "\u4ef6</span>";
+
+            var lcHtml = "<table style='width:100%;border-collapse:collapse;font-size:.82rem'>";
+            lcHtml += "<thead><tr style='background:var(--bg2)'><th style='padding:.3rem .5rem;text-align:left'>\u8077\u54e1</th><th style='padding:.3rem .5rem;text-align:left'>\u7a2e\u5225</th><th style='padding:.3rem .5rem;text-align:left'>\u6761\u6587</th><th style='padding:.3rem .5rem;text-align:left'>\u8a73\u7d30</th></tr></thead><tbody>";
+
+            var typeLabels = {
+                interval_11h: "\u30a4\u30f3\u30bf\u30fc\u30d0\u30eb\u4e0d\u8db3",
+                weekly_rest: "\u66a6\u9031\u4f11\u65e5\u306a\u3057",
+                four_week_rest: "4\u90314\u4f11\u4e0d\u8db3"
+            };
+            var sevColors = { warning: "#dc2626", caution: "#f59e0b" };
+
+            for (var vi = 0; vi < lc.violations.length; vi++) {
+                var v = lc.violations[vi];
+                var sevColor = sevColors[v.severity] || "#dc2626";
+                lcHtml += "<tr style='border-bottom:1px solid var(--border)'>";
+                lcHtml += "<td style='padding:.3rem .5rem'>" + (v.staff_name || "") + "</td>";
+                lcHtml += "<td style='padding:.3rem .5rem;color:" + sevColor + "'>" + (typeLabels[v.type] || v.type) + "</td>";
+                lcHtml += "<td style='padding:.3rem .5rem;font-size:.75rem'>" + (v.law || "") + "</td>";
+                lcHtml += "<td style='padding:.3rem .5rem;font-size:.75rem'>" + (v.detail || "") + "</td>";
+                lcHtml += "</tr>";
+            }
+            lcHtml += "</tbody></table>";
+            lcContent.innerHTML = lcHtml;
+        } else if (lc && lc.compliant) {
+            lcPanel.style.display = "block";
+            lcPanel.style.borderLeftColor = "#22c55e";
+            lcTitle.innerHTML = "<span style='color:#22c55e'>&#9989; \u52b4\u57fa\u6cd5\u30b3\u30f3\u30d7\u30e9\u30a4\u30a2\u30f3\u30b9: \u6e96\u62e0</span>";
+            lcContent.innerHTML = "<div style='color:var(--text2);font-size:.85rem'>\u52e4\u52d9\u9593\u30a4\u30f3\u30bf\u30fc\u30d0\u30eb\u30fb\u66a6\u9031\u4f11\u65e5\u30fb4\u90314\u4f11\u3059\u3079\u3066OK</div>";
+        } else {
+            lcPanel.style.display = "none";
+        }
+    }
 }
 
 // ========== シフト案バージョン管理 ==========
@@ -1347,6 +1390,158 @@ export function renderVersions() {
 }
 
 // ========== window assignments for HTML onclick and cross-module access ==========
+// =============================================================================
+// 労基法コンプライアンスチェッカー（フロントエンド版）
+// =============================================================================
+
+// シフト別の開始・終了時刻（時間単位）
+var SHIFT_TIMES_JS = {
+    day:    [8.5,  17.0],
+    late:   [12.5, 21.0],
+    night2: [16.5, 33.0],
+    junnya: [16.5, 25.0],
+    shinya: [0.5,  9.0],
+    ake:    [null, 9.0]
+};
+
+var REST_FOR_INTERVAL = { off: 1, paid: 1, refresh: 1, "": 1 };
+var REST_FOR_WEEKLY = { off: 1, paid: 1, refresh: 1, ake: 1, "": 1 };
+
+function calcIntervalHours(prevShift, nextShift) {
+    var prev = SHIFT_TIMES_JS[prevShift];
+    var next = SHIFT_TIMES_JS[nextShift];
+    if (!prev || !next) return null;
+    var prevEnd = prev[1];
+    var nextStart = next[0];
+    if (prevEnd === null || nextStart === null) return null;
+    return (nextStart + 24.0) - prevEnd;
+}
+
+/**
+ * 労基法コンプライアンスチェック
+ * @param {Object} shifts  - {staffId-day: shiftType}
+ * @param {Array} staffList - [{id, name, workType}, ...]
+ * @param {Object} prevMonthData - {staffId: {lastDay, secondLastDay, consecutiveWork}}
+ * @param {number} year
+ * @param {number} month
+ * @returns {Object} {violations: [...], summary: {...}, compliant: bool}
+ */
+function checkLaborLawCompliance(shifts, staffList, prevMonthData, year, month) {
+    var numDays = new Date(year, month, 0).getDate();
+    var violations = [];
+    prevMonthData = prevMonthData || {};
+
+    for (var si = 0; si < staffList.length; si++) {
+        var s = staffList[si];
+        var sid = s.id;
+        var sname = s.name || sid;
+        var wt = s.workType || "2kohtai";
+        if (wt === "fixed") continue;
+
+        var shiftList = [];
+        for (var d = 1; d <= numDays; d++) {
+            shiftList.push(shifts[sid + "-" + d] || "");
+        }
+
+        var prev = prevMonthData[sid] || {};
+        var prevLast = prev.lastDay || "";
+
+        // (1) 勤務間インターバル 11h チェック
+        // 前月末→当月1日
+        if (prevLast && !REST_FOR_INTERVAL[prevLast]) {
+            if (shiftList[0] && !REST_FOR_INTERVAL[shiftList[0]]) {
+                var iv = calcIntervalHours(prevLast, shiftList[0]);
+                if (iv !== null && iv < 11.0) {
+                    violations.push({
+                        staff_id: sid, staff_name: sname,
+                        type: "interval_11h",
+                        law: "労働時間等設定改善法",
+                        severity: "warning",
+                        detail: "前月末(" + prevLast + ")→1日(" + shiftList[0] + "): インターバル" + iv.toFixed(1) + "h (<11h)",
+                        days: [0]
+                    });
+                }
+            }
+        }
+
+        // 当月内
+        for (var d = 0; d < numDays - 1; d++) {
+            var cur = shiftList[d];
+            var nxt = shiftList[d + 1];
+            if (REST_FOR_INTERVAL[cur] || REST_FOR_INTERVAL[nxt]) continue;
+            var iv = calcIntervalHours(cur, nxt);
+            if (iv !== null && iv < 11.0) {
+                violations.push({
+                    staff_id: sid, staff_name: sname,
+                    type: "interval_11h",
+                    law: "労働時間等設定改善法",
+                    severity: "warning",
+                    detail: (d + 1) + "日(" + cur + ")→" + (d + 2) + "日(" + nxt + "): インターバル" + iv.toFixed(1) + "h (<11h)",
+                    days: [d, d + 1]
+                });
+            }
+        }
+
+        // (2) 暦週1休日チェック（労基法35条）
+        var firstDate = new Date(year, month - 1, 1);
+        var firstWeekday = firstDate.getDay(); // 0=Sun
+        var firstSunday = (firstWeekday === 0) ? 1 : (1 + (7 - firstWeekday));
+
+        for (var sun = firstSunday; sun + 6 <= numDays; sun += 7) {
+            var hasRest = false;
+            for (var i = 0; i < 7; i++) {
+                var sh = shiftList[sun - 1 + i];
+                if (REST_FOR_WEEKLY[sh]) { hasRest = true; break; }
+            }
+            if (!hasRest) {
+                violations.push({
+                    staff_id: sid, staff_name: sname,
+                    type: "weekly_rest",
+                    law: "労基法35条",
+                    severity: "warning",
+                    detail: month + "/" + sun + "(日)〜" + month + "/" + (sun + 6) + "(土): 暦週内に休日なし",
+                    days: (function() { var a = []; for (var j = sun - 1; j < sun + 6; j++) a.push(j); return a; })()
+                });
+            }
+        }
+
+        // (3) 4週4休チェック（労基法35条 変形休日制）
+        if (numDays >= 28) {
+            for (var start = 0; start <= numDays - 28; start++) {
+                var restCount = 0;
+                for (var i = 0; i < 28; i++) {
+                    var sh = shiftList[start + i];
+                    if (REST_FOR_WEEKLY[sh]) restCount++;
+                }
+                if (restCount < 4) {
+                    violations.push({
+                        staff_id: sid, staff_name: sname,
+                        type: "four_week_rest",
+                        law: "労基法35条(変形)",
+                        severity: "caution",
+                        detail: month + "/" + (start + 1) + "日〜" + month + "/" + (start + 28) + "日: 4週間で休日" + restCount + "日 (<4日)",
+                        days: (function() { var a = []; for (var j = start; j < start + 28; j++) a.push(j); return a; })()
+                    });
+                }
+            }
+        }
+    }
+
+    // サマリー
+    var summary = { interval_11h: 0, weekly_rest: 0, four_week_rest: 0, total: 0 };
+    for (var i = 0; i < violations.length; i++) {
+        var vtype = violations[i].type;
+        if (summary[vtype] !== undefined) summary[vtype]++;
+    }
+    summary.total = summary.interval_11h + summary.weekly_rest + summary.four_week_rest;
+
+    return {
+        violations: violations,
+        summary: summary,
+        compliant: summary.total === 0
+    };
+}
+
 window.checkConstraints = checkConstraints;
 window.calculateFairnessMetrics = calculateFairnessMetrics;
 window.calculatePersonalLoad = calculatePersonalLoad;
@@ -1360,3 +1555,5 @@ window.saveCurrentVersion = saveCurrentVersion;
 window.loadVersion = loadVersion;
 window.deleteVersion = deleteVersion;
 window.renderVersions = renderVersions;
+window.checkLaborLawCompliance = checkLaborLawCompliance;
+window.calcIntervalHours = calcIntervalHours;
