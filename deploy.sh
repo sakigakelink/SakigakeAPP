@@ -27,6 +27,6 @@ git push origin master
 
 # 4. リモートで pull
 echo "[4/4] リモート(mining-base)で pull..."
-ssh mining-base "cd /c/Users/Mining-Base/SakigakeAPP && git pull"
+ssh mining-base "powershell -Command \"cd 'C:\\Users\\Mining-Base\\SakigakeAPP'; git pull origin master\""
 
 echo "=== デプロイ完了 ==="
