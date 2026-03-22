@@ -11,8 +11,7 @@
 
 ## 開発フロー
 1. ローカルでコード編集
-2. `git add` → `git commit` → `git push origin master`
-3. リモート（mining-base）で `git pull` → 本番反映
+2. デプロイ: `bash deploy.sh "変更内容のメモ"`（add → commit → push → リモート pull を一括実行）
 
 ## シフト管理 (シフト管理/)
 - Python + Flask Webアプリ
