@@ -1,0 +1,117 @@
+{
+  "documentType": "措置入院者の定期病状報告書",
+  "version": "R7.12.8改訂",
+  "effectiveDate": "令和8年4月1日",
+  "sourceDocuments": [
+    "【最終案】R7.12.8改訂 報告書等返戻基準.pdf セクションⅥ"
+  ],
+  "note": "下記1〜5以外の項目については、医療保護入院者の入院期間更新届の返戻基準（入院期間更新届.json）に準ずる",
+  "reviewPerspective": "①措置入院を継続する必要性（精神症状による自傷他害のおそれ）が判断できるか、②今後も措置解除に向けて適切な治療が提供されるか",
+  "fields": [
+    {
+      "id": "treatment_and_results",
+      "name": "過去6箇月間（措置入院後3か月の場合は過去3か月間）の治療の内容及びその結果",
+      "criticality": "critical",
+      "inputType": "textarea",
+      "description": "措置入院時又は前回の報告から今回の報告までの間に実施された治療・看護等の記載が入院者の個別性に配慮しているか。",
+      "rules": [
+        {
+          "id": "individual_treatment",
+          "description": "実施された治療・看護等に関する記載が入院者の個別性に配慮したものであること",
+          "returnReason": "個別性に配慮したものではないと判断した場合"
+        },
+        {
+          "id": "self_other_harm_progress",
+          "description": "措置入院を継続する理由（自傷他害のおそれ）について、過去6箇月間の治療による変化および残存する自傷他害にかかわる問題行動の具体的な記載があること",
+          "details": "ただし「診察時の特記事項」に具体的な記載があると判断した場合はこの限りでない",
+          "returnReason": "自傷他害にかかわる問題行動の変化・残存について具体的な記載がない場合"
+        }
+      ]
+    },
+    {
+      "id": "treatment_plan",
+      "name": "今後の治療方針",
+      "criticality": "critical",
+      "inputType": "textarea",
+      "description": "措置解除に向けて適切な治療が提供されることがわかる記載となっているか。",
+      "rules": [
+        {
+          "id": "individual_plan",
+          "description": "入院者の個別性に配慮した治療方針の記載があること",
+          "returnReason": "漠然とした治療法のみ記載している場合"
+        },
+        {
+          "id": "relapse_prevention",
+          "description": "自傷他害にかかわる問題行動への再発防止の取り組みについて記載があること",
+          "returnReason": "「薬物治療を継続する」とのみ記載している場合"
+        }
+      ]
+    },
+    {
+      "id": "care_and_guidance",
+      "name": "処遇、看護及び指導の現状",
+      "criticality": "high",
+      "inputType": "textarea",
+      "description": "他欄の記載内容と整合性が取れているか。",
+      "rules": [
+        {
+          "id": "consistency",
+          "description": "他欄の記載内容と整合性が取れていること"
+        }
+      ]
+    },
+    {
+      "id": "serious_problem_behaviors",
+      "name": "重大な問題行動",
+      "criticality": "critical",
+      "inputType": "checklist",
+      "description": "措置入院を継続する理由となる重大な問題行動が選択されているか。",
+      "rules": [
+        {
+          "id": "problem_selected",
+          "description": "措置入院を継続する理由となる重大な問題行動が選択されていること",
+          "returnReason": "選択されていない場合"
+        },
+        {
+          "id": "problem_consistency",
+          "description": "選択した内容が他欄の記載内容と整合性が取れていること"
+        }
+      ]
+    },
+    {
+      "id": "examination_notes",
+      "name": "診察時の特記事項",
+      "criticality": "critical",
+      "inputType": "textarea",
+      "description": "精神症状、自傷他害のおそれが継続していることが具体的に記載されているか。",
+      "rules": [
+        {
+          "id": "concrete_continuation",
+          "description": "精神症状、自傷他害のおそれ（重大な問題行動）が継続していることについて具体的に記載されていること",
+          "returnReason": "具体的に記載されていない場合"
+        },
+        {
+          "id": "notes_consistency",
+          "description": "他欄と整合性が取れていること"
+        }
+      ]
+    }
+  ],
+  "crossFieldRules": [
+    {
+      "id": "treatment_problems_alignment",
+      "description": "治療内容と結果の記載が重大な問題行動の選択と整合していること",
+      "relatedFields": ["treatment_and_results", "serious_problem_behaviors"]
+    },
+    {
+      "id": "plan_problems_alignment",
+      "description": "今後の治療方針が重大な問題行動への対応を含んでいること",
+      "relatedFields": ["treatment_plan", "serious_problem_behaviors"]
+    },
+    {
+      "id": "notes_all_alignment",
+      "description": "診察時の特記事項が治療結果・治療方針・問題行動と整合していること",
+      "relatedFields": ["examination_notes", "treatment_and_results", "treatment_plan", "serious_problem_behaviors"]
+    }
+  ]
+}

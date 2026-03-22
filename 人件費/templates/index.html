@@ -56,6 +56,15 @@
     .loading{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.6);display:flex;align-items:center;justify-content:center;z-index:9999}
     .loading-spinner{width:40px;height:40px;border:3px solid rgba(255,255,255,.2);border-top-color:#667eea;border-radius:50%;animation:spin .8s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .tab-nav{display:flex;gap:.5rem;margin-bottom:1.5rem;justify-content:center}
+    .tab-btn{background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);padding:.5rem 1.2rem;border-radius:8px;font-size:.9rem;cursor:pointer;font-family:inherit;transition:all .2s}
+    .tab-btn:hover{background:rgba(255,255,255,.15)}
+    .tab-btn.active{background:linear-gradient(135deg,#667eea,#764ba2);border-color:transparent;color:#fff}
+    .sheets-section{margin-bottom:1.5rem}
+    tr.collapsible{display:table-row;cursor:pointer;user-select:none}
+    tr.collapsible:hover td{background:rgba(255,255,255,.08)}
+    .breakdown-row td{font-size:.78rem;color:rgba(255,255,255,.7)}
+    .breakdown-row td:first-child{padding-left:2rem}
     .period-badge{display:inline-block;background:rgba(102,126,234,.3);padding:.2rem .6rem;border-radius:6px;font-size:.82rem;margin-left:.5rem}
     @media print{
       body{background:#fff!important;color:#000!important;padding:0}
@@ -79,6 +88,14 @@
     <div class="sub">TKC PX2 一人別給与統計表 解析ダッシュボード</div>
   </div>
 
+  <!-- タブナビゲーション -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('pdf')">TKC PX2 分析</button>
+    <button class="tab-btn" onclick="switchTab('sheets')">R7 支払い実績</button>
+  </div>
+
+  <!-- === TKC PX2 タブ === -->
+  <div id="tabPDF">
   <!-- アップロードセクション -->
   <div class="card" id="uploadCard">
     <h2>PDF読込</h2>
@@ -203,7 +220,17 @@
     <!-- 個人別詳細 -->
     <div id="detailContainer"></div>
   </div>
-</div>
+
+  </div><!-- /tabPDF -->
+
+  <!-- === R7 支払い実績タブ === -->
+  <div id="tabSheets" class="hidden">
+    <div id="sheetsContent">
+      <div style="text-align:center;padding:3rem;color:rgba(255,255,255,.5)">読込中...</div>
+    </div>
+  </div>
+
+</div><!-- /container -->
 
 <!-- ローディング -->
 <div class="loading hidden" id="loading">
@@ -561,6 +588,148 @@ function renderCategoryTrendTable(trend, catTrend) {
   );
 
   document.getElementById('catTrendBody').innerHTML = bodyRows.join('');
+}
+
+// === タブ切り替え ===
+let sheetsDataLoaded = false;
+let sheetsData = null;
+
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b, i) => {
+    b.classList.toggle('active', (tab === 'pdf' && i === 0) || (tab === 'sheets' && i === 1));
+  });
+  document.getElementById('tabPDF').classList.toggle('hidden', tab !== 'pdf');
+  document.getElementById('tabSheets').classList.toggle('hidden', tab !== 'sheets');
+  if (tab === 'sheets' && !sheetsDataLoaded) loadSheetsData();
+}
+
+async function loadSheetsData() {
+  try {
+    const res = await fetch('/api/sheets_data');
+    if (!res.ok) { document.getElementById('sheetsContent').innerHTML = '<div class="card"><p>R7支払いデータなし</p></div>'; return; }
+    sheetsData = await res.json();
+    sheetsDataLoaded = true;
+    renderSheetsTab();
+  } catch (e) {
+    document.getElementById('sheetsContent').innerHTML = '<div class="card"><p>読込エラー: ' + e.message + '</p></div>';
+  }
+}
+
+function renderSheetsTab() {
+  const d = sheetsData;
+  const ms = d.months;
+  const sumArr = arr => arr.reduce((a, b) => a + b, 0);
+
+  let html = '';
+
+  // サマリーカード
+  html += '<div class="card"><h2>R7 支払い実績サマリー</h2><div class="sg">';
+  const cards = [
+    ['給与費合計', sumArr(d.grand_total_payroll)],
+    ['社会保険料', sumArr(d.grand_total_social)],
+    ['医師計', sumArr(d.doctors_subtotal)],
+    ['一般職員計', sumArr(d.staff_total)],
+    ['非常勤計', sumArr(d.parttime)],
+    ['たいようの丘', sumArr(d.taiyou_total)],
+  ];
+  cards.forEach(([label, val]) => {
+    html += `<div class="sc"><div class="sv">${yen(val)}</div><div class="sl">${label}</div></div>`;
+  });
+  html += '</div></div>';
+
+  // 医師個人テーブル
+  html += '<div class="card"><h2>医師 月別支払い</h2><div class="tc"><table><thead><tr><th>医師名</th>';
+  ms.forEach(m => html += `<th class="num">${m}</th>`);
+  html += '<th class="num">合計</th></tr></thead><tbody>';
+  d.doctors.forEach(doc => {
+    const total = sumArr(doc.monthly_total);
+    html += `<tr class="collapsible" onclick="toggleDoctorBreakdown(this)"><td>${doc.name} <span class="toggle-arrow">&#9654;</span></td>`;
+    doc.monthly_total.forEach(v => html += `<td class="num pay-value">${yen(v)}</td>`);
+    html += `<td class="num pay-value">${yen(total)}</td></tr>`;
+    // 内訳行（hidden）
+    const bk = doc.breakdown;
+    for (const [key, vals] of Object.entries(bk)) {
+      html += `<tr class="breakdown-row hidden"><td>${key}</td>`;
+      vals.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+      html += `<td class="num">${yen(sumArr(vals))}</td></tr>`;
+    }
+  });
+  // 医師小計
+  html += '<tr class="total-row"><td>医師合計</td>';
+  d.doctors_subtotal.forEach(v => html += `<td class="num pay-value">${yen(v)}</td>`);
+  html += `<td class="num pay-value">${yen(sumArr(d.doctors_subtotal))}</td></tr>`;
+  // 社会保険
+  html += '<tr><td>社会保険</td>';
+  d.doctors_social_insurance.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+  html += `<td class="num">${yen(sumArr(d.doctors_social_insurance))}</td></tr>`;
+  // 非常勤
+  html += '<tr><td>医師非常勤</td>';
+  d.doctors_parttime.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+  html += `<td class="num">${yen(sumArr(d.doctors_parttime))}</td></tr>`;
+  html += '</tbody></table></div></div>';
+
+  // 一般職員テーブル
+  html += renderStaffSection('一般職員 月別内訳', d.staff, d.staff_total, d.staff_social_insurance, ms);
+
+  // 非常勤
+  html += '<div class="card"><h2>非常勤</h2><div class="tc"><table><thead><tr><th>項目</th>';
+  ms.forEach(m => html += `<th class="num">${m}</th>`);
+  html += '<th class="num">合計</th></tr></thead><tbody>';
+  html += '<tr><td>非常勤</td>';
+  d.parttime.forEach(v => html += `<td class="num pay-value">${yen(v)}</td>`);
+  html += `<td class="num pay-value">${yen(sumArr(d.parttime))}</td></tr>`;
+  html += '<tr><td>社会保険</td>';
+  d.parttime_social_insurance.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+  html += `<td class="num">${yen(sumArr(d.parttime_social_insurance))}</td></tr>`;
+  html += '</tbody></table></div></div>';
+
+  // たいようの丘テーブル
+  html += renderStaffSection('たいようの丘 月別内訳', d.taiyou, d.taiyou_total, d.taiyou_social_insurance, ms);
+
+  // 全体合計
+  html += '<div class="card"><h2>全体合計</h2><div class="tc"><table><thead><tr><th>項目</th>';
+  ms.forEach(m => html += `<th class="num">${m}</th>`);
+  html += '<th class="num">合計</th></tr></thead><tbody>';
+  html += '<tr class="total-row"><td>給与費</td>';
+  d.grand_total_payroll.forEach(v => html += `<td class="num pay-value">${yen(v)}</td>`);
+  html += `<td class="num pay-value">${yen(sumArr(d.grand_total_payroll))}</td></tr>`;
+  html += '<tr><td>社会保険料</td>';
+  d.grand_total_social.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+  html += `<td class="num">${yen(sumArr(d.grand_total_social))}</td></tr>`;
+  html += '</tbody></table></div></div>';
+
+  document.getElementById('sheetsContent').innerHTML = html;
+}
+
+function renderStaffSection(title, breakdown, total, social, ms) {
+  const sumArr = arr => arr.reduce((a, b) => a + b, 0);
+  let html = `<div class="card"><h2>${title}</h2><div class="tc"><table><thead><tr><th>項目</th>`;
+  ms.forEach(m => html += `<th class="num">${m}</th>`);
+  html += '<th class="num">合計</th></tr></thead><tbody>';
+  for (const [key, vals] of Object.entries(breakdown)) {
+    html += `<tr><td>${key}</td>`;
+    vals.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+    html += `<td class="num">${yen(sumArr(vals))}</td></tr>`;
+  }
+  html += '<tr class="total-row"><td>合計</td>';
+  total.forEach(v => html += `<td class="num pay-value">${yen(v)}</td>`);
+  html += `<td class="num pay-value">${yen(sumArr(total))}</td></tr>`;
+  html += '<tr><td>社会保険</td>';
+  social.forEach(v => html += `<td class="num">${yen(v)}</td>`);
+  html += `<td class="num">${yen(sumArr(social))}</td></tr>`;
+  html += '</tbody></table></div></div>';
+  return html;
+}
+
+function toggleDoctorBreakdown(row) {
+  const arrow = row.querySelector('.toggle-arrow');
+  let next = row.nextElementSibling;
+  const expanding = next && next.classList.contains('hidden');
+  while (next && next.classList.contains('breakdown-row')) {
+    next.classList.toggle('hidden', !expanding);
+    next = next.nextElementSibling;
+  }
+  if (arrow) arrow.innerHTML = expanding ? '&#9660;' : '&#9654;';
 }
 
 // 初期化

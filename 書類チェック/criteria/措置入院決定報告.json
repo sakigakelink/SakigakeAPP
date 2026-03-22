@@ -1,0 +1,80 @@
+{
+  "documentType": "措置入院決定報告書",
+  "version": "R7.12.8改訂",
+  "effectiveDate": "令和8年4月1日",
+  "sourceDocuments": [
+    "【最終案】R7.12.8改訂 報告書等返戻基準.pdf セクションⅤ"
+  ],
+  "note": "返戻先は岡山市保健所（措置診察を行った指定医への直接返戻は行わない）。審査書類は措置入院決定報告書＋措置入院等診断書（一次・二次）。岡山市保健所の緊急対応報告書も審査の参考とする。ただし緊急対応報告書は法定提出義務がないため、返戻による文書補正は求めない。",
+  "reviewPerspective": "措置入院時点において、医療及び保護のために直ちに入院させなければその精神障害のために自傷行為又は他害行為を引き起こすおそれが著しいかどうか",
+  "fields": [
+    {
+      "id": "serious_problem_behaviors",
+      "name": "重大な問題行動（Aは今までの、Bは今後おそれのある行動）",
+      "criticality": "critical",
+      "inputType": "checklist",
+      "description": "今後の自傷他害のおそれの判断にかかわる「B」が適切に選択されているか。",
+      "rules": [
+        {
+          "id": "b_selection_consistency",
+          "description": "「B（今後おそれのある行動）」が選択されており、その問題行動が「診察時の特記事項」等に記載されている内容と乖離していないこと",
+          "returnReason": "B選択と診察時特記事項の記載内容が乖離している場合"
+        }
+      ]
+    },
+    {
+      "id": "diagnosis_and_symptoms",
+      "name": "病名・現在の精神症状・現在の状態像",
+      "criticality": "high",
+      "inputType": "text_and_checklist",
+      "description": "対象者が精神障害者であり精神症状を有していることがわかるよう適切に記載・選択されているか。",
+      "rules": [
+        {
+          "id": "psychiatric_disorder_clear",
+          "description": "対象者が精神障害者であり、精神症状を有していることがわかる記載であること"
+        },
+        {
+          "id": "consistency_with_notes",
+          "description": "病名及び症状・状態像が「診察時の特記事項」等に記載されている内容と乖離していないこと"
+        }
+      ]
+    },
+    {
+      "id": "examination_notes",
+      "name": "診察時の特記事項",
+      "criticality": "critical",
+      "inputType": "textarea",
+      "description": "診察時の対象者の様子、精神症状、自傷他害のおそれについて具体的に記載されているか。",
+      "rules": [
+        {
+          "id": "concrete_description",
+          "description": "診察時の対象者の様子、精神症状、自傷他害のおそれ（重大な問題行動）について具体的に記載されていること",
+          "returnReason": "具体的な記載がない場合"
+        }
+      ]
+    }
+  ],
+  "crossFieldRules": [
+    {
+      "id": "problem_notes_alignment",
+      "description": "重大な問題行動のB選択と診察時の特記事項が整合していること",
+      "relatedFields": ["serious_problem_behaviors", "examination_notes"]
+    },
+    {
+      "id": "diagnosis_notes_alignment",
+      "description": "病名・症状・状態像と診察時の特記事項が整合していること",
+      "relatedFields": ["diagnosis_and_symptoms", "examination_notes"]
+    }
+  ],
+  "specialNotes": [
+    {
+      "id": "primary_secondary_discrepancy",
+      "description": "一次診察と二次診察で病名や状態像の相違があることのみをもって返戻とはしない。審査書類から総合的に判断するか、二次診察（措置入院決定）時点の診断名及び状態像を基本に審査する。",
+      "reason": "移送手続き中に本人の状態が変化する場合や、指定医によって診断が異なる場合はあり得るため"
+    },
+    {
+      "id": "unclear_self_other_harm",
+      "description": "一次・二次診察の診断書の内容において、自傷他害にかかわる問題行動が乖離している等、何をもって自傷他害のおそれがあると判断したのか不明瞭な場合は返戻する"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ import pdfplumber
 app = Flask(__name__)
 CORS(app)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB
+app.json.sort_keys = False
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -567,6 +568,18 @@ def parse_all_folders():
         'monthly_trend': monthly_trend,
         'category_trend': category_trend,
     })
+
+
+# ---------------------------------------------------------------------------
+# R7支払いタブ JSON データ提供
+# ---------------------------------------------------------------------------
+@app.route('/api/sheets_data')
+def get_sheets_data():
+    data_path = os.path.join(BASE_DIR, 'data', 'r7_sheets.json')
+    if not os.path.exists(data_path):
+        return jsonify({'error': 'R7支払いデータなし'}), 404
+    with open(data_path, encoding='utf-8') as f:
+        return jsonify(_json.load(f))
 
 
 # ---------------------------------------------------------------------------
