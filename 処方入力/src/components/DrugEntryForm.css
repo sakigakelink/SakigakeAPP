@@ -1,0 +1,78 @@
+.drug-entry-form {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.drug-entry-form__row {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.drug-entry-form__drug-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.drug-entry-form__dose-col {
+  flex-shrink: 0;
+}
+
+.drug-entry-form__add-btn {
+  align-self: flex-end;
+  padding: 8px 28px;
+  background: #3b82f6;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.drug-entry-form__add-btn:hover:not(:disabled) {
+  background: #2563eb;
+}
+
+.drug-entry-form__add-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}
+
+.drug-entry-form__custom-summary {
+  font-size: 0.85rem;
+  color: #475569;
+  padding: 4px 0;
+}
+
+.drug-entry-form__max {
+  color: #94a3b8;
+  margin-left: 4px;
+}
+
+.drug-entry-form__alert {
+  margin-top: 4px;
+  padding: 6px 12px;
+  background: #fef2f2;
+  border: 1px solid #fca5a5;
+  border-radius: 6px;
+  color: #dc2626;
+  font-size: 0.85rem;
+  font-weight: 500;
+}
+
+.drug-entry-form__warn {
+  padding: 6px 12px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-radius: 6px;
+  color: #92400e;
+  font-size: 0.85rem;
+  font-weight: 500;
+}

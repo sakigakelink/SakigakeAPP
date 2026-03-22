@@ -1,0 +1,61 @@
+.app {
+  min-height: 100vh;
+  background: #f8fafc;
+}
+
+.app__header {
+  background: #1e40af;
+  color: #fff;
+  padding: 12px 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.app__title {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+.app__main {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 20px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.app__section-title {
+  margin: 0 0 8px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1e293b;
+  letter-spacing: 0;
+}
+
+.app__actions {
+  display: flex;
+  justify-content: center;
+}
+
+.app__standardize-btn {
+  padding: 12px 40px;
+  background: #1e40af;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 1.05rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.app__standardize-btn:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.app__standardize-btn:disabled {
+  background: #94a3b8;
+  cursor: not-allowed;
+}

@@ -1,0 +1,102 @@
+.pool {
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.pool--empty {
+  text-align: center;
+}
+
+.pool__empty-msg {
+  color: #94a3b8;
+  margin: 8px 0;
+}
+
+.pool__title {
+  margin: 0 0 12px;
+  font-size: 0.95rem;
+  color: #334155;
+}
+
+.pool__table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.pool__table th {
+  text-align: left;
+  font-size: 0.8rem;
+  color: #64748b;
+  padding: 4px 8px 8px;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.pool__table td {
+  padding: 8px;
+  border-bottom: 1px solid #f1f5f9;
+  font-size: 0.9rem;
+}
+
+.pool__drug-name {
+  font-weight: 500;
+}
+
+.pool__form-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: #f1f5f9;
+  border-radius: 3px;
+  font-size: 0.75rem;
+  color: #64748b;
+}
+
+.pool__dose {
+  font-family: 'Consolas', monospace;
+  white-space: nowrap;
+}
+
+.pool__schedule {
+  color: #475569;
+}
+
+.pool__actions {
+  white-space: nowrap;
+  text-align: right;
+}
+
+.pool__btn {
+  padding: 3px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.78rem;
+  margin-left: 4px;
+}
+
+.pool__btn:hover {
+  background: #f1f5f9;
+}
+
+.pool__btn--delete {
+  color: #dc2626;
+  border-color: #fca5a5;
+}
+
+.pool__btn--delete:hover {
+  background: #fef2f2;
+}
+
+.pool__merge-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  background: #dbeafe;
+  color: #2563eb;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}

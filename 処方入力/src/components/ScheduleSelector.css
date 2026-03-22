@@ -1,0 +1,403 @@
+.schedule-selector__label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 4px;
+  font-size: 0.85rem;
+  color: #334155;
+}
+
+/* モード切替タブ */
+.schedule-selector__mode-tabs {
+  display: flex;
+  gap: 0;
+  margin-bottom: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.schedule-selector__mode-tab {
+  flex: 1;
+  padding: 7px 0;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 500;
+  transition: all 0.15s;
+  border-right: 1px solid #cbd5e1;
+}
+
+.schedule-selector__mode-tab:last-child {
+  border-right: none;
+}
+
+.schedule-selector__mode-tab:hover {
+  background: #f1f5f9;
+}
+
+.schedule-selector__mode-tab--active {
+  background: #1e40af;
+  color: #fff;
+}
+
+/* 用法マスタ */
+.schedule-selector__usage-master {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* クイック選択ボタン */
+.schedule-selector__quick-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+/* クイック外の選択中表示 */
+.schedule-selector__active-other {
+  font-size: 0.8rem;
+  color: #1e40af;
+  background: #eff6ff;
+  border: 1px solid #bfdbfe;
+  border-radius: 6px;
+  padding: 5px 10px;
+}
+
+/* 検索エリア */
+.schedule-selector__search-area {
+  position: relative;
+}
+
+.schedule-selector__search-toggle {
+  padding: 5px 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  color: #64748b;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.schedule-selector__search-toggle:hover {
+  color: #3b82f6;
+}
+
+.schedule-selector__search-box {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.schedule-selector__search-input {
+  flex: 1;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.schedule-selector__search-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.schedule-selector__search-close {
+  padding: 5px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.75rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.schedule-selector__search-results {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 4px;
+  max-height: 180px;
+  overflow-y: auto;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  background: #fff;
+}
+
+.schedule-selector__search-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 7px 12px;
+  border: none;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  text-align: left;
+  transition: background 0.1s;
+}
+
+.schedule-selector__search-item:hover {
+  background: #f1f5f9;
+}
+
+.schedule-selector__search-item--active {
+  background: #eff6ff;
+  font-weight: 600;
+}
+
+.schedule-selector__search-label {
+  color: #334155;
+}
+
+.schedule-selector__search-cat {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  margin-left: 8px;
+}
+
+.schedule-selector__usage-btn {
+  padding: 5px 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 16px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.8rem;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.schedule-selector__usage-btn:hover {
+  background: #f1f5f9;
+}
+
+.schedule-selector__usage-btn--active {
+  background: #3b82f6;
+  color: #fff;
+  border-color: #3b82f6;
+}
+
+/* 不均等入力 */
+.schedule-selector__uneven {
+  margin-top: 8px;
+  padding: 10px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+}
+
+.schedule-selector__uneven-label {
+  display: block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 6px;
+}
+
+/* カスタムスロット入力 */
+.schedule-selector__slot-doses {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.schedule-selector__slot-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-selector__slot-label {
+  width: 64px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #334155;
+}
+
+.schedule-selector__slot-btn {
+  width: 30px;
+  height: 30px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+
+.schedule-selector__slot-btn:hover:not(:disabled) {
+  background: #f1f5f9;
+}
+
+.schedule-selector__slot-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.schedule-selector__slot-count {
+  width: 32px;
+  text-align: center;
+  font-size: 1rem;
+  font-weight: 600;
+  font-family: 'Consolas', monospace;
+}
+
+/* 合計表示 */
+.schedule-selector__sum {
+  font-size: 0.8rem;
+  color: #64748b;
+  font-weight: 500;
+}
+
+.schedule-selector__sum--ok {
+  color: #059669;
+}
+
+.schedule-selector__sum--error {
+  color: #dc2626;
+}
+
+/* 屯用条件 */
+.schedule-selector__prn-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.schedule-selector__prn-btn {
+  padding: 6px 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 20px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.15s;
+}
+
+.schedule-selector__prn-btn:hover {
+  background: #fef2f2;
+}
+
+.schedule-selector__prn-btn--active {
+  background: #dc2626;
+  color: #fff;
+  border-color: #dc2626;
+}
+
+.schedule-selector__prn-custom {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-selector__custom-label {
+  font-size: 0.8rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.schedule-selector__prn-input {
+  flex: 1;
+  padding: 5px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.85rem;
+}
+
+.schedule-selector__prn-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+/* 小児mg/kgパネル */
+.schedule-selector__pediatric {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.schedule-selector__ped-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.schedule-selector__ped-label {
+  width: 48px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #334155;
+  flex-shrink: 0;
+}
+
+.schedule-selector__ped-input {
+  width: 80px;
+  padding: 6px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  font-size: 0.95rem;
+  text-align: right;
+}
+
+.schedule-selector__ped-input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.15);
+}
+
+.schedule-selector__ped-unit {
+  font-size: 0.8rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.schedule-selector__ped-times {
+  display: flex;
+  gap: 5px;
+}
+
+.schedule-selector__ped-slots {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.schedule-selector__ped-check {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85rem;
+  color: #334155;
+  cursor: pointer;
+}
+
+.schedule-selector__ped-check input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #3b82f6;
+  cursor: pointer;
+}
+
+.schedule-selector__ped-summary {
+  padding: 8px 12px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  color: #166534;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
