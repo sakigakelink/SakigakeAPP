@@ -27,6 +27,8 @@ export function renderStaff() {
         if (wt !== "day_only") {
             html += "<span style=\"font-size:.8rem;color:var(--text2);white-space:nowrap\">上限" + maxN + "</span>";
         }
+        var sp = s.skillPoint !== undefined ? s.skillPoint : 3;
+        html += "<span style=\"font-size:.8rem;color:var(--text2);white-space:nowrap;margin-left:4px\">SP" + sp + "</span>";
         html += "</div>";
         html += "<span>";
         html += "<button class=\"btn btn-secondary\" style=\"font-size:.7rem;padding:.2rem .4rem\" onclick=\"editStaff('" + s.id + "')\">編集</button> ";
@@ -140,6 +142,7 @@ export function openStaffModal() {
     document.getElementById("staffWard").value = W;
     document.getElementById("staffWorkType").value = "2kohtai";
     document.getElementById("staffMaxNight").value = "5";
+    document.getElementById("staffSkillPoint").value = "3";
     document.getElementById("staffNightRestriction").value = "";
     document.getElementById("fixedPatternSection").style.display = "none";
     updateMaxNightHint();
@@ -162,6 +165,7 @@ export function editStaff(id) {
     document.getElementById("staffMaxNight").value = s.maxNight !== undefined ? s.maxNight : 5;
     document.getElementById("staffMinNight").value = s.minNight !== undefined ? s.minNight : 0;
     document.getElementById("staffType").value = s.type || "nurse";
+    document.getElementById("staffSkillPoint").value = s.skillPoint !== undefined ? s.skillPoint : 3;
     document.getElementById("staffNightRestriction").value = s.nightRestriction || "";
     // 固定シフトパターンは希望シフトで対応するため非表示
     document.getElementById("fixedPatternSection").style.display = "none";
@@ -183,6 +187,9 @@ export function saveStaff(e) {
     var maxN = parseInt(document.getElementById("staffMaxNight").value) || 5;
     var minN = parseInt(document.getElementById("staffMinNight").value) || 0;
     if (wt === "day_only" || wt === "fixed") { maxN = 0; minN = 0; }
+    var skillPt = parseInt(document.getElementById("staffSkillPoint").value);
+    if (isNaN(skillPt) || skillPt < 0) skillPt = 3;
+    if (skillPt > 5) skillPt = 5;
     var data = {
         id: id,
         name: document.getElementById("staffName").value,
@@ -191,6 +198,7 @@ export function saveStaff(e) {
         maxNight: maxN,
         minNight: minN,
         type: document.getElementById("staffType").value,
+        skillPoint: skillPt,
         nightRestriction: nr || null,
         fixedPattern: fp
     };

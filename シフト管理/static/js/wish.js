@@ -4,6 +4,13 @@ import { escHtml, isHoliday } from './util.js';
 import { save } from './api.js';
 import { render } from './render.js';
 
+var wishMode = "assign"; // "assign" | "avoid"
+
+function setWishMode(mode) {
+    wishMode = mode;
+    renderWishUI();
+}
+
 function parseWishNatural() {
     var text = document.getElementById("wishNatural").value.trim();
     if (!text) {
@@ -298,7 +305,14 @@ function importWishNatural() {
 
                         currentStaff = wdStaff;
 
-                        var wdShift = shiftMap[foundShiftKey];
+                        // 除外プレフィックス検出
+                        var wdType = "assign";
+                        var wdCleanKey = foundShiftKey;
+                        if (/^[×✕除]/.test(foundShiftKey)) {
+                            wdType = "avoid";
+                            wdCleanKey = foundShiftKey.replace(/^[×✕除]/, "");
+                        }
+                        var wdShift = shiftMap[wdCleanKey];
                         if (!wdShift) {
                             errors.push(foundShiftKey + " (区分不明)");
                             continue;
@@ -318,7 +332,7 @@ function importWishNatural() {
                         if (allDays.length > 0) {
                             wishes.push({
                                 staffId: wdStaff.id,
-                                type: "assign",
+                                type: wdType,
                                 days: allDays,
                                 shift: wdShift
                             });
@@ -370,7 +384,15 @@ function importWishNatural() {
                 continue;
             }
 
-            var shift = shiftMap[shiftKey];
+            // 除外プレフィックス検出: ×, ✕, 除
+            var entryType = "assign";
+            var cleanShiftKey = shiftKey;
+            if (/^[×✕除]/.test(shiftKey)) {
+                entryType = "avoid";
+                cleanShiftKey = shiftKey.replace(/^[×✕除]/, "");
+            }
+
+            var shift = shiftMap[cleanShiftKey];
             if (!shift) {
                 errors.push(shiftKey + " (区分不明)");
                 continue;
@@ -378,7 +400,7 @@ function importWishNatural() {
 
             wishes.push({
                 staffId: currentStaff.id,
-                type: "assign",
+                type: entryType,
                 days: dayNumbers,
                 shift: shift
             });
@@ -459,6 +481,13 @@ function renderWishUI() {
     }
     chipBox.innerHTML = html;
 
+    // モード切替ボタン（指定/除外）
+    var modeBox = document.getElementById("wishModeToggle");
+    if (modeBox) {
+        modeBox.innerHTML = "<button class='btn" + (wishMode === "assign" ? " btn-primary" : "") + "' data-mode='assign' onclick='setWishMode(\"assign\")' style='padding:.2rem .6rem;font-size:.8rem'>指定</button>" +
+            "<button class='btn" + (wishMode === "avoid" ? " btn-danger" : "") + "' data-mode='avoid' onclick='setWishMode(\"avoid\")' style='padding:.2rem .6rem;font-size:.8rem'>除外</button>";
+    }
+
     // シフトボタン
     var btnBox = document.getElementById("wishShiftBtns");
     if (!btnBox) return;
@@ -474,10 +503,15 @@ function renderWishUI() {
     ];
     var bhtml = "";
     var hideLate = (W === "1" || W === "3");
+    var avoidMode = (wishMode === "avoid");
     for (var i = 0; i < WISH_BTNS.length; i++) {
         var b = WISH_BTNS[i];
         if (hideLate && b.shift === "late") continue;
-        bhtml += "<button class='btn " + b.cls + "' data-shift='" + b.shift + "' onclick='addWishFromUI(this)' style='padding:.25rem .5rem;font-size:.8rem;font-weight:600'>" + b.label + "</button>";
+        // 除外モードではrefresh/paidは非表示（除外の対象外）
+        if (avoidMode && (b.shift === "refresh" || b.shift === "paid" || b.shift === "off")) continue;
+        var avoidPrefix = avoidMode ? "×" : "";
+        var avoidStyle = avoidMode ? "border:2px solid var(--red);color:var(--red);background:var(--bg2);" : "";
+        bhtml += "<button class='btn " + (avoidMode ? "" : b.cls) + "' data-shift='" + b.shift + "' onclick='addWishFromUI(this)' style='padding:.25rem .5rem;font-size:.8rem;font-weight:600;" + avoidStyle + "'>" + avoidPrefix + b.label + "</button>";
     }
     btnBox.innerHTML = bhtml;
 }
@@ -563,7 +597,8 @@ function wishDayMouseUp() {
 }
 
 // 希望入力バリデーション
-function validateWish(staffId, days, shift) {
+function validateWish(staffId, days, shift, type) {
+    type = type || "assign";
     // 職員情報取得
     var staff = null;
     for (var i = 0; i < D.staff.length; i++) {
@@ -575,6 +610,34 @@ function validateWish(staffId, days, shift) {
     var name = staff.name || staffId;
     var restShifts = { off: 1, paid: 1, refresh: 1 };
     var shiftNames = { day: "日勤", late: "遅出", night2: "夜勤", junnya: "準夜", shinya: "深夜", off: "休み", paid: "有給", ake: "明け", refresh: "リフレ" };
+
+    // avoid: assign vs avoid 競合チェック
+    if (type === "avoid") {
+        var wk = Y + "-" + M;
+        var existing = D.wishes[wk] || [];
+        var conflictDays = [];
+        // 同一人・同一日・同一シフトにassignがあればエラー
+        for (var wi = 0; wi < existing.length; wi++) {
+            var ew = existing[wi];
+            if (ew.staffId !== staffId || ew.type !== "assign" || ew.shift !== shift) continue;
+            for (var di = 0; di < days.length; di++) {
+                if ((ew.days || []).indexOf(days[di]) >= 0) conflictDays.push(days[di]);
+            }
+        }
+        for (var qi = 0; qi < wishQueue.length; qi++) {
+            var qw = wishQueue[qi];
+            if (qw.staffId !== staffId || qw.type !== "assign" || qw.shift !== shift) continue;
+            for (var di = 0; di < days.length; di++) {
+                if ((qw.days || []).indexOf(days[di]) >= 0) conflictDays.push(days[di]);
+            }
+        }
+        if (conflictDays.length > 0) {
+            return { ok: false, message: "⚠ " + name + "の" + conflictDays.join(",") + "日に同一シフトの指定と除外が重複します" };
+        }
+        return { ok: true, message: "" };
+    }
+
+    // 以下 assign のバリデーション
 
     // 1. workType不整合
     var blocked = {};
@@ -606,7 +669,7 @@ function validateWish(staffId, days, shift) {
     // wishQueueからも
     for (var qi = 0; qi < wishQueue.length; qi++) {
         var qw = wishQueue[qi];
-        if (qw.staffId !== staffId) continue;
+        if (qw.staffId !== staffId || (qw.type === "avoid")) continue;
         var qwDays = qw.days || [];
         for (var di = 0; di < qwDays.length; di++) {
             if (!dayKinds[qwDays[di]]) dayKinds[qwDays[di]] = { rest: false, work: false };
@@ -627,7 +690,27 @@ function validateWish(staffId, days, shift) {
         return { ok: false, message: "⚠ " + name + "の" + conflictDays.join(",") + "日に休みと勤務の希望が重複します" };
     }
 
-    // 3. 前月引継ぎ競合
+    // 3. assign vs avoid 競合チェック
+    var avoidConflicts = [];
+    for (var wi = 0; wi < existing.length; wi++) {
+        var ew = existing[wi];
+        if (ew.staffId !== staffId || ew.type !== "avoid" || ew.shift !== shift) continue;
+        for (var di = 0; di < days.length; di++) {
+            if ((ew.days || []).indexOf(days[di]) >= 0) avoidConflicts.push(days[di]);
+        }
+    }
+    for (var qi = 0; qi < wishQueue.length; qi++) {
+        var qw = wishQueue[qi];
+        if (qw.staffId !== staffId || qw.type !== "avoid" || qw.shift !== shift) continue;
+        for (var di = 0; di < days.length; di++) {
+            if ((qw.days || []).indexOf(days[di]) >= 0) avoidConflicts.push(days[di]);
+        }
+    }
+    if (avoidConflicts.length > 0) {
+        return { ok: false, message: "⚠ " + name + "の" + avoidConflicts.join(",") + "日に同一シフトの指定と除外が重複します" };
+    }
+
+    // 4. 前月引継ぎ競合
     if (wt === "2kohtai" || wt === "night_only") {
         var prevData = window.getPrevMonthStaffData ? window.getPrevMonthStaffData(staffId, Y, M, W) : {};
         var lastDay = prevData.lastDay;
@@ -654,7 +737,7 @@ function validateWish(staffId, days, shift) {
         }
     }
 
-    // 4. off希望上限（警告のみ）
+    // 5. off希望上限（警告のみ）
     if (shift === "off") {
         var monthlyOff = parseInt(document.getElementById("monthlyOff").value) || 9;
         var offCount = 0;
@@ -700,14 +783,14 @@ function addWishFromUI(btn) {
     var staffName = document.getElementById("wishStaffSelect").selectedOptions[0].textContent;
 
     // バリデーション
-    var v = validateWish(staffId, selectedDays, shift);
+    var v = validateWish(staffId, selectedDays, shift, wishMode);
     if (!v.ok) {
         document.getElementById("parseResult").textContent = v.message;
         document.getElementById("parseResult").style.color = "var(--red)";
         return;
     }
 
-    wishQueue.push({ staffId: staffId, staffName: staffName, days: selectedDays, shift: shift });
+    wishQueue.push({ staffId: staffId, staffName: staffName, days: selectedDays, shift: shift, type: wishMode });
 
     // 日付選択・シフトボタン選択をリセット（職員はそのまま）
     resetWishDayChips();
@@ -776,9 +859,12 @@ function renderWishQueue() {
     for (var i = 0; i < wishQueue.length; i++) {
         var q = wishQueue[i];
         var daysLabel = q.days.length >= daysInMonth ? "全日" : q.days.join(",");
-        var cls = shiftClasses[q.shift] || "";
-        html += "<span class='" + cls + "' style='display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;font-size:.8rem'>";
-        html += "<b>" + escHtml(q.staffName) + "</b> " + daysLabel + " " + (shiftNames[q.shift] || escHtml(q.shift));
+        var isAvoid = (q.type === "avoid");
+        var cls = isAvoid ? "" : (shiftClasses[q.shift] || "");
+        var avoidStyle = isAvoid ? "background:#fecaca;border:2px dashed #ef4444;color:#b91c1c;" : "";
+        var prefix = isAvoid ? "×" : "";
+        html += "<span class='" + cls + "' style='display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;font-size:.8rem;" + avoidStyle + "'>";
+        html += "<b>" + escHtml(q.staffName) + "</b> " + daysLabel + " " + prefix + (shiftNames[q.shift] || escHtml(q.shift));
         html += "<button onclick='removeFromWishQueue(" + i + ")' style='background:none;border:none;color:var(--red);cursor:pointer;padding:0 .2rem;font-size:1rem'>×</button>";
         html += "</span>";
     }
@@ -812,7 +898,7 @@ function commitWishQueue() {
     var fixedCount = 0;
     for (var qi = 0; qi < wishQueue.length; qi++) {
         var q = wishQueue[qi];
-        var w = { staffId: q.staffId, type: "assign", days: q.days, shift: q.shift };
+        var w = { staffId: q.staffId, type: q.type || "assign", days: q.days, shift: q.shift };
         if (fixedStaffIds[q.staffId]) {
             for (var di = 0; di < q.days.length; di++) {
                 D.shifts[sk][q.staffId + "-" + q.days[di]] = q.shift;
@@ -886,11 +972,14 @@ function renderWishes() {
             }
         }
         var shift = shiftNames[w.shift] || w.shift;
-        var sCls = shiftClasses[w.shift] || "";
+        var isAvoid = (w.type === "avoid");
+        var sCls = isAvoid ? "" : (shiftClasses[w.shift] || "");
+        var avoidStyle = isAvoid ? "background:#fecaca;border:2px dashed #ef4444;color:#b91c1c;" : "";
+        var prefix = isAvoid ? "×" : "";
         var daysJson = JSON.stringify(w.days || []).replace(/"/g, "&quot;");
         var origIdx = wishIndices[i];
-        html += "<span draggable='true' data-wish-idx='" + origIdx + "' style='display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;margin:.1rem;cursor:grab;user-select:none;-webkit-user-select:none' class='" + sCls + " wish-chip-draggable' onclick='editWish(\"" + w.staffId + "\",\"" + w.shift + "\",\"" + daysJson + "\")' title='ドラッグで並替 / クリックで編集'>";
-        html += "<b>" + name + "</b> " + daysLabel + " " + shift;
+        html += "<span draggable='true' data-wish-idx='" + origIdx + "' style='display:inline-flex;align-items:center;gap:.3rem;padding:.2rem .5rem;border-radius:4px;margin:.1rem;cursor:grab;user-select:none;-webkit-user-select:none;" + avoidStyle + "' class='" + sCls + " wish-chip-draggable' onclick='editWish(\"" + w.staffId + "\",\"" + w.shift + "\",\"" + daysJson + "\")' title='ドラッグで並替 / クリックで編集'>";
+        html += "<b>" + name + "</b> " + daysLabel + " " + prefix + shift;
         html += "<button onclick='event.stopPropagation();deleteWish(\"" + w.staffId + "\",\"" + w.shift + "\",\"" + (w.days || []).join(",") + "\")' style='background:none;border:none;color:var(--red);cursor:pointer;padding:0 .2rem;font-size:1rem'>×</button>";
         html += "</span>";
     }
@@ -1121,6 +1210,7 @@ document.addEventListener("touchmove", function(e) {
 // Window assignments for HTML onclick/onmousedown handlers
 window.renderWishes = renderWishes;
 window.renderWishUI = renderWishUI;
+window.setWishMode = setWishMode;
 window.deleteWish = deleteWish;
 window.importWishNatural = importWishNatural;
 window.parseWishNatural = parseWishNatural;

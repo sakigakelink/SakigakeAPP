@@ -96,6 +96,8 @@ class ShiftSolver:
 
         # employees.json の maxPerMonth で maxNight を補正（LocalStorage残留値対策）
         self._sync_max_night_from_backend()
+        # employees.json の skillPoint で各職員の skillPoint を補正
+        self._sync_skill_point_from_backend()
 
         self.num_staff = len(self.staff_list)
         self.staff_id_to_idx = {s["id"]: i for i, s in enumerate(self.staff_list)}
@@ -142,6 +144,33 @@ class ShiftSolver:
                 print(f"[solver] maxNight補正({len(corrected)}名): {', '.join(corrected)}", flush=True)
         except Exception as e:
             print(f"[solver] maxNight補正スキップ: {e}", flush=True)
+
+    def _sync_skill_point_from_backend(self):
+        """employees.json の skillPoint で各職員の skillPoint を補正する。"""
+        employees_path = os.path.join(os.path.dirname(__file__), 'shared', 'employees.json')
+        if not os.path.exists(employees_path):
+            return
+        try:
+            with open(employees_path, 'r', encoding='utf-8') as f:
+                employees = json.load(f)
+            backend_sp = {}
+            for emp in employees:
+                sp = emp.get("skillPoint")
+                if sp is not None:
+                    backend_sp[str(emp.get("id", ""))] = sp
+            corrected = []
+            for s in self.staff_list + self.fixed_staff:
+                sid = str(s.get("id", ""))
+                if sid in backend_sp:
+                    be_val = backend_sp[sid]
+                    fe_val = s.get("skillPoint")
+                    if fe_val is None or fe_val != be_val:
+                        corrected.append(f"{s.get('name', sid)}: {fe_val}→{be_val}")
+                        s["skillPoint"] = be_val
+            if corrected:
+                print(f"[solver] skillPoint補正({len(corrected)}名): {', '.join(corrected)}", flush=True)
+        except Exception as e:
+            print(f"[solver] skillPoint補正スキップ: {e}", flush=True)
 
     def _compute_default_min_night(self):
         """病棟の構成（2交代/3交代の人数・配置要件）に基づきminNightデフォルトを自動計算
@@ -951,7 +980,7 @@ class ShiftSolver:
                         start_work_days = [is_work[s,dd] for dd in range(limit)]
                         self.model.AddBoolOr([w.Not() for w in start_work_days])
 
-        # リフレッシュ休暇は希望がない限り使わない
+        # 初期配置: リフレッシュ休暇は希望がない限り使わない
         for s in range(self.num_staff):
             refresh_wishes = set()
             for w in self.wishes:
@@ -1071,6 +1100,10 @@ class ShiftSolver:
         qualified_indices = [i for i, st in enumerate(self.staff_list)
                              if st.get("type") in ("nurse", "junkango")]
 
+        # スキルポイント配列（各職員のスキルポイント値）
+        staff_skill_points = [st.get("skillPoint", 3) for st in self.staff_list]
+        rookie_indices = [i for i, sp in enumerate(staff_skill_points) if sp == 0]
+
         for d in range(self.num_days):
             dt_obj = date(self.year, self.month, d + 1)
             weekday = dt_obj.weekday()
@@ -1120,38 +1153,33 @@ class ShiftSolver:
                              for qi in qualified_indices]
                     self.model.Add(sum(q_day) >= min_q)
 
-            # --- 全時間帯で正看護師(nurse)が最低1名 ---
-            # 日勤帯はハード制約、夜勤帯はソフト制約（nurse供給がタイトなため）
+            # --- 全時間帯で正看護師(nurse)が最低1名（全帯ハード制約） ---
             nm_config = self.ward_engine_config.get("nurseMinimumPerBand", {})
             if nm_config.get("enabled") and nurse_indices:
                 min_nurse_day = nm_config.get("day", 1)
                 min_nurse_junnya = nm_config.get("junnya", 1)
                 min_nurse_shinya = nm_config.get("shinya", 1)
 
-                # 日勤帯（ハード制約）
+                # 日勤帯
                 n_day = [self.shifts[(ni, d, SHIFT_IDX["day"])]
                          for ni in nurse_indices]
                 self.model.Add(sum(n_day) >= min_nurse_day)
 
-                # 準夜帯 (junnya + night2) - ソフト制約
+                # 準夜帯 (junnya + night2)
                 if min_nurse_junnya > 0:
                     n_junnya = [self.shifts[(ni, d, SHIFT_IDX["junnya"])]
                                 for ni in nurse_indices]
                     n_night2 = [self.shifts[(ni, d, SHIFT_IDX["night2"])]
                                 for ni in nurse_indices]
-                    nurse_jun_ok = self.model.NewBoolVar(f"nurse_jun_ok_d{d}")
-                    self.model.Add(sum(n_junnya) + sum(n_night2) >= min_nurse_junnya).OnlyEnforceIf(nurse_jun_ok)
-                    staff_shortage_penalty += nurse_jun_ok.Not() * 800
+                    self.model.Add(sum(n_junnya) + sum(n_night2) >= min_nurse_junnya)
 
-                # 深夜帯 (shinya + ake) - ソフト制約
+                # 深夜帯 (shinya + ake)
                 if min_nurse_shinya > 0:
                     n_shinya = [self.shifts[(ni, d, SHIFT_IDX["shinya"])]
                                 for ni in nurse_indices]
                     n_ake = [self.shifts[(ni, d, SHIFT_IDX["ake"])]
                              for ni in nurse_indices]
-                    nurse_shi_ok = self.model.NewBoolVar(f"nurse_shi_ok_d{d}")
-                    self.model.Add(sum(n_shinya) + sum(n_ake) >= min_nurse_shinya).OnlyEnforceIf(nurse_shi_ok)
-                    staff_shortage_penalty += nurse_shi_ok.Not() * 800
+                    self.model.Add(sum(n_shinya) + sum(n_ake) >= min_nurse_shinya)
 
             # --- 看護補助者の夜勤人数制限（ハード制約） ---
             na_night_config = self.ward_engine_config.get("nurseAideNightLimits", {})
@@ -1188,12 +1216,75 @@ class ShiftSolver:
                 if min_a is not None and min_a > 0:
                     a_day = [self.shifts[(ai, d, SHIFT_IDX["day"])]
                              for ai in nurseaide_indices]
-                    if self.config.get("relaxMode"):
-                        aide_short = self.model.NewIntVar(0, min_a, f"aide_short_d{d}")
-                        self.model.Add(sum(a_day) >= min_a - aide_short)
-                        staff_shortage_penalty += aide_short * 300
-                    else:
-                        self.model.Add(sum(a_day) >= min_a)
+                    self.model.Add(sum(a_day) >= min_a)
+
+            # --- スキルポイント合計最低値（ソフト制約、曜日別、config駆動） ---
+            sp_config = self.ward_engine_config.get("skillPointMinimumPerBand", {})
+            if sp_config.get("enabled"):
+                WD_SP_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat"]
+
+                def _get_sp_min(band_cfg):
+                    """帯設定から当日の最低SP値を取得。int→全曜日共通、dict→曜日別"""
+                    if isinstance(band_cfg, (int, float)):
+                        return int(band_cfg)
+                    if isinstance(band_cfg, dict):
+                        if is_sun or is_hol:
+                            return band_cfg.get("sun", 0)
+                        return band_cfg.get(WD_SP_KEYS[weekday], 0) if weekday < 6 else 0
+                    return 0
+
+                min_sp_day = _get_sp_min(sp_config.get("day", 0))
+                min_sp_junnya = _get_sp_min(sp_config.get("junnya", 0))
+                min_sp_shinya = _get_sp_min(sp_config.get("shinya", 0))
+
+                # 日勤帯
+                if min_sp_day > 0:
+                    sp_terms_day = [staff_skill_points[i] * self.shifts[(i, d, SHIFT_IDX["day"])]
+                                    for i in range(self.num_staff) if staff_skill_points[i] > 0]
+                    if sp_terms_day:
+                        sp_short_day = self.model.NewIntVar(0, min_sp_day, f"sp_short_day_{d}")
+                        self.model.Add(sum(sp_terms_day) + sp_short_day >= min_sp_day)
+                        staff_shortage_penalty += sp_short_day * 400
+
+                # 準夜帯 (junnya + night2)
+                if min_sp_junnya > 0:
+                    sp_terms_jun = []
+                    for i in range(self.num_staff):
+                        sp = staff_skill_points[i]
+                        if sp > 0:
+                            sp_terms_jun.append(sp * self.shifts[(i, d, SHIFT_IDX["junnya"])])
+                            sp_terms_jun.append(sp * self.shifts[(i, d, SHIFT_IDX["night2"])])
+                    if sp_terms_jun:
+                        sp_short_jun = self.model.NewIntVar(0, min_sp_junnya, f"sp_short_jun_{d}")
+                        self.model.Add(sum(sp_terms_jun) + sp_short_jun >= min_sp_junnya)
+                        staff_shortage_penalty += sp_short_jun * 400
+
+                # 深夜帯 (shinya + ake)
+                if min_sp_shinya > 0:
+                    sp_terms_shy = []
+                    for i in range(self.num_staff):
+                        sp = staff_skill_points[i]
+                        if sp > 0:
+                            sp_terms_shy.append(sp * self.shifts[(i, d, SHIFT_IDX["shinya"])])
+                            sp_terms_shy.append(sp * self.shifts[(i, d, SHIFT_IDX["ake"])])
+                    if sp_terms_shy:
+                        sp_short_shy = self.model.NewIntVar(0, min_sp_shinya, f"sp_short_shy_{d}")
+                        self.model.Add(sum(sp_terms_shy) + sp_short_shy >= min_sp_shinya)
+                        staff_shortage_penalty += sp_short_shy * 400
+
+            # --- SP=0（新人）の夜勤帯複数配置禁止（ハード制約、夜勤帯のみ） ---
+            nr_config = self.ward_engine_config.get("noDoubleRookie", {})
+            if nr_config.get("enabled") and len(rookie_indices) >= 2:
+                # 準夜帯 (junnya + night2)
+                rookie_junnya = [self.shifts[(ri, d, s)]
+                                 for ri in rookie_indices
+                                 for s in [SHIFT_IDX["junnya"], SHIFT_IDX["night2"]]]
+                self.model.Add(sum(rookie_junnya) <= 1)
+                # 深夜帯 (shinya + ake)
+                rookie_shinya = [self.shifts[(ri, d, s)]
+                                 for ri in rookie_indices
+                                 for s in [SHIFT_IDX["shinya"], SHIFT_IDX["ake"]]]
+                self.model.Add(sum(rookie_shinya) <= 1)
 
         # 夜勤制約: nightRestrictionはforbidden_mapで処理済み
 
@@ -1249,13 +1340,6 @@ class ShiftSolver:
                 night2_list = [self.shifts[(s,d,SHIFT_IDX["night2"])] for d in range(self.num_days)]
                 ake_list = [self.shifts[(s,d,SHIFT_IDX["ake"])] for d in range(self.num_days)]
                 self.model.Add(sum(night2_list) + sum(ake_list) <= max_night)
-
-                # 二交代の最低夜勤スロット数（ソフト制約）
-                min_night = si.get("minNight", 0)
-                if min_night > 0:
-                    mn_short = self.model.NewIntVar(0, min_night, f"mn_short_2k_{s}")
-                    self.model.Add(sum(night2_list) + sum(ake_list) + mn_short >= min_night)
-                    staff_shortage_penalty += mn_short * 300
 
                 # 前月からの引き継ぎ（常に厳守）
                 staff_id = self.staff_list[s]["id"]
@@ -1409,13 +1493,6 @@ class ShiftSolver:
                 night3_list += [self.shifts[(s,d,SHIFT_IDX["shinya"])] for d in range(self.num_days)]
                 self.model.Add(sum(night3_list) <= max_night)
 
-                # 三交代の最低夜勤回数（ソフト制約）
-                min_night = si.get("minNight", 0)
-                if min_night > 0:
-                    mn_short = self.model.NewIntVar(0, min_night, f"mn_short_3k_{s}")
-                    self.model.Add(sum(night3_list) + mn_short >= min_night)
-                    staff_shortage_penalty += mn_short * 300
-
         # 希望休みの日を職員別に収集（後続の夜勤配慮ペナルティで使用）
         # リフレッシュ休暇（refresh）も希望休みと同等に扱う
         kibou_yasumi_days = {}  # {staff_idx: set of 0-indexed day}
@@ -1430,7 +1507,7 @@ class ShiftSolver:
                 for day in w.get("days", []):
                     kibou_yasumi_days[sidx].add(day - 1)  # 0-indexed
 
-        # 前月引き継ぎで強制されるシフトを記録（希望と競合チェック用）
+        # 初期配置: 前月引き継ぎで強制されるシフト（希望と競合チェック用）
         # {(staff_idx, day_idx): forced_shift_name}
         forced_by_prev = {}
         for s in range(self.num_staff):
@@ -1449,7 +1526,7 @@ class ShiftSolver:
                 # 当月1日=off（強制）
                 forced_by_prev[(s, 0)] = "off"
 
-        # 希望反映（全てハード制約・緩和禁止）
+        # 初期配置: 希望反映（指定/除外、全てハード制約・緩和禁止）
         # 不正な希望は事前チェックC/D/Eで弾き済み
         for w in self.wishes:
             sid = w.get("staffId")

@@ -48,6 +48,11 @@ function init() {
                                 local.workType = be.workType;
                                 changed++;
                             }
+                            // skillPointもバックエンドを正とする
+                            if (be.skillPoint !== undefined && be.skillPoint !== null && local.skillPoint !== be.skillPoint) {
+                                local.skillPoint = be.skillPoint;
+                                changed++;
+                            }
                         }
                     }
                     if (changed > 0) {

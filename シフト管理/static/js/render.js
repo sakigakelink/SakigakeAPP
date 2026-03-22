@@ -383,11 +383,20 @@ function render() {
     var wishes = D.wishes[wk] || [];
     // Map wishes to faster lookup: { "staffId-day": "off"|"work" }
     var wishMap = {};
+    var avoidMap = {};
     for (var i = 0; i < wishes.length; i++) {
         var w = wishes[i];
-        if (w.days) { // For assign type wishes
-            for (var j = 0; j < w.days.length; j++) {
-                wishMap[w.staffId + "-" + w.days[j]] = w.shift;
+        if (w.days) {
+            if (w.type === "avoid") {
+                for (var j = 0; j < w.days.length; j++) {
+                    var ak = w.staffId + "-" + w.days[j];
+                    if (!avoidMap[ak]) avoidMap[ak] = [];
+                    avoidMap[ak].push(w.shift);
+                }
+            } else {
+                for (var j = 0; j < w.days.length; j++) {
+                    wishMap[w.staffId + "-" + w.days[j]] = w.shift;
+                }
             }
         }
     }
@@ -439,12 +448,16 @@ function render() {
     // 各日の集計を事前に1パスで計算（日勤/準夜/深夜/遅出/日勤換算）
     var dailyDayCount = [], dailyDayWeighted = [], dailyJunnya = [], dailyShinya = [], dailyLate = [];
     var dailyNurseCount = [], dailyAideCount = [];
+    var dailySkillDay = [], dailySkillJunnya = [], dailySkillShinya = [];
     for (var d = 1; d <= days; d++) {
         var cDay = 0, cWeighted = 0, cJun = 0, cShin = 0, cLate = 0, cNurse = 0, cAide = 0;
+        var spDay = 0, spJun = 0, spShin = 0;
         for (var si2 = 0; si2 < staff.length; si2++) {
             var sh2 = D.shifts[sk][staff[si2].id + "-" + d] || "";
+            var sp2 = staff[si2].skillPoint !== undefined ? staff[si2].skillPoint : 3;
             if (sh2 === "day" || sh2 === "late") {
                 cDay++;
+                spDay += sp2;
                 var dhKey2 = sk + "-" + staff[si2].id + "-" + d;
                 var dh2 = D.dayHours && D.dayHours[dhKey2];
                 cWeighted += (dh2 && dh2 < 7.5) ? dh2 / 7.5 : 1;
@@ -453,8 +466,8 @@ function render() {
                 if (sType2 === "nurse" || sType2 === "junkango") cNurse++;
                 else if (sType2 === "nurseaide") cAide++;
             }
-            if (sh2 === "night2" || sh2 === "junnya") cJun++;
-            if (sh2 === "ake" || sh2 === "shinya") cShin++;
+            if (sh2 === "night2" || sh2 === "junnya") { cJun++; spJun += sp2; }
+            if (sh2 === "ake" || sh2 === "shinya") { cShin++; spShin += sp2; }
         }
         dailyDayCount[d] = cDay;
         dailyDayWeighted[d] = cWeighted;
@@ -463,6 +476,9 @@ function render() {
         dailyLate[d] = cLate;
         dailyNurseCount[d] = cNurse;
         dailyAideCount[d] = cAide;
+        dailySkillDay[d] = spDay;
+        dailySkillJunnya[d] = spJun;
+        dailySkillShinya[d] = spShin;
     }
     // 労基法コンプライアンスチェック（セルハイライト用）
     var laborCompliance = null;
@@ -613,11 +629,15 @@ function render() {
             var sh = D.shifts[sk][s.id + "-" + d] || "";
 
             // Highlight wishes
-            var wishVal = wishMap[s.id + "-" + d];
+            var wishKey = s.id + "-" + d;
+            var wishVal = wishMap[wishKey];
+            var avoidVal = avoidMap[wishKey];
             var style = "";
             if (wishVal) {
                 if (wishVal === "off" || wishVal === "paid") style = "background:#bae6fd;border:2px solid #0ea5e9;"; // Blue
                 else style = "background:#fed7aa;border:2px solid #f97316;"; // Orange
+            } else if (avoidVal) {
+                style = "background:#fecaca;border:2px dashed #ef4444;"; // Red dashed
             }
 
             // 日勤カウント：日勤のみの人は遅出を除く
@@ -841,6 +861,21 @@ function render() {
         for (var d = 1; d <= days; d++) {
             var c = dailyLate[d];
             html += "<td class=\"" + (c >= reqLate ? "check-ok" : "check-ng") + "\" data-day=\"" + d + "\">" + c + "</td>";
+        }
+        html += "<td></td><td></td><td></td></tr>";
+    }
+    // SP合計行（スキルポイント集計）
+    var spBands = [
+        {label: "SP日勤", data: dailySkillDay},
+        {label: "SP準夜", data: dailySkillJunnya},
+        {label: "SP深夜", data: dailySkillShinya}
+    ];
+    for (var bi = 0; bi < spBands.length; bi++) {
+        html += "<tr><td class=\"staff-cell\"><b>" + spBands[bi].label + "</b></td>";
+        if (hasPrevData) html += "<td></td><td></td>";
+        for (var d = 1; d <= days; d++) {
+            var spVal = spBands[bi].data[d] || 0;
+            html += "<td style=\"font-size:.75rem;color:var(--text2)\" data-day=\"" + d + "\">" + spVal + "</td>";
         }
         html += "<td></td><td></td><td></td></tr>";
     }

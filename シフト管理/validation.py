@@ -528,6 +528,7 @@ def employee_to_frontend(emp):
         "type": emp.get("type", "nurse"),
         "workType": convert_shift_category_to_work_type(emp.get("shiftCategory", "twoShift")),
         "maxNight": personal_rules.get("nightShift", {}).get("maxPerMonth", 5),
+        "skillPoint": emp.get("skillPoint", 3),
     }
 
     # minNightは明示的に設定されている場合のみ含める（未設定ならソルバーデフォルトを使用）
@@ -624,6 +625,7 @@ def frontend_to_employee(staff):
         "ward": convert_ward_code_to_id(staff.get('ward', '2')),
         "shiftCategory": convert_work_type_to_shift_category(work_type),
         "type": staff.get('type', 'nurse'),
+        "skillPoint": staff.get('skillPoint', 3),
         "personalRules": {
             "nightShift": night_shift_rules,
             "dayOff": {"minPerMonth": 9},

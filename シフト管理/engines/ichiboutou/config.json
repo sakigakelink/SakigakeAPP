@@ -52,5 +52,16 @@
     "comment": "看護補助者の夜勤帯別最大人数",
     "maxJunnya": 1,
     "maxShinya": 1
+  },
+  "skillPointMinimumPerBand": {
+    "enabled": false,
+    "comment": "各時間帯のスキルポイント合計最低値（ソフト制約、曜日別）",
+    "day": {"mon": 8, "tue": 8, "wed": 8, "thu": 8, "fri": 8, "sat": 6, "sun": 5},
+    "junnya": {"mon": 5, "tue": 5, "wed": 5, "thu": 5, "fri": 5, "sat": 5, "sun": 5},
+    "shinya": {"mon": 5, "tue": 5, "wed": 5, "thu": 5, "fri": 5, "sat": 5, "sun": 5}
+  },
+  "noDoubleRookie": {
+    "enabled": false,
+    "comment": "夜勤帯（準夜・深夜）にスキルポイント0の職員が2名以上入ることを禁止（ハード制約）"
   }
 }
