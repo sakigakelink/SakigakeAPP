@@ -9,6 +9,7 @@ import os
 import re
 import json
 import calendar
+import tempfile
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, send_file
 import pdfplumber
@@ -17,7 +18,7 @@ from io import BytesIO
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-app.config['UPLOAD_FOLDER'] = '/tmp/tkc_uploads'
+app.config['UPLOAD_FOLDER'] = os.path.join(tempfile.gettempdir(), 'tkc_uploads')
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
 
 REVENUE_DISPLAY_ITEMS = [
@@ -410,6 +411,7 @@ def export_pdf():
     output_display = data.get('output_display', {})
     months = output_display.get('months', [])
     accounts = output_display.get('accounts', [])
+    month_years = data.get('all_data', {}).get('month_years', {})
     org = output_display.get('organization', '') or '医療法人 梁風会'
     revenue_data = next((acc for acc in accounts if acc['name'] == '医業収益'), None)
     expense_data = next((acc for acc in accounts if acc['name'] == '医業費用'), None)
@@ -471,13 +473,24 @@ def export_pdf():
         td_class = 'indent' if name.startswith('　') else ''
         html += f'<tr class="{row_class}"><td class="{td_class}">{name.strip()}</td>'
         total = 0
+        weighted_sum = 0
+        total_days = 0
+        is_avg_item = name in ['平均入院患者数', '一日当たり収入']
         for m in months:
             val = acc.get('monthly_data', {}).get(m, 0)
             total += val
+            if is_avg_item:
+                month_num = int(m.replace('月', ''))
+                year = month_years.get(m, datetime.now().year)
+                days = calendar.monthrange(year, month_num)[1]
+                weighted_sum += val * days
+                total_days += days
             base = revenue_data.get('monthly_data', {}).get(m, 0) if revenue_data else 0
             pct = '' if skip_pct else fmt_pct(val, base)
             fmtd, neg = fmt_num(val)
             html += f'<td{" class=\"negative\"" if neg else ""}>{fmtd}{"<span class=\"pct\">"+pct+"</span>" if pct else ""}</td>'
+        if is_avg_item and total_days > 0:
+            total = round(weighted_sum / total_days)
         total_base = sum(revenue_data.get('monthly_data', {}).values()) if revenue_data else 0
         pct_total = '' if skip_pct else fmt_pct(total, total_base)
         fmtd_total, neg_total = fmt_num(total)

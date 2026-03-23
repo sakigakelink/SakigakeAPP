@@ -437,16 +437,8 @@
                 <div class="card-title"><span class="icon icon-green">✓</span> 変換完了</div>
                 <div class="stats-grid">
                     <div class="stat-item">
-                        <div class="stat-value" id="tkcStatMatched">0</div>
-                        <div class="stat-label">マッチング成功</div>
-                    </div>
-                    <div class="stat-item">
-                        <div class="stat-value" id="tkcStatNotFound">0</div>
-                        <div class="stat-label">TKCに未登録</div>
-                    </div>
-                    <div class="stat-item">
                         <div class="stat-value" id="tkcStatTotal">0</div>
-                        <div class="stat-label">楽々勤怠の社員数</div>
+                        <div class="stat-label">変換人数</div>
                     </div>
                 </div>
                 <div class="action-area">
@@ -470,16 +462,19 @@
                         <span style="color: var(--accent-amber);">H:法定外時間外</span> → <span style="color: var(--accent-cyan);">S:時間外B</span>
                     </div>
                     <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
-                        <span style="color: var(--accent-amber);">Q:深夜手当</span> → <span style="color: var(--accent-cyan);">AQ列</span>
+                        <span style="color: var(--accent-amber);">R:準夜手当</span> → <span style="color: var(--accent-cyan);">AQ列</span>
                     </div>
                     <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
-                        <span style="color: var(--accent-amber);">R:準夜手当</span> → <span style="color: var(--accent-cyan);">AR列</span>
+                        <span style="color: var(--accent-amber);">Q:深夜手当</span> → <span style="color: var(--accent-cyan);">AR列</span>
                     </div>
                     <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
-                        <span style="color: var(--accent-amber);">S:遅出手当</span> → <span style="color: var(--accent-cyan);">AS列</span>
+                        <span style="color: var(--accent-amber);">AA:夜</span> → <span style="color: var(--accent-cyan);">AS列</span>
                     </div>
                     <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
-                        <span style="color: var(--accent-amber);">T:早出手当</span> → <span style="color: var(--accent-cyan);">AU列</span>
+                        <span style="color: var(--accent-amber);">AB:明</span> → <span style="color: var(--accent-cyan);">AT列</span>
+                    </div>
+                    <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
+                        <span style="color: var(--accent-amber);">S:遅出手当</span> → <span style="color: var(--accent-cyan);">AU列</span>
                     </div>
                     <div style="padding: 0.5rem; background: var(--bg-secondary); border-radius: 4px;">
                         <span style="color: var(--accent-amber);">Y:日直日数</span> → <span style="color: var(--accent-cyan);">Y:回数手当Ⅰ</span>
@@ -624,10 +619,11 @@
             4: 4,    // E列(実働時間) → E列(出勤時間)
             6: 17,   // G列(法定内時間外) → R列(時間外手当時間Ａ)
             7: 18,   // H列(法定外時間外) → S列(時間外手当時間Ｂ)
-            16: 42,  // Q列(深夜手当) → AQ列
-            17: 43,  // R列(準夜手当) → AR列
-            18: 44,  // S列(遅出手当) → AS列
-            19: 46,  // T列(早出手当) → AU列
+            17: 42,  // R列(準夜手当) → AQ列
+            16: 43,  // Q列(深夜手当) → AR列
+            26: 44,  // AA列(夜) → AS列
+            27: 45,  // AB列(明) → AT列
+            18: 46,  // S列(遅出手当) → AU列
             24: 24,  // Y列(日直勤務日数) → Y列(回数手当回数Ⅰ)
             25: 25,  // Z列(宿直勤務日数) → Z列(回数手当回数Ⅱ)
         };
@@ -1373,7 +1369,11 @@
 
         async function loadTkcFile(file) {
             try {
-                const text = await file.text();
+                const buffer = await file.arrayBuffer();
+                const uint8 = new Uint8Array(buffer);
+                const detectedEncoding = Encoding.detect(uint8);
+                const unicodeArray = Encoding.convert(uint8, { to: 'UNICODE', from: detectedEncoding });
+                const text = Encoding.codeToString(unicodeArray);
                 rakurakuData = parseCSV(text);
                 
                 document.getElementById('tkcFileName').textContent = `✅ ${file.name}`;
@@ -1398,23 +1398,15 @@
                     }
                 }
 
-                // 社員マスタからTKC社員リストを作成
-                const tkcEmployees = employees.map(e => [String(e.id), e.name]);
-
                 const colCount = TKC_HEADER.length;
                 const resultData = [TKC_HEADER];
 
-                let matched = 0;
-                let notFound = 0;
-
                 for (const empNo in rakurakuByEmp) {
                     const srcRow = rakurakuByEmp[empNo];
-                    
-                    const tkcEmp = tkcEmployees.find(e => e[0] === empNo);
-                    
+
                     const newRow = new Array(colCount).fill('');
                     newRow[0] = empNo;
-                    newRow[1] = tkcEmp ? tkcEmp[1] : srcRow[1];
+                    newRow[1] = srcRow[1];
 
                     for (const [srcColStr, dstCol] of Object.entries(TKC_MAPPING)) {
                         const srcCol = Number(srcColStr);
@@ -1423,20 +1415,39 @@
                         }
                     }
 
-                    resultData.push(newRow);
-
-                    if (tkcEmp) {
-                        matched++;
-                    } else {
-                        notFound++;
+                    // 時間列の秒を除去: "131:31:00" → "131:31"
+                    for (const col of [4, 17, 18]) {
+                        const val = newRow[col];
+                        if (val) {
+                            const m = val.match(/^(\d+:\d{2}):\d{2}$/);
+                            if (m) {
+                                newRow[col] = m[1];
+                            }
+                        }
                     }
+
+                    // 手当統合: 深夜手当(AR=43)と明(AT=45)が両方存在 → 明に合算、深夜手当を0
+                    const shinya = Number(newRow[43]) || 0;
+                    const ake = Number(newRow[45]) || 0;
+                    if (shinya > 0 && ake > 0) {
+                        newRow[45] = String(shinya + ake);
+                        newRow[43] = '0';
+                    }
+
+                    // 手当統合: 準夜手当(AQ=42)と夜(AS=44)が両方存在 → 夜に合算、準夜手当を0
+                    const junnya = Number(newRow[42]) || 0;
+                    const yoru = Number(newRow[44]) || 0;
+                    if (junnya > 0 && yoru > 0) {
+                        newRow[44] = String(junnya + yoru);
+                        newRow[42] = '0';
+                    }
+
+                    resultData.push(newRow);
                 }
 
                 tkcConvertedCsv = toCSV(resultData);
 
                 // 結果表示
-                document.getElementById('tkcStatMatched').textContent = matched;
-                document.getElementById('tkcStatNotFound').textContent = notFound;
                 document.getElementById('tkcStatTotal').textContent = Object.keys(rakurakuByEmp).length;
                 document.getElementById('tkcResultCard').classList.remove('hidden');
             } catch (e) {

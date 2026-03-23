@@ -169,9 +169,10 @@
             z-index: 1000;
             opacity: 0;
             visibility: hidden;
+            pointer-events: none;
             transition: all 0.3s;
         }
-        .loading.active { opacity: 1; visibility: visible; }
+        .loading.active { opacity: 1; visibility: visible; pointer-events: auto; }
         .spinner {
             width: 50px;
             height: 50px;
@@ -286,8 +287,13 @@
         const uploadZone = document.getElementById('uploadZone');
         const fileInput = document.getElementById('fileInput');
 
+        // ブラウザのデフォルトドロップ動作を全面的に防止
+        document.addEventListener('dragover', e => e.preventDefault());
+        document.addEventListener('drop', e => e.preventDefault());
+
         uploadZone.addEventListener('dragover', e => {
             e.preventDefault();
+            e.stopPropagation();
             uploadZone.style.borderColor = '#38bdf8';
         });
 
@@ -297,6 +303,7 @@
 
         uploadZone.addEventListener('drop', e => {
             e.preventDefault();
+            e.stopPropagation();
             uploadZone.style.borderColor = '#475569';
             handleFiles(e.dataTransfer.files);
         });
@@ -414,7 +421,9 @@
                         const val = acc.monthly_data[m] || 0;
                         return `<td><input type="number" class="manual-input" data-prefix="${prefix}" data-name="${acc.name}" data-month="${m}" value="${val}" onchange="updateManualValue(this)"></td>`;
                     }).join('');
-                    total = Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
+                    total = AVG_ITEMS.includes(acc.name)
+                        ? calcWeightedAvg(acc.monthly_data, months)
+                        : Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
                 } else {
                     cells = months.map(m => {
                         const val = acc.monthly_data[m] || 0;
@@ -454,9 +463,12 @@
             if (acc) {
                 acc.monthly_data[month] = value;
             }
-            
+
             // 合計を更新
-            const total = Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
+            const months = display.months;
+            const total = AVG_ITEMS.includes(name)
+                ? calcWeightedAvg(acc.monthly_data, months)
+                : Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
             const row = input.closest('tr');
             row.querySelector('td:last-child').textContent = formatNum(total);
             
@@ -489,6 +501,26 @@
         function formatNum(n) {
             if (n === 0 || n === null || n === undefined) return '-';
             return Math.round(n).toLocaleString('ja-JP');
+        }
+
+        function getDaysInMonth(monthStr) {
+            const monthNum = parseInt(monthStr.replace('月', ''));
+            const monthYears = analysisData && analysisData.all_data ? analysisData.all_data.month_years || {} : {};
+            const year = monthYears[monthStr] || new Date().getFullYear();
+            return new Date(year, monthNum, 0).getDate();
+        }
+
+        const AVG_ITEMS = ['平均入院患者数', '一日当たり収入'];
+
+        function calcWeightedAvg(monthlyData, months) {
+            let weightedSum = 0, totalDays = 0;
+            for (const m of months) {
+                const val = monthlyData[m] || 0;
+                const days = getDaysInMonth(m);
+                weightedSum += val * days;
+                totalDays += days;
+            }
+            return totalDays > 0 ? Math.round(weightedSum / totalDays) : 0;
         }
 
         async function saveJSON() {
