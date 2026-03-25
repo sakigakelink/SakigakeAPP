@@ -607,6 +607,7 @@
 
         const STORAGE_KEY_EMP = 'sakigake_employees_v6';
         const STORAGE_KEY_CODE = 'sakigake_codes_v6';
+        const STORAGE_KEY_SCHEDULE = 'sakigake_schedule_v1';
 
         // TKCテンプレート（ヘッダー）
         const TKC_HEADER = ['社員番号(必須)', '社員氏名(ﾃﾝﾌﾟﾚｰﾄ項目)', '平日出勤', '休日出勤', '出勤時間', '遅刻', '早退', '有休日数', '代休', '公休', 'その他の休日', '生理休暇', '休職日数', '欠勤日数', '日額表用勤務日数', '控除日数', '控除時間', '時間外手当時間Ａ', '時間外手当時間Ｂ', '時間外手当時間Ｃ', '時間外手当時間Ｄ', '時間外手当時間Ｅ', '時間外手当時間Ｆ', '時間外手当時間Ｇ', '回数手当回数Ⅰ', '回数手当回数Ⅱ', '回数手当回数Ⅲ', '回数手当回数Ⅳ', '回数手当回数Ⅴ', '要出勤日数', '要出勤時間', '所定労働日数', '所定労働時間', '有休日数残繰越分', '有休日数残当年分', '支給項目1', '支給項目2', '支給項目3', '支給項目4', '支給項目5', '支給項目6', '支給項目7', '支給項目8', '支給項目9', '支給項目10', '支給項目11', '支給項目12', '支給項目13', '時間外手当', '回数手当', '課税通勤手当', '給与控除額', '給与控除加算分', '(非)通勤手当/通勤手当', '(非)支給項目20', '健康保険料(介護)', '健康保険料(一般)', '厚生年金保険料', '報酬月額', '標準報酬月額', '厚生年金基金掛金', '確定拠出年金掛金', '雇用保険料', '所得税', '住民税', '控除項目1', '控除項目2', '控除項目3', '控除項目4', '控除項目5', '控除項目6', '控除項目7', '控除項目8', '控除項目9', '控除項目10', '預り金前残', '支給項目1単価', '支給項目2単価', '支給項目3単価', '支給項目4単価', '支給項目5単価', '支給項目6単価', '支給項目7単価', '支給項目8単価', '支給項目9単価', '支給項目10単価', '支給項目11単価', '支給項目12単価', '支給項目13単価', '(非)支給20単価', '課税通勤単価', '(非)通勤/通勤単価', '控除項目1単価', '控除項目2単価', '控除項目3単価', '控除項目4単価', '控除項目5単価', '控除項目6単価', '控除項目7単価', '控除項目8単価', '控除項目9単価', '控除項目10単価', '有休時間', '時間外手当時間Ｈ', '有休１日の時間数', '有休時間残繰越分', '有休時間残当年分', '代替休暇', '当月60超残業時間', '換算率', '前月代替休暇時間残', '前々月代替休暇時間残', '当月消化代替休暇時間数', 'うち時間単位分'];
@@ -655,7 +656,27 @@
                         console.error('勤務符号復元エラー:', e);
                     }
                 }
-                
+
+                const savedSchedule = localStorage.getItem(STORAGE_KEY_SCHEDULE);
+                if (savedSchedule) {
+                    try {
+                        const compact = JSON.parse(savedSchedule);
+                        scheduleData = { sheets: {}, dateCols: compact.dateCols, workbook: null };
+                        for (const [name, sheet] of Object.entries(compact.sheets)) {
+                            scheduleData.sheets[name] = { staff: sheet.staff, data: [] };
+                        }
+                        targetYear = compact.targetYear;
+                        targetMonth = compact.targetMonth;
+                        let totalStaff = 0;
+                        for (const sheet of Object.values(scheduleData.sheets)) totalStaff += sheet.staff.length;
+                        document.getElementById('scheduleFileName').textContent = `✅ 復元済み`;
+                        document.getElementById('scheduleZone').classList.add('loaded');
+                        log(`勤務表を復元: ${totalStaff}名`, 'success');
+                    } catch (e) {
+                        console.error('勤務表復元エラー:', e);
+                    }
+                }
+
                 setupEventListeners();
                 checkReady();
                 console.log('初期化完了');
@@ -1093,6 +1114,22 @@
                      <div class="stat-item">シート: <span class="stat-value">${workbook.SheetNames.length}</span></div>`;
                 
                 log(`看護部勤務表読込完了: ${totalStaff}名 (${workbook.SheetNames.join(', ')})`, 'success');
+                // scheduleDataをlocalStorageに保存（workbookオブジェクトは除外）
+                try {
+                    const saveData = {
+                        sheets: scheduleData.sheets,
+                        dateCols: scheduleData.dateCols,
+                        targetYear, targetMonth
+                    };
+                    // sheets内のdataは大きいので staff と dateCols だけ保存
+                    const compact = { dateCols: saveData.dateCols, targetYear, targetMonth, sheets: {} };
+                    for (const [name, sheet] of Object.entries(saveData.sheets)) {
+                        compact.sheets[name] = { staff: sheet.staff };
+                    }
+                    localStorage.setItem(STORAGE_KEY_SCHEDULE, JSON.stringify(compact));
+                } catch (e) {
+                    console.error('勤務表保存エラー:', e);
+                }
                 checkReady();
             } catch (e) {
                 log(`看護部勤務表読込エラー: ${e.message}`, 'error');
@@ -1117,10 +1154,15 @@
             return map;
         }
 
+        // 名前正規化: 全角/半角スペース統一、前後空白除去
+        function normalizeName(name) {
+            return name.replace(/[\s\u3000]+/g, '\u3000').trim();
+        }
+
         function getEmployeeMap() {
             const map = {};
             for (const emp of employees) {
-                map[emp.name] = emp.id;
+                map[normalizeName(emp.name)] = emp.id;
             }
             return map;
         }
@@ -1173,6 +1215,16 @@
 
         function convert() {
             try {
+                if (!scheduleData || !scheduleData.dateCols || scheduleData.dateCols.length === 0) {
+                    log('⚠️ 勤務表が読み込まれていません。看護部勤務表Excelを再度ドロップしてください。', 'error');
+                    return;
+                }
+                let totalStaffCheck = 0;
+                for (const sheet of Object.values(scheduleData.sheets)) totalStaffCheck += (sheet.staff ? sheet.staff.length : 0);
+                if (totalStaffCheck === 0) {
+                    log('⚠️ 勤務表のスタッフデータが空です。看護部勤務表Excelを再度ドロップしてください。', 'error');
+                    return;
+                }
                 log('変換処理を開始...', 'info');
                 const employeeMap = getEmployeeMap();
                 
@@ -1209,14 +1261,16 @@
                 
                 for (const [sheetName, sheet] of Object.entries(scheduleData.sheets)) {
                     for (const staff of sheet.staff) {
-                        const empId = employeeMap[staff.name];
+                        const empId = employeeMap[normalizeName(staff.name)];
                         if (empId) {
                             matchedCount++;
                             
                             const convertedShifts = convertShiftsForStaff(staff.shifts, dateColumns);
                             
-                            const shiftRow = { 社員番号: empId, 区分: 'シフト' };
-                            const calRow = { 社員番号: empId, 区分: 'カレンダー' };
+                            // 楽々勤怠: 下4桁、0埋めなし
+                            const shortId = String(parseInt(empId.slice(-4), 10));
+                            const shiftRow = { 社員番号: shortId, 区分: 'シフト' };
+                            const calRow = { 社員番号: shortId, 区分: 'カレンダー' };
                             for (let d = 0; d < daysInMonth; d++) {
                                 shiftRow[dateColumns[d].str] = convertedShifts[d] || '';
                                 calRow[dateColumns[d].str] = '';
@@ -1237,9 +1291,24 @@
                 if (matchedCount === 0) {
                     log('--- デバッグ情報 ---', 'info');
                     for (const [sheetName, sheet] of Object.entries(scheduleData.sheets)) {
-                        log(`${sheetName}の名前: ${sheet.staff.map(s => s.name).slice(0, 5).join(', ')}...`, 'info');
+                        const sample = sheet.staff[0];
+                        if (sample) {
+                            const raw = sample.name;
+                            const norm = normalizeName(raw);
+                            const codes = [...raw].map(c => c.charCodeAt(0).toString(16)).join(' ');
+                            log(`マイスター名[0] raw="${raw}" norm="${norm}" codes=[${codes}]`, 'info');
+                        }
                     }
-                    log(`社員マスタの名前例: ${employees.slice(0, 5).map(e => e.name).join(', ')}...`, 'info');
+                    const empSample = employees[0];
+                    if (empSample) {
+                        const raw = empSample.name;
+                        const norm = normalizeName(raw);
+                        const codes = [...raw].map(c => c.charCodeAt(0).toString(16)).join(' ');
+                        log(`マスタ名[0] raw="${raw}" norm="${norm}" codes=[${codes}]`, 'info');
+                    }
+                    // employeeMapのキーも出力
+                    const mapKeys = Object.keys(getEmployeeMap()).slice(0, 3);
+                    log(`employeeMapキー例: ${mapKeys.map(k => `"${k}"`).join(', ')}`, 'info');
                 }
                 
                 showPreview();
