@@ -7,7 +7,7 @@ set -e
 # コミットメッセージを引数から取得
 if [ -z "$1" ]; then
   echo "使い方: bash deploy.sh \"変更内容のメモ\""
-  echo "例:     bash deploy.sh \"シフト管理のバグ修正\""
+  echo "例:     bash deploy.sh \"シフトのバグ修正\""
   exit 1
 fi
 
