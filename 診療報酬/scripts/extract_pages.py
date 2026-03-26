@@ -1,8 +1,10 @@
+import os
 import PyPDF2
 import sys
 
-pdf_path = r"C:\Users\Mining-Base\SakigakeAPP\診療報酬\001666622.pdf"
-out_path = r"C:\Users\Mining-Base\SakigakeAPP\診療報酬\pdf_extract_p20_137.txt"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+pdf_path = os.path.join(BASE_DIR, "001666622.pdf")
+out_path = os.path.join(BASE_DIR, "pdf_extract_p20_137.txt")
 
 # Pages 20-137 (1-indexed) => indices 19-136 (0-indexed)
 start_page = 20

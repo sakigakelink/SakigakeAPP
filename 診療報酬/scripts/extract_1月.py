@@ -1,8 +1,9 @@
 import os
 import PyPDF2
 
-input_dir = r"C:/Users/Mining-Base/SakigakeAPP/診療報酬/1月/元データ"
-output_file = r"C:/Users/Mining-Base/SakigakeAPP/診療報酬/1月_extract.txt"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+input_dir = os.path.join(BASE_DIR, "1月", "元データ")
+output_file = os.path.join(BASE_DIR, "1月_extract.txt")
 
 pdf_files = sorted([f for f in os.listdir(input_dir) if f.lower().endswith('.pdf')])
 

@@ -1,8 +1,9 @@
 import os
 import fitz  # pymupdf
 
-input_dir = r"C:/Users/Mining-Base/SakigakeAPP/診療報酬/2月/元データ"
-output_file = r"C:/Users/Mining-Base/SakigakeAPP/診療報酬/2月_extract.txt"
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+input_dir = os.path.join(BASE_DIR, "2月", "元データ")
+output_file = os.path.join(BASE_DIR, "2月_extract.txt")
 
 MAX_CHARS = 10000
 
