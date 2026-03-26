@@ -367,6 +367,25 @@
     "_blTotal": 1100000
   },
   {
+    "id": "10020696",
+    "name": "井上　裕之",
+    "jobType": "PSW",
+    "birthDate": "1986-12-19",
+    "hireDate": "2014-04-01",
+    "baseSalary": 206000,
+    "adjustment": 38000,
+    "commute": 19700,
+    "baseR8": 206000,
+    "adjR8": 38000,
+    "position": 20000,
+    "positionR8": 0,
+    "_i": 108,
+    "_ex": false,
+    "_a7": 3786000,
+    "_a8": 3546000,
+    "_ur": -6.3391442155309035
+  },
+  {
     "id": "10020718",
     "name": "妹尾　菜奈",
     "jobType": "PSW",
@@ -555,43 +574,6 @@
     "_blLBase": 24000,
     "_blLConf": 30000,
     "_blTotal": 520000
-  },
-  {
-    "id": "10060588",
-    "name": "阿部　悦子",
-    "jobType": "看護",
-    "birthDate": "1975-08-13",
-    "hireDate": "2015-03-10",
-    "baseSalary": 276000,
-    "adjustment": 65000,
-    "commute": 13500,
-    "baseR8": 280000,
-    "adjR8": 65000,
-    "position": 0,
-    "_idx": 85,
-    "_annualSalary": 4920000,
-    "_upRatio": 1.2195121951219512,
-    "_excluded": false,
-    "_annualSalaryR8": 4980000,
-    "_as": 4920000,
-    "_asr": 4980000,
-    "_ur": 1.2195121951219512,
-    "_i": 16,
-    "_ex": false,
-    "_a7": 4920000,
-    "_a8": 4980000,
-    "_lsEx": false,
-    "_blEx": false,
-    "_blAge": 50,
-    "_blSv": {
-      "d": 4040,
-      "r": 1
-    },
-    "_blBBase": 830000,
-    "_blBConf": 880000,
-    "_blLBase": 20000,
-    "_blLConf": 50000,
-    "_blTotal": 930000
   },
   {
     "id": "10060654",
@@ -3498,6 +3480,25 @@
     "_blTotal": 0
   },
   {
+    "id": "40160588",
+    "name": "阿部　悦子",
+    "jobType": "支援",
+    "birthDate": "1975-08-13",
+    "hireDate": "2015-03-10",
+    "baseSalary": 276000,
+    "adjustment": 65000,
+    "commute": 13500,
+    "baseR8": 280000,
+    "adjR8": 65000,
+    "position": 0,
+    "positionR8": 0,
+    "_i": 16,
+    "_ex": false,
+    "_a7": 4920000,
+    "_a8": 4980000,
+    "_ur": 1.2195121951219512
+  },
+  {
     "id": "40160631",
     "name": "中村　義浩",
     "jobType": "支援",
@@ -3567,42 +3568,6 @@
     "_blLBase": 70000,
     "_blLConf": 0,
     "_blTotal": 800000
-  },
-  {
-    "id": "40160696",
-    "name": "井上　裕之",
-    "jobType": "支援",
-    "birthDate": "1986-12-19",
-    "hireDate": "2014-04-01",
-    "baseSalary": 206000,
-    "adjustment": 38000,
-    "commute": 19700,
-    "baseR8": 0,
-    "adjR8": 0,
-    "position": 20000,
-    "positionR8": 0,
-    "_idx": 55,
-    "_excluded": false,
-    "_annualSalary": 3786000,
-    "_annualSalaryR8": 0,
-    "_upRatio": -100,
-    "_i": 108,
-    "_ex": false,
-    "_a7": 3786000,
-    "_a8": 0,
-    "_ur": -100,
-    "_lsEx": false,
-    "_blEx": false,
-    "_blAge": 39,
-    "_blSv": {
-      "d": 4383,
-      "r": 1
-    },
-    "_blBBase": 620000,
-    "_blBConf": 620000,
-    "_blLBase": -1262000,
-    "_blLConf": 0,
-    "_blTotal": 620000
   },
   {
     "id": "40160740",
@@ -4025,4 +3990,3 @@
     "_blTotal": 560000
   }
 ]
-
