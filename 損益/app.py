@@ -338,6 +338,28 @@ def index():
     return render_template('index.html')
 
 
+@app.route('/api/autoload', methods=['GET'])
+def autoload_data():
+    """損益/data/ 内のPDF・TXTを自動読み込み"""
+    data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+    if not os.path.isdir(data_dir):
+        return jsonify({'error': 'data/ folder not found'}), 404
+    pdf_results, chutaikyo_data = [], {}
+    for fname in sorted(os.listdir(data_dir)):
+        filepath = os.path.join(data_dir, fname)
+        try:
+            if fname.lower().endswith('.pdf'):
+                pdf_results.append(parse_tkc_pdf(filepath))
+            elif fname.lower().endswith('.txt'):
+                chutaikyo_data = parse_chutaikyo_txt(filepath)
+        except Exception as e:
+            print(f"Error processing {fname}: {e}")
+    if not pdf_results:
+        return jsonify({'error': 'No PDF files found in data/'}), 404
+    all_data = merge_all_monthly_data(pdf_results, chutaikyo_data)
+    return jsonify({'individual': pdf_results, 'all_data': all_data, 'revenue_display': create_display_data(all_data, REVENUE_DISPLAY_ITEMS), 'expense_display': create_display_data(all_data, EXPENSE_DISPLAY_ITEMS), 'profit_display': create_display_data(all_data, PROFIT_DISPLAY_ITEMS), 'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS), 'chutaikyo_data': chutaikyo_data})
+
+
 @app.route('/api/upload', methods=['POST'])
 def upload_files():
     if 'files' not in request.files:

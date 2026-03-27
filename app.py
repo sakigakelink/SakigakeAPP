@@ -135,6 +135,11 @@ def legacy_pnl():
     return send_from_directory(
         os.path.join(BASE_DIR, '損益', 'templates'), 'index.html')
 
+@app.route('/api/autoload')
+def pnl_autoload():
+    """損益/data/ 内のPDF・TXTを自動読み込み（iframe用プロキシ）"""
+    return _pnl_mod.autoload_data()
+
 @app.route('/legacy/data/<tool>')
 def legacy_data(tool):
     if tool == 'kintai':

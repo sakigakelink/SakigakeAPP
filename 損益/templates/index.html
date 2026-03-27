@@ -570,6 +570,25 @@
                 alert('Export error: ' + e.message);
             }
         }
+
+        // data/ フォルダから自動読み込み
+        (async function autoload() {
+            document.getElementById('loading').classList.add('active');
+            try {
+                const res = await fetch('/api/autoload');
+                if (res.ok) {
+                    analysisData = await res.json();
+                    renderResults();
+                    document.getElementById('results').classList.add('active');
+                    document.getElementById('uploadZone').style.display = 'none';
+                    document.getElementById('fileList').style.display = 'none';
+                }
+            } catch (e) {
+                console.log('Autoload skipped:', e.message);
+            } finally {
+                document.getElementById('loading').classList.remove('active');
+            }
+        })();
     </script>
 </body>
 </html>
