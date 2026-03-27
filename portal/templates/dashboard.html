@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}SakigakeAPP - ダッシュボード{% endblock %}
+{% block content %}
+<div class="dashboard">
+  <h2>経営ダッシュボード</h2>
+  <div class="card-grid">
+    <a href="/shift" class="card card-shift">
+      <div class="card-icon">📅</div>
+      <h3>シフト管理</h3>
+      <p>シフト自動生成・編集・確定</p>
+    </a>
+    <a href="/salary" class="card card-salary">
+      <div class="card-icon">💰</div>
+      <h3>給与分析</h3>
+      <p>TKC給与統計表の解析</p>
+    </a>
+    <a href="/pnl" class="card card-pnl">
+      <div class="card-icon">📈</div>
+      <h3>損益計算</h3>
+      <p>月次合算試算表の分析</p>
+    </a>
+    <a href="/reports" class="card card-reports">
+      <div class="card-icon">🏥</div>
+      <h3>診療報酬</h3>
+      <p>入院・薬剤レポート生成</p>
+    </a>
+    <a href="/data" class="card card-data">
+      <div class="card-icon">🔧</div>
+      <h3>データツール</h3>
+      <p>勤怠変換・残業管理</p>
+    </a>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}SakigakeAPP{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/portal.css">
+</head>
+<body>
+  <nav class="sidebar">
+    <div class="sidebar-header">
+      <h1>Sakigake</h1>
+      <p>病院経営統合</p>
+    </div>
+    <ul class="nav-menu">
+      <li><a href="/" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
+        <span class="nav-icon">📊</span>ダッシュボード</a></li>
+      <li><a href="/shift" class="nav-link {% if active == 'shift' %}active{% endif %}">
+        <span class="nav-icon">📅</span>シフト管理</a></li>
+      <li><a href="/salary" class="nav-link {% if active == 'salary' %}active{% endif %}">
+        <span class="nav-icon">💰</span>給与分析</a></li>
+      <li><a href="/pnl" class="nav-link {% if active == 'pnl' %}active{% endif %}">
+        <span class="nav-icon">📈</span>損益計算</a></li>
+      <li><a href="/reports" class="nav-link {% if active == 'reports' %}active{% endif %}">
+        <span class="nav-icon">🏥</span>診療報酬</a></li>
+      <li><a href="/data" class="nav-link {% if active == 'data' %}active{% endif %}">
+        <span class="nav-icon">🔧</span>データツール</a></li>
+    </ul>
+  </nav>
+  <main class="content">
+    {% block content %}{% endblock %}
+  </main>
+  <script src="/static/js/portal.js"></script>
+</body>
+</html>
