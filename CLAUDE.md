@@ -13,6 +13,10 @@
 - パス: `C:\Python314\python.exe`（ローカル・リモート共通）
 - バージョン: Python 3.14.3
 
+## 起動方法
+- `portal.vbs` ダブルクリック → サーバー起動 + ブラウザ自動オープン (http://localhost:5000/)
+- デバッグ: `C:\Python314\python.exe app.py`（コンソール表示）
+
 ## 開発フロー
 1. ローカルでコード編集
 2. デプロイ: `bash deploy.sh "変更内容のメモ"`（add → commit → push → リモート pull を一括実行）

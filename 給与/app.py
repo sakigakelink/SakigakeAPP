@@ -20,7 +20,7 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 # 部課コード → 名称マッピング
 # ---------------------------------------------------------------------------
 import json as _json
-_dept_path = os.path.join(BASE_DIR, '..', 'データ', 'dept_codes.json')
+_dept_path = os.path.join(BASE_DIR, 'dept_codes.json')
 try:
     with open(_dept_path, encoding='utf-8') as _f:
         DEPT_NAMES = _json.load(_f)

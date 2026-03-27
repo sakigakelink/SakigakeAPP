@@ -4,28 +4,48 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>{% block title %}SakigakeAPP{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
   <link rel="stylesheet" href="/static/css/portal.css">
 </head>
-<body>
+<body class="sk-app">
   <nav class="sidebar">
     <div class="sidebar-header">
-      <h1>Sakigake</h1>
-      <p>病院経営統合</p>
+      <div class="sidebar-logo">S</div>
+      <div>
+        <h1>Sakigake</h1>
+        <p>Hospital Management</p>
+      </div>
     </div>
     <ul class="nav-menu">
       <li><a href="/" class="nav-link {% if active == 'dashboard' %}active{% endif %}">
-        <span class="nav-icon">📊</span>ダッシュボード</a></li>
-      <li><a href="/shift" class="nav-link {% if active == 'shift' %}active{% endif %}">
-        <span class="nav-icon">📅</span>シフト管理</a></li>
-      <li><a href="/salary" class="nav-link {% if active == 'salary' %}active{% endif %}">
-        <span class="nav-icon">💰</span>給与分析</a></li>
+        <svg class="nav-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm0 6a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zm10 0a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"/></svg>
+        <span>ダッシュボード</span></a></li>
       <li><a href="/pnl" class="nav-link {% if active == 'pnl' %}active{% endif %}">
-        <span class="nav-icon">📈</span>損益計算</a></li>
+        <svg class="nav-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M3 3a1 1 0 000 2v8a2 2 0 002 2h2.586l-1.293 1.293a1 1 0 101.414 1.414L10 15.414l2.293 2.293a1 1 0 001.414-1.414L12.414 15H15a2 2 0 002-2V5a1 1 0 100-2H3zm11 4a1 1 0 10-2 0v4a1 1 0 102 0V7zm-3 1a1 1 0 10-2 0v3a1 1 0 102 0V8zM8 9a1 1 0 00-2 0v2a1 1 0 102 0V9z" clip-rule="evenodd"/></svg>
+        <span>損益計算</span></a></li>
       <li><a href="/reports" class="nav-link {% if active == 'reports' %}active{% endif %}">
-        <span class="nav-icon">🏥</span>診療報酬</a></li>
-      <li><a href="/data" class="nav-link {% if active == 'data' %}active{% endif %}">
-        <span class="nav-icon">🔧</span>データツール</a></li>
+        <svg class="nav-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4zm2 6a1 1 0 011-1h6a1 1 0 110 2H7a1 1 0 01-1-1zm1 3a1 1 0 100 2h6a1 1 0 100-2H7z" clip-rule="evenodd"/></svg>
+        <span>診療報酬</span></a></li>
+      <li><a href="/salary" class="nav-link {% if active == 'salary' %}active{% endif %}">
+        <svg class="nav-svg" viewBox="0 0 20 20" fill="currentColor"><path d="M4 4a2 2 0 00-2 2v1h16V6a2 2 0 00-2-2H4z"/><path fill-rule="evenodd" d="M18 9H2v5a2 2 0 002 2h12a2 2 0 002-2V9zM4 13a1 1 0 011-1h1a1 1 0 110 2H5a1 1 0 01-1-1zm5-1a1 1 0 100 2h1a1 1 0 100-2H9z" clip-rule="evenodd"/></svg>
+        <span>給与分析</span></a></li>
+      <li class="nav-group {% if active in ('shift', 'data') %}open{% endif %}">
+        <button class="nav-link nav-group-toggle" type="button">
+          <svg class="nav-svg" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+          <span>シフト管理</span>
+          <svg class="nav-chevron" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"/></svg>
+        </button>
+        <ul class="nav-submenu">
+          <li><a href="/shift" class="nav-link nav-sub-link {% if active == 'shift' %}active{% endif %}">
+            <span>シフト作成</span></a></li>
+          <li><a href="/data" class="nav-link nav-sub-link {% if active == 'data' %}active{% endif %}">
+            <span>勤怠変換</span></a></li>
+        </ul>
+      </li>
     </ul>
+    <div class="sidebar-footer">
+      <div class="sidebar-version">v2.0</div>
+    </div>
   </nav>
   <main class="content">
     {% block content %}{% endblock %}

@@ -1,33 +1,60 @@
 {% extends "base.html" %}
+{% set active = 'dashboard' %}
 {% block title %}SakigakeAPP - ダッシュボード{% endblock %}
 {% block content %}
-<div class="dashboard">
-  <h2>経営ダッシュボード</h2>
+<div class="dashboard sk-fade-in">
+  <div class="dashboard-header">
+    <h2 class="sk-h1">経営ダッシュボード</h2>
+    <p class="sk-sub">Sakigake Hospital Management Suite</p>
+  </div>
   <div class="card-grid">
-    <a href="/shift" class="card card-shift">
-      <div class="card-icon">📅</div>
-      <h3>シフト管理</h3>
-      <p>シフト自動生成・編集・確定</p>
+    <a href="/pnl" class="dash-card">
+      <div class="dash-card-icon" style="--card-accent: var(--sk-purple)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+      </div>
+      <div class="dash-card-body">
+        <h3>損益計算</h3>
+        <p>月次合算試算表の分析</p>
+      </div>
+      <div class="dash-card-arrow">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </div>
     </a>
-    <a href="/salary" class="card card-salary">
-      <div class="card-icon">💰</div>
-      <h3>給与分析</h3>
-      <p>TKC給与統計表の解析</p>
+    <a href="/reports" class="dash-card">
+      <div class="dash-card-icon" style="--card-accent: var(--sk-pink)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <div class="dash-card-body">
+        <h3>診療報酬</h3>
+        <p>入院・薬剤レポート生成</p>
+      </div>
+      <div class="dash-card-arrow">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </div>
     </a>
-    <a href="/pnl" class="card card-pnl">
-      <div class="card-icon">📈</div>
-      <h3>損益計算</h3>
-      <p>月次合算試算表の分析</p>
+    <a href="/salary" class="dash-card">
+      <div class="dash-card-icon" style="--card-accent: var(--sk-success)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+      </div>
+      <div class="dash-card-body">
+        <h3>給与分析</h3>
+        <p>TKC給与統計表の解析</p>
+      </div>
+      <div class="dash-card-arrow">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </div>
     </a>
-    <a href="/reports" class="card card-reports">
-      <div class="card-icon">🏥</div>
-      <h3>診療報酬</h3>
-      <p>入院・薬剤レポート生成</p>
-    </a>
-    <a href="/data" class="card card-data">
-      <div class="card-icon">🔧</div>
-      <h3>データツール</h3>
-      <p>勤怠変換・残業管理</p>
+    <a href="/shift" class="dash-card">
+      <div class="dash-card-icon" style="--card-accent: var(--sk-primary)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></svg>
+      </div>
+      <div class="dash-card-body">
+        <h3>シフト管理</h3>
+        <p>シフト自動生成・編集・確定</p>
+      </div>
+      <div class="dash-card-arrow">
+        <svg viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd"/></svg>
+      </div>
     </a>
   </div>
 </div>

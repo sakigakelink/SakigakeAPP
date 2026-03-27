@@ -5,9 +5,7 @@
   'shift': {'title': 'シフト管理', 'src': '/legacy/shift/'},
   'salary': {'title': '給与分析', 'src': '/legacy/salary/'},
   'pnl': {'title': '損益計算', 'src': '/legacy/pnl/'},
-  'reports': {'title': '診療報酬', 'src': ''},
-  'documents': {'title': '書類チェック', 'src': ''},
-  'data': {'title': 'データツール', 'src': ''},
+  'data': {'title': '勤怠変換', 'src': '/legacy/data/kintai'},
 } %}
 
 {% set cfg = page_config.get(page, {'title': page, 'src': ''}) %}
@@ -15,16 +13,7 @@
 {% block title %}SakigakeAPP - {{ cfg.title }}{% endblock %}
 
 {% block content %}
-{% if page == 'data' %}
-  <div class="data-tools">
-    <h2>データツール</h2>
-    <div class="tool-tabs">
-      <button class="tab-btn active" onclick="switchTool('kintai')">勤怠変換</button>
-      <button class="tab-btn" onclick="switchTool('overtime')">残業管理</button>
-    </div>
-    <iframe id="data-frame" src="/legacy/data/kintai" class="app-frame"></iframe>
-  </div>
-{% elif cfg.src %}
+{% if cfg.src %}
   <iframe src="{{ cfg.src }}" class="app-frame"></iframe>
 {% else %}
   <div class="placeholder">

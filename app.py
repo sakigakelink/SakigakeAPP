@@ -101,9 +101,13 @@ app.register_blueprint(pnl_bp)
 def portal_dashboard():
     return render_template('dashboard.html')
 
+@app.route('/reports')
+def portal_reports():
+    return render_template('reports.html')
+
 @app.route('/<page>')
 def portal_page(page):
-    valid_pages = ['shift', 'salary', 'pnl', 'reports', 'documents', 'data']
+    valid_pages = ['shift', 'salary', 'pnl', 'documents', 'data']
     if page in valid_pages:
         return render_template('iframe_wrapper.html', page=page)
     return render_template('dashboard.html')
@@ -133,29 +137,57 @@ def legacy_pnl():
 
 @app.route('/legacy/data/<tool>')
 def legacy_data(tool):
-    files = {
-        'kintai': '勤怠変換.html',
-        'overtime': '残業管理.html',
-    }
-    if tool in files:
+    if tool == 'kintai':
         return send_from_directory(
-            os.path.join(BASE_DIR, 'データ'), files[tool])
+            os.path.join(BASE_DIR, 'portal', 'templates'), '勤怠変換.html')
     return 'Not Found', 404
+
+# ---------------------------------------------------------------------------
+# 診療報酬API
+# ---------------------------------------------------------------------------
+import re as _re
+import json as _json
+
+@app.route('/api/reports/months')
+def reports_months():
+    """利用可能な月とレポートファイル一覧を返す"""
+    shinryo_dir = os.path.join(BASE_DIR, '診療')
+    months = []
+    for entry in sorted(os.listdir(shinryo_dir)):
+        if _re.match(r'^\d{1,2}月$', entry):
+            month_dir = os.path.join(shinryo_dir, entry)
+            if os.path.isdir(month_dir):
+                files = [f for f in os.listdir(month_dir)
+                         if f.endswith('.html')]
+                if files:
+                    months.append({'month': entry, 'files': sorted(files)})
+    return _json.dumps(months, ensure_ascii=False)
+
+@app.route('/api/reports/<month>/<path:filename>')
+def reports_file(month, filename):
+    """月別HTMLサマリーファイルを配信"""
+    if not _re.match(r'^\d{1,2}月$', month):
+        return 'Not Found', 404
+    if not filename.endswith('.html'):
+        return 'Not Found', 404
+    month_dir = os.path.join(BASE_DIR, '診療', month)
+    if not os.path.isdir(month_dir):
+        return 'Not Found', 404
+    return send_from_directory(month_dir, filename)
 
 # ---------------------------------------------------------------------------
 # 共通マスタAPI
 # ---------------------------------------------------------------------------
-import json as _json
 
 @app.route('/api/master/employees')
 def master_employees():
-    path = os.path.join(BASE_DIR, 'データ', 'employees.json')
+    path = os.path.join(BASE_DIR, 'shared', 'employees.json')
     with open(path, encoding='utf-8') as f:
         return _json.load(f)
 
 @app.route('/api/master/dept-codes')
 def master_dept_codes():
-    path = os.path.join(BASE_DIR, 'データ', 'dept_codes.json')
+    path = os.path.join(BASE_DIR, '給与', 'dept_codes.json')
     with open(path, encoding='utf-8') as f:
         return _json.load(f)
 

@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% set active = 'reports' %}
+{% block title %}SakigakeAPP - 診療報酬{% endblock %}
+{% block content %}
+<div class="reports-page sk-fade-in">
+  <div class="reports-header">
+    <h2 class="sk-h1">診療報酬レポート</h2>
+    <div class="reports-controls">
+      <select id="monthSelect" class="sk-select">
+        <option value="">月を選択...</option>
+      </select>
+      <div class="report-tabs" id="reportTabs"></div>
+    </div>
+  </div>
+  <div class="reports-body">
+    <div id="emptyState" class="placeholder">
+      <h2>診療報酬</h2>
+      <p>月を選択してレポートを表示</p>
+    </div>
+    <iframe id="reportFrame" class="app-frame" style="display:none"></iframe>
+  </div>
+</div>
+
+<style>
+.reports-page { display: flex; flex-direction: column; height: 100vh; }
+.reports-header { padding: 24px 28px 16px; border-bottom: 1px solid var(--sk-surface-border); }
+.reports-header h2 { margin-bottom: 16px; }
+.reports-controls { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.sk-select {
+  padding: 8px 14px; border-radius: var(--sk-radius-sm);
+  border: 1px solid var(--sk-surface-border); background: var(--sk-bg-3);
+  color: var(--sk-text); font-size: 14px; font-family: var(--sk-font);
+  cursor: pointer; min-width: 140px;
+}
+.sk-select:focus { outline: none; border-color: var(--sk-primary); }
+.report-tabs { display: flex; gap: 6px; }
+.report-tab {
+  padding: 7px 16px; border: 1px solid var(--sk-surface-border);
+  border-radius: var(--sk-radius-sm); background: var(--sk-bg-3);
+  color: var(--sk-text-3); cursor: pointer; font-size: 13px;
+  font-family: var(--sk-font); transition: all .15s var(--sk-ease);
+  white-space: nowrap;
+}
+.report-tab:hover { border-color: var(--sk-primary); color: var(--sk-text); }
+.report-tab.active { background: var(--sk-grad-primary); color: #fff; border-color: transparent; }
+.reports-body { flex: 1; position: relative; }
+.reports-body .placeholder { height: 100%; }
+.reports-body .app-frame { width: 100%; height: 100%; border: none; background: var(--sk-bg-1); }
+</style>
+
+<script>
+(function() {
+  const monthSel = document.getElementById('monthSelect');
+  const tabs = document.getElementById('reportTabs');
+  const frame = document.getElementById('reportFrame');
+  const empty = document.getElementById('emptyState');
+  let data = [];
+
+  function friendlyName(filename) {
+    return filename.replace(/\.html$/, '').replace(/_/g, ' ');
+  }
+
+  function showReport(month, filename) {
+    frame.src = '/api/reports/' + encodeURIComponent(month) + '/' + encodeURIComponent(filename);
+    frame.style.display = 'block';
+    empty.style.display = 'none';
+    tabs.querySelectorAll('.report-tab').forEach(function(t) {
+      t.classList.toggle('active', t.dataset.file === filename);
+    });
+  }
+
+  function onMonthChange() {
+    var month = monthSel.value;
+    tabs.innerHTML = '';
+    if (!month) {
+      frame.style.display = 'none';
+      empty.style.display = 'flex';
+      return;
+    }
+    var entry = data.find(function(d) { return d.month === month; });
+    if (!entry || !entry.files.length) return;
+
+    entry.files.forEach(function(f, i) {
+      var btn = document.createElement('button');
+      btn.className = 'report-tab' + (i === 0 ? ' active' : '');
+      btn.textContent = friendlyName(f);
+      btn.dataset.file = f;
+      btn.onclick = function() { showReport(month, f); };
+      tabs.appendChild(btn);
+    });
+    showReport(month, entry.files[0]);
+  }
+
+  fetch('/api/reports/months')
+    .then(function(r) { return r.json(); })
+    .then(function(months) {
+      data = months;
+      months.forEach(function(m) {
+        var opt = document.createElement('option');
+        opt.value = m.month;
+        opt.textContent = m.month;
+        monthSel.appendChild(opt);
+      });
+      if (months.length) {
+        monthSel.value = months[months.length - 1].month;
+        onMonthChange();
+      }
+    });
+
+  monthSel.addEventListener('change', onMonthChange);
+})();
+</script>
+{% endblock %}

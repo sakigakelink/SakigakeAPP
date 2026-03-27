@@ -5,15 +5,20 @@ node_modules/
 backup/
 temp/
 *.bak
+.env
+
+# ビルド成果物
+独立ツール/処方/dist/
 
 # 生成物・出力
 損益/output/
+*.xlsx
 診療/*月/*サマリー*.html
 診療/*月/*データ*.json
 
 # 動画・デモフレーム
 *.mp4
-処方/demo/frames/
+独立ツール/処方/demo/frames/
 
 # PDF（元データ・月次帳票）
 給与/*月/*.pdf
