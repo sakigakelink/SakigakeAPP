@@ -17,7 +17,13 @@ echo "=== SakigakeAPP デプロイ ==="
 echo "[1/4] 変更ファイルを追加..."
 git add -A
 
-# 2. コミット
+# 2. コミット（変更がない場合はスキップ）
+if git diff --cached --quiet; then
+  echo "[2/4] 変更なし — コミットをスキップ"
+  echo "=== デプロイ完了（変更なし） ==="
+  exit 0
+fi
+
 echo "[2/4] コミット..."
 git commit -m "$1"
 
