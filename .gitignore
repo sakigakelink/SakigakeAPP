@@ -6,7 +6,6 @@ backup/
 temp/
 *.bak
 .env
-損益/data/manual_inputs.json
 
 # ビルド成果物
 独立ツール/処方/dist/
