@@ -38,6 +38,16 @@ class Handler(http.server.BaseHTTPRequestHandler):
 
 server = http.server.HTTPServer(("127.0.0.1", 5000), Handler)
 print("Starting on http://localhost:5000/ ...")
-threading.Timer(1, lambda: webbrowser.open("http://localhost:5000/")).start()
-threading.Timer(30, lambda: os._exit(1)).start()
+def open_chrome():
+    import subprocess
+    chrome = r"C:\Program Files\Google\Chrome\Application\chrome.exe"
+    if not os.path.exists(chrome):
+        chrome = r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
+    try:
+        subprocess.Popen([chrome, "--profile-directory=Default", "http://localhost:5000/"])
+    except Exception:
+        webbrowser.open("http://localhost:5000/")
+
+threading.Timer(2, open_chrome).start()
+threading.Timer(60, lambda: os._exit(1)).start()
 server.serve_forever()
