@@ -423,18 +423,56 @@
             }).join('');
         }
         
+        // localStorage key for manual inputs
+        const LS_MANUAL_KEY = 'pnl_manual_inputs';
+
+        function saveManualToLS() {
+            const data = {};
+            if (!analysisData) return;
+            ['output_display', 'revenue_display', 'expense_display', 'profit_display'].forEach(key => {
+                const disp = analysisData[key];
+                if (!disp) return;
+                disp.accounts.filter(a => a.is_manual).forEach(acc => {
+                    const nonZero = {};
+                    Object.entries(acc.monthly_data).forEach(([m, v]) => { if (v) nonZero[m] = v; });
+                    if (Object.keys(nonZero).length) data[key + '::' + acc.name] = nonZero;
+                });
+            });
+            try { localStorage.setItem(LS_MANUAL_KEY, JSON.stringify(data)); } catch(e) {}
+        }
+
+        function restoreManualFromLS() {
+            try {
+                const raw = localStorage.getItem(LS_MANUAL_KEY);
+                if (!raw || !analysisData) return;
+                const data = JSON.parse(raw);
+                Object.entries(data).forEach(([compositeKey, monthlyData]) => {
+                    const [dispKey, accName] = compositeKey.split('::');
+                    const disp = analysisData[dispKey];
+                    if (!disp) return;
+                    const acc = disp.accounts.find(a => a.name === accName);
+                    if (acc && acc.is_manual) {
+                        Object.entries(monthlyData).forEach(([m, v]) => { acc.monthly_data[m] = v; });
+                    }
+                });
+            } catch(e) {}
+        }
+
         function updateManualValue(input) {
             const prefix = input.dataset.prefix;
             const name = input.dataset.name;
             const month = input.dataset.month;
             const value = parseFloat(input.value) || 0;
-            
+
             // analysisDataを更新
             const display = analysisData[prefix + '_display'];
             const acc = display.accounts.find(a => a.name === name);
             if (acc) {
                 acc.monthly_data[month] = value;
             }
+
+            // localStorageに自動保存
+            saveManualToLS();
 
             // 合計を更新
             const months = display.months;
@@ -443,7 +481,7 @@
                 : Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
             const row = input.closest('tr');
             row.querySelector('td:last-child').textContent = formatNum(total);
-            
+
             // 依存する行（経常利益）を更新
             updateDependentRows(prefix, name);
         }
@@ -571,13 +609,14 @@
             }
         }
 
-        // data/ フォルダから自動読み込み
+        // data/ フォルダから自動読み込み + localStorage復元
         (async function autoload() {
             document.getElementById('loading').classList.add('active');
             try {
                 const res = await fetch('/api/autoload');
                 if (res.ok) {
                     analysisData = await res.json();
+                    restoreManualFromLS();
                     renderResults();
                     document.getElementById('results').classList.add('active');
                     document.getElementById('uploadZone').style.display = 'none';
