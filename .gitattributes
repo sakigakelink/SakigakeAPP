@@ -1,0 +1,31 @@
+# Auto-detect text files and normalize line endings
+* text=auto eol=lf
+
+# Source code
+*.py text diff=python
+*.html text diff=html
+*.css text diff=css
+*.js text diff=javascript
+*.json text
+*.md text
+*.toml text
+*.yml text
+*.yaml text
+*.sh text eol=lf
+*.vbs text
+
+# Binary files
+*.pdf binary
+*.xlsx binary
+*.xls binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.mp4 binary
+*.zip binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary

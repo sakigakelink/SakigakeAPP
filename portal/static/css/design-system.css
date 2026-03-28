@@ -1,6 +1,6 @@
 /* ============================================================
-   Sakigake Design System v2.0
-   - Unified dark theme for all sub-applications
+   Sakigake Design System v2.1
+   - Professional light theme for executive presentations
    - Import: <link rel="stylesheet" href="/static/css/design-system.css">
    ============================================================ */
 
@@ -8,48 +8,48 @@
 
 /* ---------- Design Tokens ---------- */
 :root {
-  /* Base palette */
-  --sk-bg-0: #090d13;
-  --sk-bg-1: #0f1620;
-  --sk-bg-2: #161f2e;
-  --sk-bg-3: #1e293b;
-  --sk-bg-4: #263548;
+  /* Base palette — light professional */
+  --sk-bg-0: #f8f9fb;
+  --sk-bg-1: #f1f3f7;
+  --sk-bg-2: #e8ebf0;
+  --sk-bg-3: #dde1e8;
+  --sk-bg-4: #c8cdd6;
 
   /* Surface / cards */
-  --sk-surface: rgba(30, 41, 59, .65);
-  --sk-surface-hover: rgba(30, 41, 59, .85);
-  --sk-surface-border: rgba(148, 163, 184, .12);
-  --sk-surface-glow: rgba(56, 189, 248, .06);
+  --sk-surface: rgba(255, 255, 255, .92);
+  --sk-surface-hover: rgba(255, 255, 255, .98);
+  --sk-surface-border: rgba(100, 116, 139, .15);
+  --sk-surface-glow: rgba(30, 64, 175, .04);
 
-  /* Text */
-  --sk-text: #f1f5f9;
-  --sk-text-2: #cbd5e1;
-  --sk-text-3: #94a3b8;
-  --sk-text-4: #64748b;
+  /* Text — dark on light */
+  --sk-text: #0f172a;
+  --sk-text-2: #334155;
+  --sk-text-3: #64748b;
+  --sk-text-4: #94a3b8;
 
-  /* Primary accent: Cyan */
-  --sk-primary: #38bdf8;
-  --sk-primary-dim: #0ea5e9;
-  --sk-primary-glow: rgba(56, 189, 248, .25);
+  /* Primary accent: Navy (authoritative, executive) */
+  --sk-primary: #1e40af;
+  --sk-primary-dim: #1d4ed8;
+  --sk-primary-glow: rgba(30, 64, 175, .12);
 
-  /* Semantic colors */
-  --sk-success: #34d399;
-  --sk-success-dim: #10b981;
-  --sk-warning: #fbbf24;
-  --sk-warning-dim: #f59e0b;
-  --sk-danger: #f87171;
+  /* Semantic colors — deeper shades for light backgrounds */
+  --sk-success: #047857;
+  --sk-success-dim: #059669;
+  --sk-warning: #b45309;
+  --sk-warning-dim: #d97706;
+  --sk-danger: #dc2626;
   --sk-danger-dim: #ef4444;
-  --sk-purple: #a78bfa;
-  --sk-purple-dim: #8b5cf6;
-  --sk-pink: #f472b6;
-  --sk-orange: #fb923c;
+  --sk-purple: #6d28d9;
+  --sk-purple-dim: #7c3aed;
+  --sk-pink: #db2777;
+  --sk-orange: #c2410c;
 
-  /* Gradients */
-  --sk-grad-primary: linear-gradient(135deg, #0ea5e9, #38bdf8);
-  --sk-grad-accent: linear-gradient(135deg, #667eea, #8b5cf6);
-  --sk-grad-success: linear-gradient(135deg, #10b981, #34d399);
-  --sk-grad-warm: linear-gradient(135deg, #f59e0b, #fb923c);
-  --sk-grad-surface: linear-gradient(160deg, rgba(30,41,59,.7), rgba(15,22,36,.9));
+  /* Gradients — muted, professional */
+  --sk-grad-primary: linear-gradient(135deg, #1e3a8a, #1e40af);
+  --sk-grad-accent: linear-gradient(135deg, #4f46e5, #6366f1);
+  --sk-grad-success: linear-gradient(135deg, #047857, #059669);
+  --sk-grad-warm: linear-gradient(135deg, #b45309, #d97706);
+  --sk-grad-surface: linear-gradient(160deg, rgba(255,255,255,.95), rgba(241,243,247,.98));
 
   /* Typography */
   --sk-font: 'Inter', 'Noto Sans JP', -apple-system, BlinkMacSystemFont, sans-serif;
@@ -61,11 +61,11 @@
   --sk-radius-lg: 16px;
   --sk-radius-xl: 20px;
 
-  /* Shadows */
-  --sk-shadow-sm: 0 1px 3px rgba(0,0,0,.3);
-  --sk-shadow: 0 4px 16px rgba(0,0,0,.35);
-  --sk-shadow-lg: 0 8px 32px rgba(0,0,0,.45);
-  --sk-shadow-glow: 0 0 20px rgba(56,189,248,.15);
+  /* Shadows — neutral, softer */
+  --sk-shadow-sm: 0 1px 3px rgba(0,0,0,.06);
+  --sk-shadow: 0 4px 16px rgba(0,0,0,.08);
+  --sk-shadow-lg: 0 8px 32px rgba(0,0,0,.12);
+  --sk-shadow-glow: 0 0 20px rgba(30,64,175,.06);
 
   /* Transitions */
   --sk-ease: cubic-bezier(.4, 0, .2, 1);
@@ -85,14 +85,14 @@ body.sk-app {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Subtle grid background pattern */
+/* Subtle background pattern — light warm tones */
 body.sk-app::before {
   content: '';
   position: fixed;
   inset: 0;
   background:
-    radial-gradient(circle at 20% 20%, rgba(56,189,248,.03) 0%, transparent 50%),
-    radial-gradient(circle at 80% 80%, rgba(139,92,246,.03) 0%, transparent 50%);
+    radial-gradient(circle at 20% 20%, rgba(30,64,175,.02) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(109,40,217,.015) 0%, transparent 50%);
   pointer-events: none;
   z-index: 0;
 }
@@ -106,10 +106,7 @@ body.sk-app::before {
 .sk-num { font-variant-numeric: tabular-nums; }
 
 .sk-gradient-text {
-  background: var(--sk-grad-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sk-primary);
 }
 
 /* ---------- Layout ---------- */
@@ -170,13 +167,13 @@ body.sk-app::before {
 .sk-btn:active { transform: translateY(0); }
 .sk-btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
 
-.sk-btn-primary { background: var(--sk-grad-primary); color: #fff; box-shadow: 0 2px 12px rgba(14,165,233,.3); }
-.sk-btn-primary:hover { box-shadow: 0 4px 20px rgba(14,165,233,.4); }
+.sk-btn-primary { background: var(--sk-grad-primary); color: #fff; box-shadow: 0 2px 12px rgba(30,64,175,.2); }
+.sk-btn-primary:hover { box-shadow: 0 4px 20px rgba(30,64,175,.3); }
 
-.sk-btn-accent { background: var(--sk-grad-accent); color: #fff; box-shadow: 0 2px 12px rgba(139,92,246,.3); }
-.sk-btn-accent:hover { box-shadow: 0 4px 20px rgba(139,92,246,.4); }
+.sk-btn-accent { background: var(--sk-grad-accent); color: #fff; box-shadow: 0 2px 12px rgba(79,70,229,.2); }
+.sk-btn-accent:hover { box-shadow: 0 4px 20px rgba(79,70,229,.3); }
 
-.sk-btn-success { background: var(--sk-grad-success); color: #fff; box-shadow: 0 2px 12px rgba(16,185,129,.3); }
+.sk-btn-success { background: var(--sk-grad-success); color: #fff; box-shadow: 0 2px 12px rgba(4,120,87,.2); }
 
 .sk-btn-danger { background: linear-gradient(135deg, #ef4444, #f87171); color: #fff; }
 
@@ -206,25 +203,24 @@ body.sk-app::before {
   text-align: center;
   transition: border-color .2s var(--sk-ease);
 }
-.sk-stat:hover { border-color: rgba(56,189,248,.2); }
+.sk-stat:hover { border-color: rgba(30,64,175,.2); }
 .sk-stat-value {
-  font-size: 1.5rem;
+  font-size: 1.75rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
-  background: var(--sk-grad-primary);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  color: var(--sk-text);
+  letter-spacing: -.02em;
 }
 .sk-stat-label { font-size: .75rem; color: var(--sk-text-3); margin-top: .3rem; }
 
 /* ---------- Tables ---------- */
 .sk-table-wrap {
-  background: rgba(15, 23, 42, .4);
+  background: rgba(255, 255, 255, .85);
   border: 1px solid var(--sk-surface-border);
   border-radius: var(--sk-radius);
   overflow: hidden;
   margin-bottom: 1rem;
+  box-shadow: var(--sk-shadow-sm);
 }
 .sk-table-header {
   padding: .8rem 1.25rem;
@@ -232,7 +228,7 @@ body.sk-app::before {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: rgba(15, 23, 42, .6);
+  background: rgba(241, 243, 247, .8);
 }
 .sk-table-scroll { max-height: 600px; overflow-y: auto; }
 
@@ -258,18 +254,18 @@ body.sk-app::before {
   border-bottom: 1px solid rgba(148,163,184,.07);
   color: var(--sk-text-2);
 }
-.sk-table tr:hover td { background: rgba(56,189,248,.04); }
+.sk-table tr:hover td { background: rgba(30,64,175,.03); }
 .sk-table .num { text-align: right; font-family: var(--sk-font-mono); font-variant-numeric: tabular-nums; }
-.sk-table .total-row td { background: rgba(56,189,248,.08); font-weight: 600; color: var(--sk-primary); border-top: 2px solid rgba(56,189,248,.3); }
+.sk-table .total-row td { background: rgba(30,64,175,.06); font-weight: 600; color: var(--sk-primary); border-top: 2px solid rgba(30,64,175,.25); }
 
-/* Color-coded table headers */
-.sk-table-header.revenue { border-left: 3px solid var(--sk-success); }
+/* Color-coded table headers — top border + tinted background */
+.sk-table-header.revenue { border-top: 4px solid var(--sk-success); background: linear-gradient(135deg, rgba(4,120,87,.04), transparent); }
 .sk-table-header.revenue h3 { color: var(--sk-success); }
-.sk-table-header.expense { border-left: 3px solid var(--sk-orange); }
+.sk-table-header.expense { border-top: 4px solid var(--sk-orange); background: linear-gradient(135deg, rgba(194,65,12,.04), transparent); }
 .sk-table-header.expense h3 { color: var(--sk-orange); }
-.sk-table-header.profit { border-left: 3px solid var(--sk-primary); }
+.sk-table-header.profit { border-top: 4px solid var(--sk-primary); background: linear-gradient(135deg, rgba(30,64,175,.04), transparent); }
 .sk-table-header.profit h3 { color: var(--sk-primary); }
-.sk-table-header.output { border-left: 3px solid var(--sk-purple); }
+.sk-table-header.output { border-top: 4px solid var(--sk-purple); background: linear-gradient(135deg, rgba(109,40,217,.04), transparent); }
 .sk-table-header.output h3 { color: var(--sk-purple); }
 
 /* ---------- Upload Zone ---------- */
@@ -281,17 +277,17 @@ body.sk-app::before {
   text-align: center;
   cursor: pointer;
   transition: all .3s var(--sk-ease);
-  background: rgba(56,189,248,.03);
+  background: rgba(30,64,175,.02);
 }
 .sk-upload-zone:hover {
   border-color: var(--sk-primary);
-  background: rgba(56,189,248,.08);
+  background: rgba(30,64,175,.05);
   box-shadow: var(--sk-shadow-glow);
 }
 .sk-upload-zone.loaded {
   border-color: var(--sk-success);
   border-style: solid;
-  background: rgba(52,211,153,.06);
+  background: rgba(4,120,87,.04);
 }
 .sk-upload-zone input[type="file"] { display: none; }
 .sk-upload-label { font-weight: 500; font-size: .95rem; margin-bottom: .3rem; }
@@ -327,11 +323,11 @@ body.sk-app::before {
   flex: 1;
   text-align: center;
 }
-.sk-tab:hover { color: var(--sk-text); background: rgba(56,189,248,.06); }
+.sk-tab:hover { color: var(--sk-text); background: rgba(30,64,175,.05); }
 .sk-tab.active {
   color: #fff;
   background: var(--sk-grad-primary);
-  box-shadow: 0 2px 8px rgba(14,165,233,.3);
+  box-shadow: 0 2px 8px rgba(30,64,175,.25);
 }
 
 /* ---------- Form Inputs ---------- */
@@ -362,18 +358,18 @@ body.sk-app::before {
   font-weight: 600;
   white-space: nowrap;
 }
-.sk-badge-primary { background: rgba(56,189,248,.15); color: var(--sk-primary); }
-.sk-badge-success { background: rgba(52,211,153,.15); color: var(--sk-success); }
-.sk-badge-warning { background: rgba(251,191,36,.15); color: var(--sk-warning); }
-.sk-badge-danger { background: rgba(248,113,113,.15); color: var(--sk-danger); }
-.sk-badge-purple { background: rgba(167,139,250,.15); color: var(--sk-purple); }
+.sk-badge-primary { background: rgba(30,64,175,.1); color: var(--sk-primary); }
+.sk-badge-success { background: rgba(4,120,87,.1); color: var(--sk-success); }
+.sk-badge-warning { background: rgba(180,83,9,.1); color: var(--sk-warning); }
+.sk-badge-danger { background: rgba(220,38,38,.1); color: var(--sk-danger); }
+.sk-badge-purple { background: rgba(109,40,217,.1); color: var(--sk-purple); }
 
 /* ---------- Modal ---------- */
 .sk-modal-overlay {
   display: none;
   position: fixed;
   inset: 0;
-  background: rgba(9,13,19,.75);
+  background: rgba(15,23,42,.4);
   backdrop-filter: blur(4px);
   z-index: 200;
   align-items: center;
@@ -396,7 +392,7 @@ body.sk-app::before {
 .sk-loading {
   position: fixed;
   inset: 0;
-  background: rgba(9,13,19,.8);
+  background: rgba(241,243,247,.85);
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -426,13 +422,11 @@ body.sk-app::before {
 
 /* ---------- Print ---------- */
 @media print {
-  body.sk-app { background: #fff !important; color: #000 !important; }
+  body.sk-app { background: #fff !important; }
   body.sk-app::before { display: none; }
-  .sk-card { background: none !important; border: 1px solid #ddd !important; backdrop-filter: none !important; }
+  .sk-card { background: none !important; backdrop-filter: none !important; }
   .sk-btn, .sk-upload-zone, .sk-loading { display: none !important; }
-  .sk-table th { background: #eee !important; color: #000 !important; position: static !important; }
-  .sk-table td { color: #333 !important; }
-  .sk-stat-value { background: none !important; -webkit-text-fill-color: #000 !important; }
+  .sk-table th { position: static !important; }
 }
 
 /* ---------- Folder Buttons ---------- */
@@ -443,8 +437,8 @@ body.sk-app::before {
   margin-bottom: 1rem;
 }
 .sk-folder-btn {
-  background: rgba(56,189,248,.08);
-  border: 1px solid rgba(56,189,248,.2);
+  background: rgba(30,64,175,.05);
+  border: 1px solid rgba(30,64,175,.15);
   color: var(--sk-text-2);
   padding: .4rem .8rem;
   border-radius: var(--sk-radius-sm);
@@ -453,12 +447,12 @@ body.sk-app::before {
   font-family: var(--sk-font);
   transition: all .2s var(--sk-ease);
 }
-.sk-folder-btn:hover { background: rgba(56,189,248,.15); border-color: rgba(56,189,248,.35); }
+.sk-folder-btn:hover { background: rgba(30,64,175,.1); border-color: rgba(30,64,175,.25); }
 .sk-folder-btn.active { background: var(--sk-grad-primary); border-color: transparent; color: #fff; }
 
 /* ---------- Collapsible Rows ---------- */
 .sk-collapsible { cursor: pointer; user-select: none; }
-.sk-collapsible:hover td { background: rgba(56,189,248,.06) !important; }
+.sk-collapsible:hover td { background: rgba(30,64,175,.04) !important; }
 .sk-toggle-arrow { display: inline-block; font-size: .8rem; transition: transform .2s; margin-right: .4rem; }
 .sk-toggle-arrow.open { transform: rotate(180deg); }
 .sk-breakdown-row td { font-size: .78rem; color: var(--sk-text-3); }

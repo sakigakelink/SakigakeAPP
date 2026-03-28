@@ -3,51 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TKC Monthly Analyzer</title>
+    <title>損益計算 重点項目</title>
     <link rel="stylesheet" href="/static/css/design-system.css">
     <style>
         body { min-height: 100vh; }
         .header {
-            background: linear-gradient(180deg, var(--sk-bg-2), var(--sk-bg-1));
+            background: #ffffff;
             padding: 1.25rem 2rem;
             border-bottom: 1px solid var(--sk-surface-border);
         }
-        .header h1 { font-size: 1.4rem; font-weight: 700; background: var(--sk-grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .header h1 { font-size: 1.4rem; font-weight: 700; color: var(--sk-primary); }
         .header span { color: var(--sk-text-4); font-size: 0.88rem; }
         .container { max-width: 100%; margin: 0 auto; padding: 1.5rem; position: relative; z-index: 1; }
-
-        .upload-zone {
-            background: var(--sk-surface);
-            backdrop-filter: blur(12px);
-            border: 2px dashed rgba(148,163,184,.2);
-            border-radius: var(--sk-radius-lg);
-            padding: 2.5rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s var(--sk-ease);
-            margin-bottom: 1.5rem;
-        }
-        .upload-zone:hover { border-color: var(--sk-primary); background: rgba(56,189,248,.06); box-shadow: 0 0 20px rgba(56,189,248,.1); }
-        .upload-zone h3 { margin-bottom: 0.5rem; font-weight: 600; }
-        .upload-zone p { color: var(--sk-text-4); }
-        .upload-zone input { display: none; }
-
-        .file-list { margin-bottom: 1.5rem; }
-        .file-item {
-            background: var(--sk-surface);
-            border: 1px solid var(--sk-surface-border);
-            border-radius: var(--sk-radius);
-            padding: 0.8rem 1rem;
-            margin-bottom: 0.5rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            transition: border-color .15s;
-        }
-        .file-item:hover { border-color: rgba(56,189,248,.2); }
-        .file-item span { color: var(--sk-text-3); font-size: 0.85rem; margin-left: 1rem; }
-        .btn-remove { background: none; border: none; color: var(--sk-danger); cursor: pointer; font-size: 1.2rem; transition: opacity .15s; }
-        .btn-remove:hover { opacity: .7; }
 
         .btn {
             padding: .6rem 1.2rem;
@@ -64,10 +31,10 @@
             gap: .3rem;
         }
         .btn:hover { transform: translateY(-1px); }
-        .btn-primary { background: var(--sk-grad-primary); color: #fff; box-shadow: 0 2px 10px rgba(14,165,233,.25); }
-        .btn-primary:hover { box-shadow: 0 4px 16px rgba(14,165,233,.35); }
-        .btn-secondary { background: var(--sk-bg-4); color: var(--sk-text-2); }
-        .btn-secondary:hover { background: rgba(100,116,139,.5); }
+        .btn-primary { background: var(--sk-grad-primary); color: #fff; box-shadow: 0 2px 10px rgba(30,64,175,.2); }
+        .btn-primary:hover { box-shadow: 0 4px 16px rgba(30,64,175,.3); }
+        .btn-secondary { background: var(--sk-bg-3); color: var(--sk-text-2); }
+        .btn-secondary:hover { background: var(--sk-bg-4); }
 
         .results { display: none; margin-top: 2rem; }
         .results.active { display: block; }
@@ -77,7 +44,7 @@
             backdrop-filter: blur(8px);
             border: 1px solid var(--sk-surface-border);
             border-radius: var(--sk-radius-lg);
-            overflow: hidden;
+            overflow-x: auto;
             margin-bottom: 1.5rem;
         }
         .table-header {
@@ -86,19 +53,19 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            background: rgba(15,23,42,.6);
+            background: rgba(241,243,247,.8);
         }
         .table-header h3 { font-size: 1rem; font-weight: 600; }
-        .table-header.revenue { border-left: 3px solid var(--sk-success); }
+        .table-header.revenue { border-top: 4px solid var(--sk-success); background: linear-gradient(135deg, rgba(4,120,87,.04), transparent); }
         .table-header.revenue h3 { color: var(--sk-success); }
-        .table-header.expense { border-left: 3px solid var(--sk-orange); }
+        .table-header.expense { border-top: 4px solid var(--sk-orange); background: linear-gradient(135deg, rgba(194,65,12,.04), transparent); }
         .table-header.expense h3 { color: var(--sk-orange); }
-        .table-header.profit { border-left: 3px solid var(--sk-primary); }
+        .table-header.profit { border-top: 4px solid var(--sk-primary); background: linear-gradient(135deg, rgba(30,64,175,.04), transparent); }
         .table-header.profit h3 { color: var(--sk-primary); }
-        .table-header.output { border-left: 3px solid var(--sk-purple); }
+        .table-header.output { border-top: 4px solid var(--sk-purple); background: linear-gradient(135deg, rgba(109,40,217,.04), transparent); }
         .table-header.output h3 { color: var(--sk-purple); }
 
-        table { width: 100%; border-collapse: collapse; font-size: 0.75rem; table-layout: fixed; }
+        table { width: max-content; min-width: 100%; border-collapse: collapse; font-size: 0.85rem; }
         th {
             background: var(--sk-bg-2);
             padding: 0.6rem 0.4rem;
@@ -110,23 +77,22 @@
         }
         th:first-child { text-align: left; width: 160px; min-width: 160px; padding-left: 1rem; }
         td {
-            padding: 0.5rem 0.4rem;
-            border-bottom: 1px solid rgba(148,163,184,.07);
+            padding: 0.55rem 0.5rem;
+            border-bottom: 1px solid rgba(100,116,139,.08);
             text-align: right;
             font-family: var(--sk-font-mono);
-            font-size: 0.7rem;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 0.8rem;
+            white-space: nowrap;
             color: var(--sk-text-2);
         }
-        td:first-child { text-align: left; font-family: var(--sk-font); padding-left: 1rem; font-size: 0.75rem; }
-        tr:hover td { background: rgba(56,189,248,.04); }
-        .subtotal { background: rgba(100,116,139,.08); font-weight: 600; }
-        .subtotal td { border-top: 1px solid rgba(100,116,139,.3); }
-        .total-row { background: rgba(56,189,248,.08); font-weight: 700; }
-        .total-row td { border-top: 2px solid rgba(56,189,248,.3); color: var(--sk-primary); }
-        .calculated { background: rgba(167,139,250,.06); font-style: italic; }
-        .manual-row { background: rgba(52,211,153,.06); }
+        td:first-child { text-align: left; font-family: var(--sk-font); padding-left: 1rem; font-size: 0.82rem; }
+        tr:hover td { background: rgba(30,64,175,.03); }
+        .subtotal { background: rgba(100,116,139,.06); font-weight: 600; }
+        .subtotal td { border-top: 1px solid rgba(100,116,139,.2); }
+        .total-row { background: rgba(30,64,175,.06); font-weight: 700; }
+        .total-row td { border-top: 2px solid rgba(30,64,175,.25); color: var(--sk-primary); font-size: 0.85rem; }
+        .calculated { background: rgba(109,40,217,.03); font-style: italic; }
+        .manual-row { background: rgba(4,120,87,.03); }
         .manual-input {
             width: 100%;
             padding: 0.3rem;
@@ -135,19 +101,19 @@
             background: var(--sk-bg-2);
             color: var(--sk-text);
             font-family: var(--sk-font-mono);
-            font-size: 0.7rem;
+            font-size: 0.8rem;
             text-align: right;
             -moz-appearance: textfield;
             transition: border-color .2s;
         }
         .manual-input::-webkit-outer-spin-button,
         .manual-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .manual-input:focus { outline: none; border-color: var(--sk-primary); box-shadow: 0 0 0 2px rgba(56,189,248,.2); }
+        .manual-input:focus { outline: none; border-color: var(--sk-primary); box-shadow: 0 0 0 2px rgba(30,64,175,.12); }
 
         .loading {
             position: fixed;
             inset: 0;
-            background: rgba(9,13,19,.85);
+            background: rgba(241,243,247,.85);
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -169,34 +135,15 @@
 </head>
 <body class="sk-app">
     <header class="header">
-        <h1>TKC Monthly Trial Balance Analyzer</h1>
-        <span>Upload multiple monthly PDFs to compare</span>
+        <h1>損益計算 重点項目</h1>
+        <span>月次合算試算表の重点項目を表示</span>
     </header>
 
     <main class="container">
-        <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
-            <h3>Drop PDF and TXT files here or click to select</h3>
-            <p>Upload monthly trial balance PDFs + General Ledger TXT</p>
-            <input type="file" id="fileInput" accept=".pdf,.txt" multiple>
-        </div>
-
-        <div class="file-list" id="fileList"></div>
-
-        <div id="actionBar" style="display: none;">
-            <button class="btn btn-primary" onclick="analyzeFiles()">Analyze</button>
-            <button class="btn btn-secondary" onclick="clearFiles()">Clear</button>
-        </div>
-        
-        <div class="action-bar" style="margin-bottom: 1.5rem;">
-            <button class="btn btn-secondary" onclick="document.getElementById('jsonInput').click()">データ読込</button>
-            <input type="file" id="jsonInput" accept=".json" style="display:none" onchange="loadJSON(event)">
-        </div>
-
         <section class="results" id="results">
             <div class="action-bar">
                 <span class="info-text" id="infoText"></span>
                 <div>
-                    <button class="btn btn-secondary" onclick="saveJSON()">データ保存</button>
                     <button class="btn btn-secondary" onclick="exportPDF()">PDF出力</button>
                 </div>
             </div>
@@ -249,101 +196,11 @@
 
     <div class="loading" id="loading">
         <div class="spinner"></div>
-        <p>Analyzing...</p>
+        <p>読み込み中...</p>
     </div>
 
     <script>
-        let uploadedFiles = [];
         let analysisData = null;
-
-        const uploadZone = document.getElementById('uploadZone');
-        const fileInput = document.getElementById('fileInput');
-
-        // ブラウザのデフォルトドロップ動作を全面的に防止
-        document.addEventListener('dragover', e => e.preventDefault());
-        document.addEventListener('drop', e => e.preventDefault());
-
-        uploadZone.addEventListener('dragover', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.style.borderColor = '#38bdf8';
-        });
-
-        uploadZone.addEventListener('dragleave', () => {
-            uploadZone.style.borderColor = '#475569';
-        });
-
-        uploadZone.addEventListener('drop', e => {
-            e.preventDefault();
-            e.stopPropagation();
-            uploadZone.style.borderColor = '#475569';
-            handleFiles(e.dataTransfer.files);
-        });
-
-        fileInput.addEventListener('change', e => handleFiles(e.target.files));
-
-        function handleFiles(files) {
-            for (const file of files) {
-                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf') || file.name.toLowerCase().endsWith('.txt')) {
-                    uploadedFiles.push(file);
-                }
-            }
-            renderFileList();
-        }
-
-        function renderFileList() {
-            const list = document.getElementById('fileList');
-            const actionBar = document.getElementById('actionBar');
-            
-            if (uploadedFiles.length === 0) {
-                list.innerHTML = '';
-                actionBar.style.display = 'none';
-                return;
-            }
-            
-            actionBar.style.display = 'block';
-            list.innerHTML = uploadedFiles.map((f, i) => `
-                <div class="file-item">
-                    <div>
-                        ${f.name}
-                        <span>${(f.size / 1024).toFixed(1)} KB</span>
-                    </div>
-                    <button class="btn-remove" onclick="removeFile(${i})">×</button>
-                </div>
-            `).join('');
-        }
-
-        function removeFile(i) {
-            uploadedFiles.splice(i, 1);
-            renderFileList();
-        }
-
-        function clearFiles() {
-            uploadedFiles = [];
-            analysisData = null;
-            renderFileList();
-            document.getElementById('results').classList.remove('active');
-        }
-
-        async function analyzeFiles() {
-            if (uploadedFiles.length === 0) return;
-            
-            document.getElementById('loading').classList.add('active');
-            
-            const formData = new FormData();
-            uploadedFiles.forEach(f => formData.append('files', f));
-            
-            try {
-                const res = await fetch('/api/upload', { method: 'POST', body: formData });
-                analysisData = await res.json();
-                renderResults();
-                document.getElementById('results').classList.add('active');
-            } catch (e) {
-                alert('Error: ' + e.message);
-            } finally {
-                document.getElementById('loading').classList.remove('active');
-            }
-        }
 
         function renderResults() {
             const revenue = analysisData.revenue_display;
@@ -365,7 +222,6 @@
         }
 
         function renderTable(prefix, accounts, months) {
-            console.log('renderTable:', prefix, accounts);
             const headEl = document.getElementById(prefix + 'Head');
             const bodyEl = document.getElementById(prefix + 'Body');
             
@@ -377,18 +233,15 @@
                 </tr>
             `;
             
-            bodyEl.innerHTML = accounts.map((acc, idx) => {
+            bodyEl.innerHTML = accounts.map(acc => {
                 const isTotal = acc.name.includes('合計');
                 const isSubtotal = acc.is_subtotal && !isTotal;
                 const isCalculated = acc.is_calculated;
                 const isManual = acc.is_manual;
-                const dependsOnManual = acc.depends_on_manual;
-                console.log('acc:', acc.name, 'isManual:', isManual);
                 let total = 0;
                 
                 let cells;
                 if (isManual) {
-                    console.log('Creating manual input for:', acc.name);
                     cells = months.map(m => {
                         const val = acc.monthly_data[m] || 0;
                         return `<td><input type="number" class="manual-input" data-prefix="${prefix}" data-name="${acc.name}" data-month="${m}" value="${val}" onchange="updateManualValue(this)"></td>`;
@@ -410,14 +263,11 @@
                 else if (isCalculated) rowClass = 'calculated';
                 else if (isManual) rowClass = 'manual-row';
                 
-                const rowId = dependsOnManual ? `data-depends-on="${dependsOnManual}"` : '';
-                const totalId = dependsOnManual ? `id="${prefix}-${acc.name}-total"` : '';
-                
                 return `
-                    <tr class="${rowClass}" ${rowId}>
+                    <tr class="${rowClass}">
                         <td>${acc.name}</td>
                         ${cells}
-                        <td ${totalId}>${formatNum(total)}</td>
+                        <td>${formatNum(total)}</td>
                     </tr>
                 `;
             }).join('');
@@ -466,31 +316,6 @@
                 : Object.values(acc.monthly_data).reduce((a, b) => a + b, 0);
             const row = input.closest('tr');
             row.querySelector('td:last-child').textContent = formatNum(total);
-
-            // 依存する行（経常利益）を更新
-            updateDependentRows(prefix, name);
-        }
-        
-        function updateDependentRows(prefix, manualFieldName) {
-            const display = analysisData[prefix + '_display'];
-            const months = display.months;
-            
-            // 医業利益を取得
-            const igyoRieki = display.accounts.find(a => a.name === '医業（事業）利益');
-            // マニュアル入力値を取得
-            const manualAcc = display.accounts.find(a => a.name === manualFieldName);
-            // 経常利益を取得
-            const keijyoRieki = display.accounts.find(a => a.depends_on_manual === manualFieldName);
-            
-            if (igyoRieki && manualAcc && keijyoRieki) {
-                // 経常利益 = 医業利益 + 医業外利益
-                months.forEach(m => {
-                    keijyoRieki.monthly_data[m] = (igyoRieki.monthly_data[m] || 0) + (manualAcc.monthly_data[m] || 0);
-                });
-                
-                // 画面を再描画
-                renderTable(prefix, display.accounts, months);
-            }
         }
 
         function formatNum(n) {
@@ -499,7 +324,8 @@
         }
 
         function getDaysInMonth(monthStr) {
-            const monthNum = parseInt(monthStr.replace('月', ''));
+            // "25/4月" → 4、"4月" → 4
+            const monthNum = parseInt(monthStr.replace(/^\d+\//, '').replace('月', ''));
             const monthYears = analysisData && analysisData.all_data ? analysisData.all_data.month_years || {} : {};
             const year = monthYears[monthStr] || new Date().getFullYear();
             return new Date(year, monthNum, 0).getDate();
@@ -516,63 +342,6 @@
                 totalDays += days;
             }
             return totalDays > 0 ? Math.round(weightedSum / totalDays) : 0;
-        }
-
-        async function saveJSON() {
-            if (!analysisData) {
-                alert('データがありません');
-                return;
-            }
-            
-            try {
-                const res = await fetch('/api/save_json', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(analysisData)
-                });
-                
-                const blob = await res.blob();
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = 'tkc_data.json';
-                a.click();
-                URL.revokeObjectURL(url);
-            } catch (e) {
-                alert('保存エラー: ' + e.message);
-            }
-        }
-        
-        async function loadJSON(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const formData = new FormData();
-            formData.append('file', file);
-            
-            document.getElementById('loading').classList.add('active');
-            
-            try {
-                const res = await fetch('/api/load_json', {
-                    method: 'POST',
-                    body: formData
-                });
-                
-                const data = await res.json();
-                if (data.error) {
-                    alert('読込エラー: ' + data.error);
-                    return;
-                }
-                
-                analysisData = data;
-                document.getElementById('results').classList.add('active');
-                renderResults();
-            } catch (e) {
-                alert('読込エラー: ' + e.message);
-            } finally {
-                document.getElementById('loading').classList.remove('active');
-                event.target.value = '';
-            }
         }
 
         async function exportPDF() {
@@ -594,7 +363,7 @@
             }
         }
 
-        // data/ フォルダから自動読み込み + localStorage復元
+        // data/ フォルダから自動読み込み
         (async function autoload() {
             document.getElementById('loading').classList.add('active');
             try {
@@ -603,11 +372,8 @@
                     analysisData = await res.json();
                     renderResults();
                     document.getElementById('results').classList.add('active');
-                    document.getElementById('uploadZone').style.display = 'none';
-                    document.getElementById('fileList').style.display = 'none';
                 }
             } catch (e) {
-                console.log('Autoload skipped:', e.message);
             } finally {
                 document.getElementById('loading').classList.remove('active');
             }

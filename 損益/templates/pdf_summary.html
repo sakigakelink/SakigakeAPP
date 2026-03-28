@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>{{ org }} 月次サマリー</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@media print{@page{size:A4 landscape;margin:6mm}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}body{padding:0!important;font-size:7px!important}.no-print{display:none!important}.summary-cards{gap:8px!important;margin-bottom:10px!important}.card{padding:10px!important}.card-value{font-size:18px!important}table{font-size:7.5px!important}th,td{padding:4px 5px!important}}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Inter','Noto Sans JP',sans-serif;font-size:11px;color:#1e293b;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);min-height:100vh;padding:20px}.container{max-width:1400px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:24px}.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}h1{font-size:22px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:12px}h1::before{content:'';width:5px;height:28px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:3px}.print-date{font-size:11px;color:#64748b}.btn-group{display:flex;gap:10px}.btn{padding:10px 20px;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;gap:6px}.btn-print{background:linear-gradient(135deg,#6366f1,#4f46e5)}.btn-print:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,0.4)}.summary-cards{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}.card{background:#fff;border-radius:12px;padding:18px;position:relative;overflow:hidden;border:1px solid #e2e8f0;transition:transform 0.2s,box-shadow 0.2s}.card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1)}.card::before{content:'';position:absolute;top:0;left:0;right:0;height:4px}.card-revenue::before{background:linear-gradient(90deg,#047857,#059669)}.card-expense::before{background:linear-gradient(90deg,#c2410c,#d97706)}.card-profit::before{background:linear-gradient(90deg,#1e3a8a,#1e40af)}.card-margin::before{background:linear-gradient(90deg,#6d28d9,#7c3aed)}.card-label{font-size:11px;color:#64748b;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px}.card-icon{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px}.card-revenue .card-icon{background:#d1fae5;color:#047857}.card-expense .card-icon{background:#ffedd5;color:#c2410c}.card-profit .card-icon{background:#dbeafe;color:#1e40af}.card-margin .card-icon{background:#ede9fe;color:#6d28d9}.card-value{font-size:26px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-0.5px}.card-value.positive{color:#059669}.card-value.negative{color:#dc2626}.card-sub{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px}.card-period{color:#94a3b8;font-size:10px}table{width:100%;border-collapse:collapse;font-size:9px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)}thead th{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);color:#fff;padding:10px 8px;text-align:center;font-weight:600;letter-spacing:0.3px;position:relative}thead th::after{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,0.1)}th:first-child{text-align:left;padding-left:14px;min-width:120px;border-radius:8px 0 0 0}th:last-child{background:linear-gradient(135deg,#172554 0%,#1e3a8a 100%);border-radius:0 8px 0 0}td{padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Inter',monospace;font-variant-numeric:tabular-nums;color:#334155}td:first-child{text-align:left;padding-left:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;color:#1e293b}td:last-child{background:#f8fafc;font-weight:700;color:#0f172a}tbody tr{background:#fff;transition:background 0.15s}tbody tr:nth-child(even){background:#fafbfc}tbody tr:hover{background:#f1f5f9}.indent{padding-left:28px!important;color:#64748b;font-weight:400!important}.section{background:linear-gradient(90deg,#eff6ff,#f8fafc)!important}.section td{font-weight:600}.section td:first-child{color:#1e40af}.section td:last-child{background:#dbeafe!important}.profit{background:linear-gradient(90deg,#ecfdf5,#f0fdf4)!important}.profit td{font-weight:600;color:#047857}.profit td:last-child{background:#d1fae5!important;color:#047857}.negative{color:#dc2626!important}.pct{color:#94a3b8;font-size:7px;display:block;margin-top:2px}tbody tr:last-child td:first-child{border-radius:0 0 0 8px}tbody tr:last-child td:last-child{border-radius:0 0 8px 0}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>{{ org }} 月次サマリー</h1>
+    <div class="btn-group no-print">
+      <button class="btn btn-print" onclick="window.print()">🖨️ 印刷 / PDF</button>
+    </div>
+    <div class="print-date">出力日時：{{ now }}</div>
+  </div>
+  <div class="summary-cards">
+    <div class="card card-revenue">
+      <div class="card-label"><span class="card-icon">💰</span>医業収益（累計）</div>
+      <div class="card-value">{{ fmt_oku(total_rev) }}</div>
+      <div class="card-sub"><span class="card-period">4月〜{{ latest_m }}</span></div>
+    </div>
+    <div class="card card-expense">
+      <div class="card-label"><span class="card-icon">📊</span>医業費用（累計）</div>
+      <div class="card-value">{{ fmt_oku(total_exp) }}</div>
+      <div class="card-sub"><span class="card-period">対収益比 {{ "%.1f"|format(exp_ratio) }}%</span></div>
+    </div>
+    <div class="card card-profit">
+      <div class="card-label"><span class="card-icon">📈</span>医業利益（累計）</div>
+      <div class="card-value {{ 'positive' if total_igyou >= 0 else 'negative' }}">{{ fmt_oku(total_igyou) }}</div>
+      <div class="card-sub"><span class="card-period">利益率 {{ "%.1f"|format(igyou_ratio) }}%</span></div>
+    </div>
+    <div class="card card-margin">
+      <div class="card-label"><span class="card-icon">📉</span>当月経常利益</div>
+      <div class="card-value {{ 'positive' if latest_keijo_houjin >= 0 else 'negative' }}">{{ fmt_oku(latest_keijo_houjin) }}</div>
+      <div class="card-sub"><span class="card-period">{{ latest_m }}</span></div>
+    </div>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>項目</th>
+        {% for m in months %}<th>{{ m }}</th>{% endfor %}
+        <th>合計</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in rows %}
+      <tr class="{{ row.row_class }}">
+        <td class="{{ row.td_class }}">{{ row.name }}</td>
+        {% for cell in row.cells %}
+        <td{% if cell.neg %} class="negative"{% endif %}>{{ cell.fmtd }}{% if cell.pct %}<span class="pct">{{ cell.pct }}</span>{% endif %}</td>
+        {% endfor %}
+        <td{% if row.total_neg %} class="negative"{% endif %}>{{ row.total_fmtd }}{% if row.total_pct %}<span class="pct">{{ row.total_pct }}</span>{% endif %}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+</body>
+</html>

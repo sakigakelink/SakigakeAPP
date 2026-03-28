@@ -9,23 +9,23 @@
     body { min-height: 100vh; padding: 1.5rem; }
     .container { max-width: 1400px; margin: 0 auto; position: relative; z-index: 1; }
     .header { text-align: center; margin-bottom: 1.5rem; padding: 1rem 0; border-bottom: 1px solid var(--sk-surface-border); }
-    .header h1 { font-size: 1.5rem; font-weight: 700; background: var(--sk-grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .header h1 { font-size: 1.5rem; font-weight: 700; color: var(--sk-primary); }
     .header .sub { font-size: .85rem; color: var(--sk-text-3); margin-top: .25rem; }
 
     .card { background: var(--sk-surface); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid var(--sk-surface-border); border-radius: var(--sk-radius-lg); padding: 1.5rem; margin-bottom: 1.25rem; }
     .card h2 { margin-bottom: 1rem; font-weight: 600; font-size: 1.05rem; }
 
     .btn { background: var(--sk-grad-accent); color: #fff; border: none; padding: .55rem 1.1rem; border-radius: var(--sk-radius-sm); font-size: .85rem; font-weight: 500; cursor: pointer; font-family: var(--sk-font); display: inline-flex; align-items: center; gap: .4rem; transition: all .2s var(--sk-ease); }
-    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(139,92,246,.3); }
+    .btn:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(79,70,229,.2); }
     .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; box-shadow: none; }
     .btn-secondary { background: var(--sk-grad-success); }
     .btn-out { background: transparent; border: 1px solid var(--sk-surface-border); color: var(--sk-text-2); }
     .btn-out:hover { background: var(--sk-surface); transform: none; box-shadow: none; }
 
     .upload-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1rem; margin-bottom: 1rem; }
-    .upload-zone { display: block; border: 2px dashed rgba(148,163,184,.2); border-radius: var(--sk-radius-lg); padding: 1.2rem; text-align: center; cursor: pointer; transition: all .3s var(--sk-ease); background: rgba(56,189,248,.03); }
-    .upload-zone:hover { border-color: var(--sk-primary); background: rgba(56,189,248,.08); box-shadow: 0 0 20px rgba(56,189,248,.1); }
-    .upload-zone.loaded { border-color: var(--sk-success); border-style: solid; background: rgba(52,211,153,.06); }
+    .upload-zone { display: block; border: 2px dashed rgba(148,163,184,.2); border-radius: var(--sk-radius-lg); padding: 1.2rem; text-align: center; cursor: pointer; transition: all .3s var(--sk-ease); background: rgba(30,64,175,.02); }
+    .upload-zone:hover { border-color: var(--sk-primary); background: rgba(30,64,175,.05); box-shadow: 0 0 20px rgba(30,64,175,.06); }
+    .upload-zone.loaded { border-color: var(--sk-success); border-style: solid; background: rgba(4,120,87,.04); }
     .upload-zone input { display: none; }
     .upload-label { font-weight: 500; font-size: 1rem; margin-bottom: .3rem; }
     .upload-status { font-size: .78rem; color: var(--sk-text-4); }
@@ -33,25 +33,25 @@
 
     .btn-group { display: flex; gap: .8rem; flex-wrap: wrap; align-items: center; }
     .folder-btns { display: flex; gap: .4rem; flex-wrap: wrap; margin-bottom: 1rem; }
-    .folder-btn { background: rgba(56,189,248,.08); border: 1px solid rgba(56,189,248,.2); color: var(--sk-text-2); padding: .4rem .8rem; border-radius: var(--sk-radius-sm); font-size: .82rem; cursor: pointer; font-family: var(--sk-font); transition: all .2s var(--sk-ease); }
-    .folder-btn:hover { background: rgba(56,189,248,.15); border-color: rgba(56,189,248,.35); }
+    .folder-btn { background: rgba(30,64,175,.05); border: 1px solid rgba(30,64,175,.15); color: var(--sk-text-2); padding: .4rem .8rem; border-radius: var(--sk-radius-sm); font-size: .82rem; cursor: pointer; font-family: var(--sk-font); transition: all .2s var(--sk-ease); }
+    .folder-btn:hover { background: rgba(30,64,175,.1); border-color: rgba(30,64,175,.25); }
     .folder-btn.active { background: var(--sk-grad-primary); border-color: transparent; color: #fff; }
 
     .sg { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1rem; margin-bottom: 1.5rem; }
     .sc { background: var(--sk-surface); border: 1px solid var(--sk-surface-border); border-radius: var(--sk-radius); padding: 1rem 1.25rem; text-align: center; transition: border-color .2s; }
-    .sc:hover { border-color: rgba(56,189,248,.2); }
-    .sv { font-size: 1.4rem; font-weight: 700; font-variant-numeric: tabular-nums; background: var(--sk-grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .sc:hover { border-color: rgba(30,64,175,.15); }
+    .sv { font-size: 1.5rem; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--sk-text); letter-spacing: -.02em; }
     .sl { font-size: .75rem; color: var(--sk-text-3); margin-top: .3rem; }
 
-    .tc { overflow-x: auto; border-radius: var(--sk-radius); background: rgba(15,23,42,.4); border: 1px solid var(--sk-surface-border); margin-bottom: 1rem; }
+    .tc { overflow-x: auto; border-radius: var(--sk-radius); background: rgba(255,255,255,.85); border: 1px solid var(--sk-surface-border); margin-bottom: 1rem; box-shadow: 0 1px 3px rgba(0,0,0,.06); }
     .st { max-height: 600px; overflow-y: auto; }
     table { width: 100%; border-collapse: collapse; font-size: .82rem; }
     th, td { padding: .5rem .7rem; text-align: left; border-bottom: 1px solid rgba(148,163,184,.07); }
     th { background: var(--sk-bg-2); font-weight: 500; color: var(--sk-text-3); position: sticky; top: 0; white-space: nowrap; z-index: 5; border-bottom: 1px solid var(--sk-surface-border); }
-    tr:hover td { background: rgba(56,189,248,.04); }
+    tr:hover td { background: rgba(30,64,175,.03); }
     .num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--sk-font-mono); }
     .pay-value { font-weight: 500; color: var(--sk-success); }
-    .total-row td { background: rgba(56,189,248,.08) !important; font-weight: 600; border-top: 2px solid rgba(56,189,248,.3); color: var(--sk-primary); }
+    .total-row td { background: rgba(30,64,175,.06) !important; font-weight: 600; border-top: 2px solid rgba(30,64,175,.25); color: var(--sk-primary); }
     .hidden { display: none !important; }
 
     .collapsible { cursor: pointer; user-select: none; display: flex; justify-content: space-between; align-items: center; }
@@ -59,33 +59,28 @@
     .toggle-arrow { font-size: .8rem; transition: transform .2s; }
     .toggle-arrow.open { transform: rotate(180deg); }
 
-    .loading { position: fixed; inset: 0; background: rgba(9,13,19,.8); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+    .loading { position: fixed; inset: 0; background: rgba(241,243,247,.85); display: flex; align-items: center; justify-content: center; z-index: 9999; }
     .loading-spinner { width: 40px; height: 40px; border: 3px solid var(--sk-bg-4); border-top-color: var(--sk-primary); border-radius: 50%; animation: sk-spin .8s linear infinite; }
     @keyframes sk-spin { to { transform: rotate(360deg); } }
 
     .tab-nav { display: flex; gap: .25rem; margin-bottom: 1.5rem; justify-content: center; padding: .25rem; background: var(--sk-bg-2); border-radius: var(--sk-radius); border: 1px solid var(--sk-surface-border); max-width: 400px; margin-left: auto; margin-right: auto; }
     .tab-btn { background: transparent; border: none; color: var(--sk-text-3); padding: .55rem 1.2rem; border-radius: var(--sk-radius-sm); font-size: .88rem; cursor: pointer; font-family: var(--sk-font); font-weight: 500; transition: all .2s var(--sk-ease); flex: 1; text-align: center; }
-    .tab-btn:hover { color: var(--sk-text); background: rgba(56,189,248,.06); }
-    .tab-btn.active { background: var(--sk-grad-primary); color: #fff; box-shadow: 0 2px 8px rgba(14,165,233,.3); }
+    .tab-btn:hover { color: var(--sk-text); background: rgba(30,64,175,.05); }
+    .tab-btn.active { background: var(--sk-grad-primary); color: #fff; box-shadow: 0 2px 8px rgba(30,64,175,.25); }
 
     .sheets-section { margin-bottom: 1.5rem; }
     tr.collapsible { display: table-row; cursor: pointer; user-select: none; }
-    tr.collapsible:hover td { background: rgba(56,189,248,.06); }
+    tr.collapsible:hover td { background: rgba(30,64,175,.04); }
     .breakdown-row td { font-size: .78rem; color: var(--sk-text-3); }
     .breakdown-row td:first-child { padding-left: 2rem; }
-    .period-badge { display: inline-block; background: rgba(56,189,248,.15); color: var(--sk-primary); padding: .2rem .6rem; border-radius: 20px; font-size: .82rem; margin-left: .5rem; font-weight: 500; }
+    .period-badge { display: inline-block; background: rgba(30,64,175,.1); color: var(--sk-primary); padding: .2rem .6rem; border-radius: 20px; font-size: .82rem; margin-left: .5rem; font-weight: 500; }
 
     @media print {
-      body { background: #fff !important; color: #000 !important; padding: 0; }
+      body { background: #fff !important; padding: 0; }
       body::before { display: none; }
-      .card { background: none !important; border: 1px solid #ddd !important; backdrop-filter: none !important; padding: 0; margin-bottom: .8rem; }
+      .card { background: none !important; backdrop-filter: none !important; padding: 0; margin-bottom: .8rem; }
       .upload-grid, .btn-group, .folder-btns, .loading, .btn, .tab-nav { display: none !important; }
-      .sc { background: #f5f5f5 !important; border: 1px solid #ddd; }
-      .sv { background: none !important; -webkit-text-fill-color: #000 !important; color: #000 !important; }
-      .sl { color: #555 !important; }
-      th { background: #eee !important; color: #000 !important; position: static !important; }
-      td { color: #333 !important; }
-      .pay-value { color: #060 !important; }
+      th { position: static !important; }
       .hidden { display: none !important; }
       .detail-content { display: block !important; }
     }
@@ -110,13 +105,13 @@
   <div class="card" id="uploadCard">
     <h2>PDF読込</h2>
     <div id="folderSection">
-      <div style="font-size:.85rem;color:rgba(255,255,255,.7);margin-bottom:.5rem">サーバー上のフォルダから読込:</div>
+      <div style="font-size:.85rem;color:var(--sk-text-3);margin-bottom:.5rem">サーバー上のフォルダから読込:</div>
       <div class="folder-btns" id="folderBtns"></div>
       <div style="margin-top:.5rem">
         <button class="btn btn-secondary" id="loadAllBtn" onclick="loadAllFolders()">全月読込</button>
       </div>
     </div>
-    <div style="font-size:.85rem;color:rgba(255,255,255,.5);margin:1rem 0;text-align:center">── または PDFファイルをアップロード ──</div>
+    <div style="font-size:.85rem;color:var(--sk-text-4);margin:1rem 0;text-align:center">── または PDFファイルをアップロード ──</div>
     <div class="upload-grid">
       <label class="upload-zone" data-key="ippan">
         <input type="file" accept=".pdf" data-key="ippan">

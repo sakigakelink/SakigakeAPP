@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-TKC月次合算試算表 解析アプリ
-TXTファイルから中退共を抽出して退職金を計算
+損益計算表 重点項目ビューア
+TKC月次合算試算表PDFから重点項目を抽出し見やすく表示
 """
 
 import os
 import re
 import json
 import calendar
-import tempfile
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify
 import pdfplumber
-import pandas as pd
-from io import BytesIO
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-app.config['UPLOAD_FOLDER'] = os.path.join(tempfile.gettempdir(), 'tkc_uploads')
-os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+YAKUIN_TAISHOKUKIN_MONTHLY = 248700  # 役員退職金 月額積立額
 
 REVENUE_DISPLAY_ITEMS = [
     {'type': 'single', 'code': None, 'name': '入院診療収益計', 'label': '入院診療収益計'},
@@ -54,14 +51,14 @@ PROFIT_DISPLAY_ITEMS = [
     {'type': 'igyou_rieki', 'label': '医業（事業）利益'},
     {'type': 'keiri2_plus_chutaikyo', 'name': '経常利益', 'label': 'たいようの丘経常利益'},
     {'type': 'keijo_houjin', 'label': '経常利益（法人）'},
-    {'type': 'taishokukin', 'formula': '5436', 'fixed_add': 248700, 'label': '退職金'},
+    {'type': 'taishokukin', 'formula': '5436', 'fixed_add': YAKUIN_TAISHOKUKIN_MONTHLY, 'label': '退職金'},
 ]
 
 OUTPUT_DISPLAY_ITEMS = [
     {'type': 'single', 'code': None, 'name': '医業収益合計', 'label': '医業収益'},
     {'type': 'daily_revenue', 'label': '一日当たり収入'},
     {'type': 'manual_input', 'label': '平均入院患者数'},
-    {'type': 'calc_fixed', 'formula': '医業（事業）費用合計-CHUTAIKYO-5436', 'fixed_add': -248700, 'label': '医業費用'},
+    {'type': 'calc_fixed', 'formula': '医業（事業）費用合計-CHUTAIKYO-5436', 'fixed_add': -YAKUIN_TAISHOKUKIN_MONTHLY, 'label': '医業費用'},
     {'type': 'single', 'code': None, 'name': '材料費計', 'label': '材料費'},
     {'type': 'calc', 'formula': '給与費計-5431-5436', 'label': '人件費'},
     {'type': 'calc', 'formula': '常勤職員給与小計+5435', 'label': '　常勤・賞与'},
@@ -75,7 +72,7 @@ OUTPUT_DISPLAY_ITEMS = [
     {'type': 'igyou_rieki', 'label': '医業利益'},
     {'type': 'keiri2_plus_chutaikyo', 'name': '経常利益', 'label': 'たいようの丘経常利益'},
     {'type': 'keijo_houjin', 'label': '経常利益（法人）'},
-    {'type': 'taishokukin', 'formula': '5436', 'fixed_add': 248700, 'label': '退職金'},
+    {'type': 'taishokukin', 'formula': '5436', 'fixed_add': YAKUIN_TAISHOKUKIN_MONTHLY, 'label': '退職金'},
 ]
 
 
@@ -87,7 +84,7 @@ def parse_chutaikyo_txt(txt_path):
             with open(txt_path, 'r', encoding=enc) as f:
                 content = f.read()
             break
-        except:
+        except (UnicodeDecodeError, LookupError):
             continue
     if not content:
         return {'debit': debit_data, 'credit': credit_data, 'debug': debug_lines}
@@ -107,7 +104,7 @@ def parse_chutaikyo_txt(txt_path):
                         debit_data[month_key] = debit_data.get(month_key, 0) + debit
                         credit_data[month_key] = credit_data.get(month_key, 0) + credit
                         debug_lines.append({'month': month_key, 'date_str': date_str, 'debit': debit, 'credit': credit})
-                    except:
+                    except ValueError:
                         pass
     return {'debit': debit_data, 'credit': credit_data, 'debug': debug_lines}
 
@@ -117,7 +114,7 @@ def parse_tkc_pdf(pdf_path):
     def parse_number(s):
         try:
             return float(s.replace(',', '').replace(' ', ''))
-        except:
+        except (ValueError, AttributeError):
             return 0
     with pdfplumber.open(pdf_path) as pdf:
         all_lines = []
@@ -186,16 +183,34 @@ def parse_tkc_pdf(pdf_path):
     return result
 
 
+def _make_month_key(year, month):
+    """例: (2025, 4) → "25/4月" """
+    return f"{str(year)[2:]}/{month}月" if year else f"{month}月"
+
+
+def parse_month_from_filename(fname):
+    """ファイル名 YYMM.pdf から (西暦year, month) を返す。例: 0704.pdf → (2025, 4)"""
+    base = os.path.splitext(fname)[0]
+    m = re.match(r'^(\d{2})(\d{2})$', base)
+    if m:
+        reiwa, month = int(m.group(1)), int(m.group(2))
+        if 1 <= reiwa <= 99 and 1 <= month <= 12:
+            return 2018 + reiwa, month
+    return None, None
+
+
 def merge_all_monthly_data(pdf_results, chutaikyo_data=None):
     sorted_results = sorted(pdf_results, key=lambda x: (x.get('period_year', 0), x.get('period_month', 0)))
     months, all_accounts, keiri2_accounts = [], {}, {}
     month_years = {}
     for result in sorted_results:
-        month_key = f"{result.get('period_month', 0)}月"
-        if month_key not in months and result.get('period_month'):
+        year = result.get('period_year', 0)
+        month = result.get('period_month', 0)
+        month_key = _make_month_key(year, month)
+        if month_key not in months and month:
             months.append(month_key)
-        if result.get('period_month') and result.get('period_year'):
-            month_years[month_key] = result['period_year']
+        if month and year:
+            month_years[month_key] = year
         for acc in result.get('accounts', []):
             key = f"{acc['code']}_{acc['name']}"
             if key not in all_accounts:
@@ -212,7 +227,7 @@ def merge_all_monthly_data(pdf_results, chutaikyo_data=None):
             keiri2_accounts[key]['prev_year_balance'] = acc.get('prev_year_balance', 0)
     keiri1_keijo_data = {}
     for result in sorted_results:
-        month_key = f"{result.get('period_month', 0)}月"
+        month_key = _make_month_key(result.get('period_year', 0), result.get('period_month', 0))
         if result.get('keiri1_keijo'):
             keiri1_keijo_data[month_key] = result['keiri1_keijo'].get('monthly_amount', 0)
     txt_debit_data = chutaikyo_data.get('debit', {}) if chutaikyo_data else {}
@@ -226,7 +241,7 @@ def find_account(accounts, code=None, name=None):
     for acc in accounts:
         if code and acc['code'] == code:
             return acc
-        if name and name in acc.get('name', ''):
+        if name and acc.get('name', '') == name:
             return acc
     return None
 
@@ -298,13 +313,13 @@ def create_display_data(all_data, display_items):
         elif item['type'] == 'keihi_kei':
             found = find_account(accounts, name='経費計')
             txt_debit, txt_credit = all_data.get('txt_debit_data', {}), all_data.get('txt_credit_data', {})
-            monthly_data = {m: (found.get('monthly_data', {}).get(m, 0) if found else 0) - txt_debit.get(m, 0) + txt_credit.get(m, 0) - 248700 for m in months}
+            monthly_data = {m: (found.get('monthly_data', {}).get(m, 0) if found else 0) - txt_debit.get(m, 0) + txt_credit.get(m, 0) - YAKUIN_TAISHOKUKIN_MONTHLY for m in months}
             display_accounts.append({'code': '', 'name': item['label'], 'monthly_data': monthly_data, 'is_subtotal': False, 'is_calculated': True})
         elif item['type'] == 'igyou_hiyo':
             found = find_account(accounts, name='医業（事業）費用合計')
             found_5436 = find_account(accounts, code='5436')
             txt_debit, txt_credit = all_data.get('txt_debit_data', {}), all_data.get('txt_credit_data', {})
-            monthly_data = {m: (found.get('monthly_data', {}).get(m, 0) if found else 0) - txt_debit.get(m, 0) + txt_credit.get(m, 0) - 248700 - (found_5436.get('monthly_data', {}).get(m, 0) if found_5436 else 0) for m in months}
+            monthly_data = {m: (found.get('monthly_data', {}).get(m, 0) if found else 0) - txt_debit.get(m, 0) + txt_credit.get(m, 0) - YAKUIN_TAISHOKUKIN_MONTHLY - (found_5436.get('monthly_data', {}).get(m, 0) if found_5436 else 0) for m in months}
             display_accounts.append({'code': '', 'name': item['label'], 'monthly_data': monthly_data, 'is_subtotal': False, 'is_calculated': True})
         elif item['type'] == 'igyou_rieki':
             found_revenue = find_account(accounts, name='医業収益合計')
@@ -316,7 +331,7 @@ def create_display_data(all_data, display_items):
                 revenue_val = found_revenue.get('monthly_data', {}).get(m, 0) if found_revenue else 0
                 expense_val = found_expense.get('monthly_data', {}).get(m, 0) if found_expense else 0
                 val_5436 = found_5436.get('monthly_data', {}).get(m, 0) if found_5436 else 0
-                monthly_data[m] = revenue_val - (expense_val - txt_debit.get(m, 0) + txt_credit.get(m, 0) - 248700 - val_5436)
+                monthly_data[m] = revenue_val - (expense_val - txt_debit.get(m, 0) + txt_credit.get(m, 0) - YAKUIN_TAISHOKUKIN_MONTHLY - val_5436)
             display_accounts.append({'code': '', 'name': item['label'], 'monthly_data': monthly_data, 'is_subtotal': False, 'is_calculated': True})
         elif item['type'] == 'keijo_houjin':
             keiri1_keijo = all_data.get('keiri1_keijo_data', {})
@@ -327,7 +342,7 @@ def create_display_data(all_data, display_items):
             txt_debit = all_data.get('txt_debit_data', {})
             monthly_data = {}
             for m in months:
-                taishoku_val = taishoku_base.get(m, 0) + 248700 + (found_5436_keiri2.get('monthly_data', {}).get(m, 0) if found_5436_keiri2 else 0) + txt_debit.get(m, 0)
+                taishoku_val = taishoku_base.get(m, 0) + YAKUIN_TAISHOKUKIN_MONTHLY + (found_5436_keiri2.get('monthly_data', {}).get(m, 0) if found_5436_keiri2 else 0) + txt_debit.get(m, 0)
                 monthly_data[m] = keiri1_keijo.get(m, 0) + (keiri2_keijo.get('monthly_data', {}).get(m, 0) if keiri2_keijo else 0) + taishoku_val
             display_accounts.append({'code': '', 'name': item['label'], 'monthly_data': monthly_data, 'is_subtotal': False, 'is_calculated': True})
     return {'months': months, 'accounts': display_accounts, 'organization': all_data['organization'], 'keiri_kubun': all_data['keiri_kubun']}
@@ -352,7 +367,12 @@ def autoload_data():
         filepath = os.path.join(data_dir, fname)
         try:
             if fname.lower().endswith('.pdf'):
-                pdf_results.append(parse_tkc_pdf(filepath))
+                result = parse_tkc_pdf(filepath)
+                year_f, month_f = parse_month_from_filename(fname)
+                if year_f and month_f:
+                    result['period_year'] = year_f
+                    result['period_month'] = month_f
+                pdf_results.append(result)
             elif fname.lower().endswith('.txt'):
                 chutaikyo_data = parse_chutaikyo_txt(filepath)
         except Exception as e:
@@ -360,7 +380,7 @@ def autoload_data():
     if not pdf_results:
         return jsonify({'error': 'No PDF files found in data/'}), 404
     all_data = merge_all_monthly_data(pdf_results, chutaikyo_data)
-    result = {'individual': pdf_results, 'all_data': all_data, 'revenue_display': create_display_data(all_data, REVENUE_DISPLAY_ITEMS), 'expense_display': create_display_data(all_data, EXPENSE_DISPLAY_ITEMS), 'profit_display': create_display_data(all_data, PROFIT_DISPLAY_ITEMS), 'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS), 'chutaikyo_data': chutaikyo_data}
+    result = {'all_data': all_data, 'revenue_display': create_display_data(all_data, REVENUE_DISPLAY_ITEMS), 'expense_display': create_display_data(all_data, EXPENSE_DISPLAY_ITEMS), 'profit_display': create_display_data(all_data, PROFIT_DISPLAY_ITEMS), 'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS), 'chutaikyo_data': chutaikyo_data}
     # 手入力値をマージ
     if os.path.isfile(MANUAL_INPUT_FILE):
         try:
@@ -395,69 +415,67 @@ def save_manual_inputs():
     return jsonify({'ok': True})
 
 
-@app.route('/api/upload', methods=['POST'])
-def upload_files():
-    if 'files' not in request.files:
-        return jsonify({'error': 'No files selected'}), 400
-    files = request.files.getlist('files')
-    pdf_results, chutaikyo_data = [], {}
-    for file in files:
-        if file.filename:
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], file.filename)
-            file.save(filepath)
-            try:
-                if file.filename.lower().endswith('.pdf'):
-                    pdf_results.append(parse_tkc_pdf(filepath))
-                elif file.filename.lower().endswith('.txt'):
-                    chutaikyo_data = parse_chutaikyo_txt(filepath)
-            except Exception as e:
-                print(f"Error processing {file.filename}: {e}")
-            finally:
-                if os.path.exists(filepath):
-                    os.remove(filepath)
-    all_data = merge_all_monthly_data(pdf_results, chutaikyo_data)
-    return jsonify({'individual': pdf_results, 'all_data': all_data, 'revenue_display': create_display_data(all_data, REVENUE_DISPLAY_ITEMS), 'expense_display': create_display_data(all_data, EXPENSE_DISPLAY_ITEMS), 'profit_display': create_display_data(all_data, PROFIT_DISPLAY_ITEMS), 'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS), 'chutaikyo_data': chutaikyo_data})
+
+SECTION_ITEMS = ['医業収益', '医業費用', '人件費', '委託費', '設備費', '経費', '材料費', '退職金']
+AVG_ITEMS_PDF = ['平均入院患者数', '一日当たり収入']
 
 
-@app.route('/api/export', methods=['POST'])
-def export_excel():
-    data = request.json
-    if not data:
-        return jsonify({'error': 'No data'}), 400
-    output = BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        months = data.get('all_data', {}).get('months', [])
-        for sheet_name, display_key, label_col in [('収益', 'revenue_display', '勘定科目名'), ('費用', 'expense_display', '勘定科目名'), ('利益', 'profit_display', '勘定科目名'), ('出力', 'output_display', '項目')]:
-            display = data.get(display_key, {})
-            if display.get('accounts'):
-                rows = [{label_col: acc['name'], **{m: acc.get('monthly_data', {}).get(m, 0) for m in months}, '合計': sum(acc.get('monthly_data', {}).get(m, 0) for m in months)} for acc in display['accounts']]
-                pd.DataFrame(rows).to_excel(writer, sheet_name=sheet_name, index=False)
-    output.seek(0)
-    return send_file(output, mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', as_attachment=True, download_name=f'tkc_monthly_{datetime.now().strftime("%Y%m%d_%H%M%S")}.xlsx')
+def _fmt_num(n):
+    if n == 0 or n is None:
+        return '-', False
+    return f"{int(n):,}", n < 0
 
 
-@app.route('/api/save_json', methods=['POST'])
-def save_json():
-    data = request.json
-    if not data:
-        return jsonify({'error': 'No data'}), 400
-    output = BytesIO()
-    output.write(json.dumps(data, ensure_ascii=False, indent=2).encode('utf-8'))
-    output.seek(0)
-    return send_file(output, mimetype='application/json', as_attachment=True, download_name=f'tkc_data_{datetime.now().strftime("%Y%m%d_%H%M%S")}.json')
+def _fmt_pct(n, base):
+    return f"{n/base*100:.1f}%" if base else ''
 
 
-@app.route('/api/load_json', methods=['POST'])
-def load_json():
-    if 'file' not in request.files:
-        return jsonify({'error': 'No file'}), 400
-    file = request.files['file']
-    if not file.filename.endswith('.json'):
-        return jsonify({'error': 'JSON file required'}), 400
-    try:
-        return jsonify(json.load(file))
-    except Exception as e:
-        return jsonify({'error': str(e)}), 400
+def _fmt_oku(n):
+    if n == 0 or n is None:
+        return '-'
+    neg, n = n < 0, abs(n)
+    if n >= 1e8:
+        r = f"{int(n//1e8)}億{int((n%1e8)//1e4):,}万円" if (n % 1e8) // 1e4 else f"{int(n//1e8)}億円"
+    elif n >= 1e4:
+        r = f"{int(n//1e4):,}万円"
+    else:
+        r = f"{int(n):,}円"
+    return f"-{r}" if neg else r
+
+
+def _build_pdf_rows(accounts, months, month_years, revenue_data):
+    rows = []
+    for acc in accounts:
+        name = acc['name']
+        skip_pct = name in AVG_ITEMS_PDF
+        is_avg_item = name in AVG_ITEMS_PDF
+        row_class = 'profit' if '利益' in name else ('section' if name in SECTION_ITEMS else '')
+        td_class = 'indent' if name.startswith('　') else ''
+        total, weighted_sum, total_days = 0, 0, 0
+        cells = []
+        for m in months:
+            val = acc.get('monthly_data', {}).get(m, 0)
+            total += val
+            if is_avg_item:
+                month_num = int(m.replace('月', ''))
+                year = month_years.get(m, datetime.now().year)
+                days = calendar.monthrange(year, month_num)[1]
+                weighted_sum += val * days
+                total_days += days
+            base = revenue_data.get('monthly_data', {}).get(m, 0) if revenue_data else 0
+            fmtd, neg = _fmt_num(val)
+            pct = '' if skip_pct else _fmt_pct(val, base)
+            cells.append({'fmtd': fmtd, 'neg': neg, 'pct': pct})
+        if is_avg_item and total_days > 0:
+            total = round(weighted_sum / total_days)
+        total_base = sum(revenue_data.get('monthly_data', {}).values()) if revenue_data else 0
+        total_fmtd, total_neg = _fmt_num(total)
+        total_pct = '' if skip_pct else _fmt_pct(total, total_base)
+        rows.append({
+            'name': name.strip(), 'row_class': row_class, 'td_class': td_class,
+            'cells': cells, 'total_fmtd': total_fmtd, 'total_neg': total_neg, 'total_pct': total_pct,
+        })
+    return rows
 
 
 @app.route('/api/export_pdf', methods=['POST'])
@@ -470,90 +488,23 @@ def export_pdf():
     accounts = output_display.get('accounts', [])
     month_years = data.get('all_data', {}).get('month_years', {})
     org = output_display.get('organization', '') or '医療法人 梁風会'
-    revenue_data = next((acc for acc in accounts if acc['name'] == '医業収益'), None)
-    expense_data = next((acc for acc in accounts if acc['name'] == '医業費用'), None)
-    igyou_rieki_data = next((acc for acc in accounts if acc['name'] == '医業利益'), None)
-    keijo_houjin_data = next((acc for acc in accounts if acc['name'] == '経常利益（法人）'), None)
-    def fmt_num(n):
-        if n == 0 or n is None:
-            return '-', False
-        return f"{int(n):,}", n < 0
-    def fmt_pct(n, base):
-        return f"{n/base*100:.1f}%" if base else ''
-    def fmt_oku(n):
-        if n == 0 or n is None:
-            return '-'
-        neg, n = n < 0, abs(n)
-        if n >= 1e8:
-            r = f"{int(n//1e8)}億{int((n%1e8)//1e4):,}万円" if (n%1e8)//1e4 else f"{int(n//1e8)}億円"
-        elif n >= 1e4:
-            r = f"{int(n//1e4):,}万円"
-        else:
-            r = f"{int(n):,}円"
-        return f"-{r}" if neg else r
-    now = datetime.now().strftime('%Y/%m/%d')
+    revenue_data = next((a for a in accounts if a['name'] == '医業収益'), None)
+    expense_data = next((a for a in accounts if a['name'] == '医業費用'), None)
+    igyou_data = next((a for a in accounts if a['name'] == '医業利益'), None)
+    keijo_data = next((a for a in accounts if a['name'] == '経常利益（法人）'), None)
     total_rev = sum(revenue_data.get('monthly_data', {}).values()) if revenue_data else 0
     total_exp = sum(expense_data.get('monthly_data', {}).values()) if expense_data else 0
-    total_igyou = sum(igyou_rieki_data.get('monthly_data', {}).values()) if igyou_rieki_data else 0
-    exp_ratio = (total_exp / total_rev * 100) if total_rev else 0
-    igyou_ratio = (total_igyou / total_rev * 100) if total_rev else 0
+    total_igyou = sum(igyou_data.get('monthly_data', {}).values()) if igyou_data else 0
     latest_m = months[-1] if months else ''
-    latest_keijo_houjin = keijo_houjin_data.get('monthly_data', {}).get(latest_m, 0) if keijo_houjin_data else 0
-    html = f'''<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<title>{org} 月次サマリー</title>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+JP:wght@400;500;600;700&display=swap" rel="stylesheet">
-<style>
-@media print{{@page{{size:A4 landscape;margin:6mm}}*{{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}body{{padding:0!important;font-size:7px!important}}.no-print{{display:none!important}}.summary-cards{{gap:8px!important;margin-bottom:10px!important}}.card{{padding:10px!important}}.card-value{{font-size:18px!important}}table{{font-size:7.5px!important}}th,td{{padding:4px 5px!important}}}}
-*{{margin:0;padding:0;box-sizing:border-box}}body{{font-family:'Inter','Noto Sans JP',sans-serif;font-size:11px;color:#1e293b;background:linear-gradient(135deg,#f8fafc 0%,#e2e8f0 100%);min-height:100vh;padding:20px}}.container{{max-width:1400px;margin:0 auto;background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(0,0,0,0.08);padding:24px}}.header{{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #e2e8f0}}h1{{font-size:22px;font-weight:700;color:#0f172a;display:flex;align-items:center;gap:12px}}h1::before{{content:'';width:5px;height:28px;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:3px}}.print-date{{font-size:11px;color:#64748b}}.btn-group{{display:flex;gap:10px}}.btn{{padding:10px 20px;color:#fff;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all 0.2s;display:flex;align-items:center;gap:6px}}.btn-print{{background:linear-gradient(135deg,#6366f1,#4f46e5)}}.btn-print:hover{{transform:translateY(-2px);box-shadow:0 4px 12px rgba(99,102,241,0.4)}}.btn-save{{background:linear-gradient(135deg,#10b981,#059669)}}.btn-save:hover{{transform:translateY(-2px);box-shadow:0 4px 12px rgba(16,185,129,0.4)}}.summary-cards{{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}}.card{{background:#fff;border-radius:12px;padding:18px;position:relative;overflow:hidden;border:1px solid #e2e8f0;transition:transform 0.2s,box-shadow 0.2s}}.card:hover{{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,0,0,0.1)}}.card::before{{content:'';position:absolute;top:0;left:0;right:0;height:4px}}.card-revenue::before{{background:linear-gradient(90deg,#3b82f6,#60a5fa)}}.card-expense::before{{background:linear-gradient(90deg,#f59e0b,#fbbf24)}}.card-profit::before{{background:linear-gradient(90deg,#10b981,#34d399)}}.card-margin::before{{background:linear-gradient(90deg,#8b5cf6,#a78bfa)}}.card-label{{font-size:11px;color:#64748b;font-weight:500;margin-bottom:8px;display:flex;align-items:center;gap:6px}}.card-icon{{width:20px;height:20px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:11px}}.card-revenue .card-icon{{background:#dbeafe;color:#2563eb}}.card-expense .card-icon{{background:#fef3c7;color:#d97706}}.card-profit .card-icon{{background:#d1fae5;color:#059669}}.card-margin .card-icon{{background:#ede9fe;color:#7c3aed}}.card-value{{font-size:26px;font-weight:700;color:#0f172a;font-variant-numeric:tabular-nums;letter-spacing:-0.5px}}.card-value.positive{{color:#059669}}.card-value.negative{{color:#dc2626}}.card-sub{{display:flex;align-items:center;gap:8px;margin-top:8px;font-size:11px}}.trend{{display:inline-flex;align-items:center;gap:3px;padding:3px 8px;border-radius:20px;font-weight:600;font-size:10px}}.trend-up{{background:#dcfce7;color:#16a34a}}.trend-down{{background:#fee2e2;color:#dc2626}}.card-period{{color:#94a3b8;font-size:10px}}table{{width:100%;border-collapse:collapse;font-size:9px;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06)}}thead th{{background:linear-gradient(135deg,#1e3a8a 0%,#1e40af 100%);color:#fff;padding:10px 8px;text-align:center;font-weight:600;letter-spacing:0.3px;position:relative}}thead th::after{{content:'';position:absolute;bottom:0;left:0;right:0;height:1px;background:rgba(255,255,255,0.1)}}th:first-child{{text-align:left;padding-left:14px;min-width:120px;border-radius:8px 0 0 0}}th:last-child{{background:linear-gradient(135deg,#172554 0%,#1e3a8a 100%);border-radius:0 8px 0 0}}td{{padding:8px 10px;border-bottom:1px solid #f1f5f9;text-align:right;font-family:'Inter',monospace;font-variant-numeric:tabular-nums;color:#334155}}td:first-child{{text-align:left;padding-left:14px;font-family:'Noto Sans JP',sans-serif;font-weight:500;color:#1e293b}}td:last-child{{background:#f8fafc;font-weight:700;color:#0f172a}}tbody tr{{background:#fff;transition:background 0.15s}}tbody tr:nth-child(even){{background:#fafbfc}}tbody tr:hover{{background:#f1f5f9}}.indent{{padding-left:28px!important;color:#64748b;font-weight:400!important}}.section{{background:linear-gradient(90deg,#eff6ff,#f8fafc)!important}}.section td{{font-weight:600}}.section td:first-child{{color:#1d4ed8}}.section td:last-child{{background:#dbeafe!important}}.profit{{background:linear-gradient(90deg,#ecfdf5,#f0fdf4)!important}}.profit td{{font-weight:600;color:#047857}}.profit td:last-child{{background:#d1fae5!important;color:#047857}}.negative{{color:#dc2626!important}}.pct{{color:#94a3b8;font-size:7px;display:block;margin-top:2px}}tbody tr:last-child td:first-child{{border-radius:0 0 0 8px}}tbody tr:last-child td:last-child{{border-radius:0 0 8px 0}}
-</style>
-</head>
-<body>
-<div class="container">
-<div class="header"><h1>{org} 月次サマリー</h1><div class="btn-group no-print"><button class="btn btn-save" onclick="saveHTML()">💾 HTMLを保存</button><button class="btn btn-print" onclick="window.print()">🖨️ 印刷 / PDF</button></div><div class="print-date">出力日時：{now}</div></div>
-<div class="summary-cards">
-<div class="card card-revenue"><div class="card-label"><span class="card-icon">💰</span>医業収益（累計）</div><div class="card-value">{fmt_oku(total_rev)}</div><div class="card-sub"><span class="card-period">4月〜{latest_m}</span></div></div>
-<div class="card card-expense"><div class="card-label"><span class="card-icon">📊</span>医業費用（累計）</div><div class="card-value">{fmt_oku(total_exp)}</div><div class="card-sub"><span class="card-period">対収益比 {exp_ratio:.1f}%</span></div></div>
-<div class="card card-profit"><div class="card-label"><span class="card-icon">📈</span>医業利益（累計）</div><div class="card-value {"positive" if total_igyou>=0 else "negative"}">{fmt_oku(total_igyou)}</div><div class="card-sub"><span class="card-period">利益率 {igyou_ratio:.1f}%</span></div></div>
-<div class="card card-margin"><div class="card-label"><span class="card-icon">📉</span>当月経常利益</div><div class="card-value {"positive" if latest_keijo_houjin>=0 else "negative"}">{fmt_oku(latest_keijo_houjin)}</div><div class="card-sub"><span class="card-period">{latest_m}</span></div></div>
-</div>
-<table><thead><tr><th>項目</th>'''
-    for m in months:
-        html += f'<th>{m}</th>'
-    html += '<th>合計</th></tr></thead><tbody>'
-    for acc in accounts:
-        name = acc['name']
-        skip_pct = name in ['平均入院患者数', '一日当たり収入']
-        row_class = 'profit' if '利益' in name else ('section' if name in ['医業収益','医業費用','人件費','委託費','設備費','経費','材料費','退職金'] else '')
-        td_class = 'indent' if name.startswith('　') else ''
-        html += f'<tr class="{row_class}"><td class="{td_class}">{name.strip()}</td>'
-        total = 0
-        weighted_sum = 0
-        total_days = 0
-        is_avg_item = name in ['平均入院患者数', '一日当たり収入']
-        for m in months:
-            val = acc.get('monthly_data', {}).get(m, 0)
-            total += val
-            if is_avg_item:
-                month_num = int(m.replace('月', ''))
-                year = month_years.get(m, datetime.now().year)
-                days = calendar.monthrange(year, month_num)[1]
-                weighted_sum += val * days
-                total_days += days
-            base = revenue_data.get('monthly_data', {}).get(m, 0) if revenue_data else 0
-            pct = '' if skip_pct else fmt_pct(val, base)
-            fmtd, neg = fmt_num(val)
-            html += f'<td{" class=\"negative\"" if neg else ""}>{fmtd}{"<span class=\"pct\">"+pct+"</span>" if pct else ""}</td>'
-        if is_avg_item and total_days > 0:
-            total = round(weighted_sum / total_days)
-        total_base = sum(revenue_data.get('monthly_data', {}).values()) if revenue_data else 0
-        pct_total = '' if skip_pct else fmt_pct(total, total_base)
-        fmtd_total, neg_total = fmt_num(total)
-        html += f'<td{" class=\"negative\"" if neg_total else ""}>{fmtd_total}{"<span class=\"pct\">"+pct_total+"</span>" if pct_total else ""}</td></tr>'
-    html += '</tbody></table></div><script>function saveHTML(){const h=document.documentElement.outerHTML;const b=new Blob([h],{type:"text/html;charset=utf-8"});const u=URL.createObjectURL(b);const a=document.createElement("a");a.href=u;a.download="monthly_summary.html";a.click();URL.revokeObjectURL(u);}</script></body></html>'
-    return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
+    latest_keijo = keijo_data.get('monthly_data', {}).get(latest_m, 0) if keijo_data else 0
+    rows = _build_pdf_rows(accounts, months, month_years, revenue_data)
+    return render_template('pdf_summary.html',
+        org=org, now=datetime.now().strftime('%Y/%m/%d'), months=months, rows=rows,
+        fmt_oku=_fmt_oku, total_rev=total_rev, total_exp=total_exp, total_igyou=total_igyou,
+        exp_ratio=(total_exp / total_rev * 100) if total_rev else 0,
+        igyou_ratio=(total_igyou / total_rev * 100) if total_rev else 0,
+        latest_m=latest_m, latest_keijo_houjin=latest_keijo,
+    )
 
 
 if __name__ == '__main__':
