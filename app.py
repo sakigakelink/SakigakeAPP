@@ -140,6 +140,11 @@ def pnl_autoload():
     """損益/data/ 内のPDF・TXTを自動読み込み（iframe用プロキシ）"""
     return _pnl_mod.autoload_data()
 
+@app.route('/api/manual_inputs', methods=['POST'])
+def pnl_manual_inputs():
+    """手入力値保存プロキシ"""
+    return _pnl_mod.save_manual_inputs()
+
 @app.route('/legacy/data/<tool>')
 def legacy_data(tool):
     if tool == 'kintai':

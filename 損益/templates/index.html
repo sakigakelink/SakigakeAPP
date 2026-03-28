@@ -423,10 +423,8 @@
             }).join('');
         }
         
-        // localStorage key for manual inputs
-        const LS_MANUAL_KEY = 'pnl_manual_inputs';
-
-        function saveManualToLS() {
+        // 手入力値をサーバー側に保存
+        function saveManualToServer() {
             const data = {};
             if (!analysisData) return;
             ['output_display', 'revenue_display', 'expense_display', 'profit_display'].forEach(key => {
@@ -438,24 +436,11 @@
                     if (Object.keys(nonZero).length) data[key + '::' + acc.name] = nonZero;
                 });
             });
-            try { localStorage.setItem(LS_MANUAL_KEY, JSON.stringify(data)); } catch(e) {}
-        }
-
-        function restoreManualFromLS() {
-            try {
-                const raw = localStorage.getItem(LS_MANUAL_KEY);
-                if (!raw || !analysisData) return;
-                const data = JSON.parse(raw);
-                Object.entries(data).forEach(([compositeKey, monthlyData]) => {
-                    const [dispKey, accName] = compositeKey.split('::');
-                    const disp = analysisData[dispKey];
-                    if (!disp) return;
-                    const acc = disp.accounts.find(a => a.name === accName);
-                    if (acc && acc.is_manual) {
-                        Object.entries(monthlyData).forEach(([m, v]) => { acc.monthly_data[m] = v; });
-                    }
-                });
-            } catch(e) {}
+            fetch('/api/manual_inputs', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            }).catch(() => {});
         }
 
         function updateManualValue(input) {
@@ -471,8 +456,8 @@
                 acc.monthly_data[month] = value;
             }
 
-            // localStorageに自動保存
-            saveManualToLS();
+            // サーバーに自動保存
+            saveManualToServer();
 
             // 合計を更新
             const months = display.months;
@@ -616,7 +601,6 @@
                 const res = await fetch('/api/autoload');
                 if (res.ok) {
                     analysisData = await res.json();
-                    restoreManualFromLS();
                     renderResults();
                     document.getElementById('results').classList.add('active');
                     document.getElementById('uploadZone').style.display = 'none';

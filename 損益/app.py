@@ -338,9 +338,12 @@ def index():
     return render_template('index.html')
 
 
+MANUAL_INPUT_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'manual_inputs.json')
+
+
 @app.route('/api/autoload', methods=['GET'])
 def autoload_data():
-    """損益/data/ 内のPDF・TXTを自動読み込み"""
+    """損益/data/ 内のPDF・TXTを自動読み込み + 手入力値をマージ"""
     data_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
     if not os.path.isdir(data_dir):
         return jsonify({'error': 'data/ folder not found'}), 404
@@ -357,7 +360,39 @@ def autoload_data():
     if not pdf_results:
         return jsonify({'error': 'No PDF files found in data/'}), 404
     all_data = merge_all_monthly_data(pdf_results, chutaikyo_data)
-    return jsonify({'individual': pdf_results, 'all_data': all_data, 'revenue_display': create_display_data(all_data, REVENUE_DISPLAY_ITEMS), 'expense_display': create_display_data(all_data, EXPENSE_DISPLAY_ITEMS), 'profit_display': create_display_data(all_data, PROFIT_DISPLAY_ITEMS), 'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS), 'chutaikyo_data': chutaikyo_data})
+    result = {'individual': pdf_results, 'all_data': all_data, 'revenue_display': create_display_data(all_data, REVENUE_DISPLAY_ITEMS), 'expense_display': create_display_data(all_data, EXPENSE_DISPLAY_ITEMS), 'profit_display': create_display_data(all_data, PROFIT_DISPLAY_ITEMS), 'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS), 'chutaikyo_data': chutaikyo_data}
+    # 手入力値をマージ
+    if os.path.isfile(MANUAL_INPUT_FILE):
+        try:
+            with open(MANUAL_INPUT_FILE, encoding='utf-8') as f:
+                manual = json.load(f)
+            for composite_key, monthly_data in manual.items():
+                parts = composite_key.split('::', 1)
+                if len(parts) != 2:
+                    continue
+                disp_key, acc_name = parts
+                disp = result.get(disp_key)
+                if not disp:
+                    continue
+                for acc in disp['accounts']:
+                    if acc.get('name') == acc_name and acc.get('is_manual'):
+                        acc['monthly_data'].update({m: v for m, v in monthly_data.items()})
+                        break
+        except Exception as e:
+            print(f"Error loading manual inputs: {e}")
+    return jsonify(result)
+
+
+@app.route('/api/manual_inputs', methods=['POST'])
+def save_manual_inputs():
+    """手入力値をサーバー側JSONファイルに保存"""
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    os.makedirs(os.path.dirname(MANUAL_INPUT_FILE), exist_ok=True)
+    with open(MANUAL_INPUT_FILE, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return jsonify({'ok': True})
 
 
 @app.route('/api/upload', methods=['POST'])
