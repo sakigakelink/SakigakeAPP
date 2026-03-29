@@ -142,6 +142,28 @@
   padding: 16px 20px;
   border-top: 1px solid var(--sk-surface-border);
 }
+.restart-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  margin-bottom: 10px;
+  background: none;
+  border: 1px solid var(--sk-surface-border);
+  border-radius: 8px;
+  font-family: var(--sk-font);
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--sk-text-3);
+  cursor: pointer;
+  transition: all .15s var(--sk-ease);
+}
+.restart-btn:hover {
+  color: var(--sk-primary);
+  border-color: var(--sk-primary);
+  background: rgba(30, 64, 175, .05);
+}
 .sidebar-version {
   font-size: 11px;
   color: var(--sk-text-4);
