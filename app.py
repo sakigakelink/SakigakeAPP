@@ -6,7 +6,6 @@ import os
 import sys
 import re
 import json
-import subprocess
 import threading
 import webbrowser
 import importlib.util
@@ -329,17 +328,6 @@ def generate_shinryo_reports():
         except Exception as e:
             print(f"    入院レポートエラー: {e}")
     print("  診療レポート生成完了")
-
-
-@app.route('/api/restart', methods=['POST'])
-def restart_server():
-    """portal.vbs を実行してサーバー再起動 + Chrome再オープン"""
-    pid_file = os.path.join(BASE_DIR, 'server.pid')
-    with open(pid_file, 'w') as f:
-        f.write(str(os.getpid()))
-    vbs = os.path.join(BASE_DIR, 'portal.vbs')
-    subprocess.Popen(['wscript', vbs], cwd=BASE_DIR)
-    return 'ok', 200
 
 
 if __name__ == '__main__':
