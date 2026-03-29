@@ -396,7 +396,14 @@ def autoload_data():
                     continue
                 for acc in disp['accounts']:
                     if acc.get('name') == acc_name and acc.get('is_manual'):
-                        acc['monthly_data'].update({m: v for m, v in monthly_data.items()})
+                        months_list = result.get('all_data', {}).get('months', [])
+                        for m, v in monthly_data.items():
+                            if m in acc['monthly_data']:
+                                acc['monthly_data'][m] = v
+                            else:
+                                matched = [mk for mk in months_list if mk.endswith('/' + m) or mk == m]
+                                if matched:
+                                    acc['monthly_data'][matched[0]] = v
                         break
         except Exception as e:
             print(f"Error loading manual inputs: {e}")

@@ -4,4 +4,4 @@ ws.Run "cmd /c taskkill /f /fi ""WINDOWTITLE eq SakigakeAPP-Server"" >nul 2>&1",
 WScript.Sleep 500
 ws.Run "cmd /c title SakigakeAPP-Server && C:\Python314\python.exe app.py --no-browser", 0, False
 WScript.Sleep 1500
-ws.Run "http://localhost:5000/", 0, False
+ws.Run """C:\Program Files\Google\Chrome\Application\chrome.exe"" --app=http://localhost:5000/", 0, False
