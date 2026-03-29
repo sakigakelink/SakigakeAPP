@@ -11,7 +11,7 @@ import threading
 import webbrowser
 import importlib.util
 
-from flask import Flask, Blueprint, jsonify, render_template, send_from_directory
+from flask import Flask, Blueprint, render_template, send_from_directory
 from flask_cors import CORS
 from jinja2 import ChoiceLoader, FileSystemLoader
 
@@ -339,7 +339,7 @@ def restart_server():
         f.write(str(os.getpid()))
     vbs = os.path.join(BASE_DIR, 'portal.vbs')
     subprocess.Popen(['wscript', vbs], cwd=BASE_DIR)
-    return jsonify({'ok': True})
+    return 'ok', 200
 
 
 if __name__ == '__main__':
