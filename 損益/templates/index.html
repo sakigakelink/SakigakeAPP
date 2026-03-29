@@ -346,19 +346,25 @@
 
         async function exportPDF() {
             if (!analysisData) return;
-            
+
+            const printWindow = window.open('', '_blank');
+            if (!printWindow) {
+                alert('ポップアップがブロックされました。このサイトのポップアップを許可してください。');
+                return;
+            }
+
             try {
                 const res = await fetch('/api/export_pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(analysisData)
                 });
-                
+
                 const html = await res.text();
-                const printWindow = window.open('', '_blank');
                 printWindow.document.write(html);
                 printWindow.document.close();
             } catch (e) {
+                printWindow.close();
                 alert('Export error: ' + e.message);
             }
         }

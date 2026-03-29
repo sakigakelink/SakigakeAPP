@@ -287,7 +287,7 @@ def create_display_data(all_data, display_items):
             month_years = all_data.get('month_years', {})
             monthly_data = {}
             for m in months:
-                month_num = int(m.replace('月', ''))
+                month_num = int(m.split('/')[-1].replace('月', ''))
                 year = month_years.get(m, datetime.now().year)
                 days = calendar.monthrange(year, month_num)[1]
                 val = found.get('monthly_data', {}).get(m, 0) if found else 0
@@ -457,7 +457,7 @@ def _build_pdf_rows(accounts, months, month_years, revenue_data):
             val = acc.get('monthly_data', {}).get(m, 0)
             total += val
             if is_avg_item:
-                month_num = int(m.replace('月', ''))
+                month_num = int(m.split('/')[-1].replace('月', ''))
                 year = month_years.get(m, datetime.now().year)
                 days = calendar.monthrange(year, month_num)[1]
                 weighted_sum += val * days
