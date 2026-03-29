@@ -54,8 +54,9 @@
   <script src="/static/js/portal.js"></script>
   <script>
   function restartServer() {
-    fetch('/api/restart', { method: 'POST' }).catch(() => {});
-    window.close();
+    navigator.sendBeacon('/api/restart');
+    document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#64748b"><p>再起動中...</p></div>';
+    setTimeout(() => window.close(), 500);
   }
   </script>
 </body>
