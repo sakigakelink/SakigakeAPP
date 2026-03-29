@@ -11,7 +11,7 @@ import threading
 import webbrowser
 import importlib.util
 
-from flask import Flask, Blueprint, render_template, send_from_directory
+from flask import Flask, Blueprint, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from jinja2 import ChoiceLoader, FileSystemLoader
 
@@ -334,9 +334,11 @@ def generate_shinryo_reports():
 @app.route('/api/restart', methods=['POST'])
 def restart_server():
     """portal.vbs を実行してサーバー再起動 + Chrome再オープン"""
+    pid_file = os.path.join(BASE_DIR, 'server.pid')
+    with open(pid_file, 'w') as f:
+        f.write(str(os.getpid()))
     vbs = os.path.join(BASE_DIR, 'portal.vbs')
     subprocess.Popen(['wscript', vbs], cwd=BASE_DIR)
-    threading.Timer(1.0, lambda: os._exit(0)).start()
     return jsonify({'ok': True})
 
 
