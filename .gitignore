@@ -25,3 +25,16 @@ temp/
 損益/data/*.pdf
 診療/*月/元データ/
 診療/*月/薬剤*/
+
+# pytest cache
+.pytest_cache/
+
+# 診療報酬（PDF作業ファイル）
+診療報酬/
+
+# 実行時生成
+server.pid
+
+# OS generated
+Thumbs.db
+Desktop.ini
