@@ -10,7 +10,10 @@ import threading
 import webbrowser
 import importlib.util
 
-from flask import Flask, Blueprint, render_template, send_from_directory
+import subprocess
+import time
+
+from flask import Flask, Blueprint, render_template, send_from_directory, request
 from flask_cors import CORS
 from jinja2 import ChoiceLoader, FileSystemLoader
 
@@ -256,6 +259,43 @@ def master_dept_codes():
         return json.dumps({}, ensure_ascii=False), 404
     with open(path, encoding='utf-8') as f:
         return json.load(f)
+
+# ---------------------------------------------------------------------------
+# サーバー制御API（localhost限定）
+# ---------------------------------------------------------------------------
+def _is_localhost(req):
+    return req.remote_addr in ('127.0.0.1', '::1')
+
+
+@app.route('/api/shutdown', methods=['POST'])
+def api_shutdown():
+    if not _is_localhost(request):
+        return 'Forbidden', 403
+
+    def _shutdown():
+        time.sleep(0.5)
+        os._exit(0)
+
+    threading.Thread(target=_shutdown).start()
+    return 'サーバーを停止します', 200
+
+
+@app.route('/api/restart', methods=['POST'])
+def api_restart():
+    if not _is_localhost(request):
+        return 'Forbidden', 403
+
+    def _restart():
+        time.sleep(0.5)
+        # --no-browser を外して再起動 → 新しいウインドウが自動で開く
+        args = [a for a in sys.argv if a != '--no-browser']
+        subprocess.Popen([sys.executable] + args, cwd=BASE_DIR)
+        time.sleep(0.3)
+        os._exit(0)
+
+    threading.Thread(target=_restart).start()
+    return 'サーバーを再起動します', 200
+
 
 # ---------------------------------------------------------------------------
 # 起動

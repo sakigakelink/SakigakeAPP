@@ -20,4 +20,22 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.closest('.nav-group').classList.toggle('open');
     });
   });
+
+  // サーバー再起動（ウインドウ閉じて新しく立ち上げ）
+  const btnRestart = document.getElementById('btn-restart');
+  if (btnRestart) {
+    btnRestart.addEventListener('click', () => {
+      navigator.sendBeacon('/api/restart');
+      window.close();
+    });
+  }
+
+  // サーバー終了（ウインドウも閉じる）
+  const btnShutdown = document.getElementById('btn-shutdown');
+  if (btnShutdown) {
+    btnShutdown.addEventListener('click', () => {
+      navigator.sendBeacon('/api/shutdown');
+      window.close();
+    });
+  }
 });

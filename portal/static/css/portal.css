@@ -142,9 +142,38 @@
   padding: 16px 20px;
   border-top: 1px solid var(--sk-surface-border);
 }
-.sidebar-version {
-  font-size: 11px;
-  color: var(--sk-text-4);
+.server-controls {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.btn-server {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 10px;
+  border: 1px solid var(--sk-surface-border);
+  border-radius: 6px;
+  background: var(--sk-surface-1);
+  color: var(--sk-text-2);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.btn-server:hover {
+  background: var(--sk-surface-2);
+}
+.btn-server:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.btn-restart:hover {
+  color: var(--sk-accent);
+  border-color: var(--sk-accent);
+}
+.btn-shutdown:hover {
+  color: #e55;
+  border-color: #e55;
 }
 
 /* ---------- Content Area ---------- */
