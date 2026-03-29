@@ -346,22 +346,23 @@
 
         async function exportPDF() {
             if (!analysisData) return;
+            const w = window.open('about:blank', 'pdfOutput',
+                'width=1400,height=900,scrollbars=yes,resizable=yes');
+            if (!w) { alert('ポップアップを許可してください'); return; }
             try {
                 const res = await fetch('/api/export_pdf', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify(analysisData)
                 });
-                if (!res.ok) { alert('サーバーエラー: ' + res.status); return; }
+                if (!res.ok) { w.close(); alert('サーバーエラー: ' + res.status); return; }
                 const html = await res.text();
                 const blob = new Blob([html], { type: 'text/html; charset=utf-8' });
                 const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = url;
-                a.target = '_blank';
-                a.click();
+                w.location.href = url;
                 setTimeout(() => URL.revokeObjectURL(url), 30000);
             } catch (e) {
+                w.close();
                 alert('Export error: ' + e.message);
             }
         }
