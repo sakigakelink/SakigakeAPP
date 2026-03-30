@@ -110,8 +110,7 @@ const td=()=>{const t=new Date();return t.getFullYear()+'-'+String(t.getMonth()+
 const fd=d=>{if(!d)return'-';const x=new Date(d);return x.getFullYear()+'/'+String(x.getMonth()+1).padStart(2,'0')+'/'+String(x.getDate()).padStart(2,'0')};
 const age=(bd,base)=>{if(!bd)return null;const t=base?new Date(base):new Date(),b=new Date(bd);let a=t.getFullYear()-b.getFullYear();const x=new Date(b);x.setFullYear(t.getFullYear());if(t<x)a--;return a};
 // 年俸 = 基本給×15(12ヶ月+賞与3ヶ月) + (役職+調整)×12 ※役職・調整は賞与算定基礎に含まない
-const ar7=e=>(e.baseSalary||0)*15+((e.position||0)+(e.adjustment||0))*12;
-const ar8=e=>(e.baseR8||0)*15+((e.positionR8||0)+(e.adjR8||0))*12;
+const annSal=e=>(e.baseSalary||0)*15+((e.position||0)+(e.adjustment||0))*12;
 const sjt=()=>{const ex=[...new Set(EMP.map(e=>e.jobType).filter(Boolean))];return ex.sort((a,b)=>{const i=JO.indexOf(a),j=JO.indexOf(b);if(i<0&&j<0)return a.localeCompare(b,'ja');if(i<0)return 1;if(j<0)return-1;return i-j})};
 const jOpts=(id,cv)=>{const s=document.getElementById(id);if(!s)return;s.innerHTML='<option value="">全職種</option><option value="病院">病院</option>'+sjt().map(j=>`<option value="${esc(j)}">${esc(j)}</option>`).join('');s.value=cv||'病院'};
 const valid=e=>e&&typeof e==='object'&&e.id&&typeof e.id==='string'&&e.name&&typeof e.name==='string';
@@ -242,11 +241,11 @@ function renderMasterHTML(){
   </div>
 </div>
 <div class="sg">
-  <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="tMC" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">月額人件費</div><div class="sv" id="tMCR8" style="font-size:1rem;margin-top:.2rem;background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl" style="font-size:.65rem">R8月額人件費</div></div>
-  <div class="sc" style="min-width:160px"><div class="sv" id="tAS">¥0</div><div class="sl">年俸総計</div><div class="sv" id="tASR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8年俸総計</div><div class="sv" id="tAUR" style="font-size:1rem;margin-top:.3rem">+0.0%</div><div class="sl" style="font-size:.65rem">年俸UP率</div></div>
-  <div class="sc"><div class="sv" id="tBS">¥0</div><div class="sl">基本給総計</div><div class="sv dim" id="tBSR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8基本給</div></div>
-  <div class="sc"><div class="sv" id="tPos">¥0</div><div class="sl">役職手当総計</div><div class="sv dim" id="tPosR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8役職手当</div></div>
-  <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div><div class="sv dim" id="tAdjR8" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">R8調整手当</div></div>
+  <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="tMC" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">月額人件費</div></div>
+  <div class="sc"><div class="sv" id="tAS">¥0</div><div class="sl">年俸総計</div></div>
+  <div class="sc"><div class="sv" id="tBS">¥0</div><div class="sl">基本給総計</div></div>
+  <div class="sc"><div class="sv" id="tPos">¥0</div><div class="sl">役職手当総計</div></div>
+  <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div></div>
   <div class="sc"><div class="sv" id="tCm">¥0</div><div class="sl">通勤手当総計</div></div>
   <div class="sc"><div class="sv" id="tRN">¥0</div><div class="sl">退職金総計</div><div class="sv dim" id="tR60" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">定年退職金</div></div>
 </div>
@@ -254,11 +253,10 @@ function renderMasterHTML(){
   <th style="cursor:pointer" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th>名前</th><th>職種</th>
   <th style="cursor:pointer" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
   <th style="cursor:pointer" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
-  <th>基本給<br><span class="sub">R8</span></th><th>調整<br><span class="sub">R8</span></th>
+  <th>基本給</th><th>調整</th>
   <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
-  <th style="cursor:pointer" onclick="doSort('pos')">役職<br><span class="sub">R8</span><span id="s-pos"></span></th>
-  <th style="cursor:pointer" onclick="doSort('as')">年俸<br><span class="sub">R8</span><span id="s-as"></span></th>
-  <th style="cursor:pointer" onclick="doSort('ur')">UP<span id="s-ur"></span></th>
+  <th style="cursor:pointer" onclick="doSort('pos')">役職<span id="s-pos"></span></th>
+  <th style="cursor:pointer" onclick="doSort('as')">年俸<span id="s-as"></span></th>
   <th>退職金<br><span class="sub">定年</span></th><th>操作</th>
 </tr></thead><tbody id="mTb"></tbody></table></div></div>`;
 }
@@ -273,41 +271,36 @@ function renderMaster(){
   let disp=EMP.filter((e,i)=>{e._i=i;e._ex=exclIds.has(e.id);if(jf==='病院')return HP.includes(e.jobType);if(jf)return e.jobType===jf;return true});
   let filt=disp.filter(e=>!e._ex);
   const ec=exclIds.size;document.getElementById('exInfo').style.display=ec?'inline':'none';if(ec)document.getElementById('exC').textContent=ec;
-  disp.forEach(e=>{e._a7=ar7(e);e._a8=ar8(e);e._ur=e._a7>0?((e._a8-e._a7)/e._a7*100):0});
+  disp.forEach(e=>{e._as=annSal(e)});
   const sk=curSort.key,so=curSort.ord==='asc'?1:-1;
   disp.sort((a,b)=>{switch(sk){
     case'id':return so*a.id.localeCompare(b.id,'ja',{numeric:1});
     case'bd':return so*((a.birthDate?new Date(a.birthDate):0)-(b.birthDate?new Date(b.birthDate):0));
     case'hd':return so*((a.hireDate?new Date(a.hireDate):0)-(b.hireDate?new Date(b.hireDate):0));
-    case'as':return so*(a._a8-b._a8);case'ur':return so*(a._ur-b._ur);
+    case'as':return so*(a._as-b._as);
     case'cm':return so*((a.commute||0)-(b.commute||0));case'pos':return so*((a.position||0)-(b.position||0));
     default:return 0}});
-  ['id','bd','hd','as','ur','cm','pos'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.textContent=curSort.key===k?(curSort.ord==='asc'?'▲':'▼'):''});
-  const t=filt.reduce((a,e)=>{a.bs+=e.baseSalary||0;a.adj+=e.adjustment||0;a.pos+=e.position||0;a.pR8+=e.positionR8||0;a.cm+=e.commute||0;a.bR8+=e.baseR8||0;a.aR8+=e.adjR8||0;const r=calcRet(e.baseSalary,e.hireDate,e.birthDate,rcd);a.rn+=r.now;a.r60+=r.ret;return a},{bs:0,adj:0,pos:0,pR8:0,cm:0,bR8:0,aR8:0,rn:0,r60:0});
+  ['id','bd','hd','as','cm','pos'].forEach(k=>{const el=document.getElementById('s-'+k);if(el)el.textContent=curSort.key===k?(curSort.ord==='asc'?'▲':'▼'):''});
+  const t=filt.reduce((a,e)=>{a.bs+=e.baseSalary||0;a.adj+=e.adjustment||0;a.pos+=e.position||0;a.cm+=e.commute||0;const r=calcRet(e.baseSalary,e.hireDate,e.birthDate,rcd);a.rn+=r.now;a.r60+=r.ret;return a},{bs:0,adj:0,pos:0,cm:0,rn:0,r60:0});
   document.getElementById('fc').textContent=filt.length;
   document.getElementById('tBS').textContent=Y(t.bs);document.getElementById('tAdj').textContent=Y(t.adj);
-  document.getElementById('tPos').textContent=Y(t.pos);document.getElementById('tPosR8').textContent=Y(t.pR8);
-  document.getElementById('tCm').textContent=Y(t.cm);document.getElementById('tBSR8').textContent=Y(t.bR8);
-  document.getElementById('tAdjR8').textContent=Y(t.aR8);document.getElementById('tRN').textContent=Y(t.rn);document.getElementById('tR60').textContent=Y(t.r60);
+  document.getElementById('tPos').textContent=Y(t.pos);
+  document.getElementById('tCm').textContent=Y(t.cm);document.getElementById('tRN').textContent=Y(t.rn);document.getElementById('tR60').textContent=Y(t.r60);
   // 年俸総計: 基本給×15(12ヶ月+賞与3ヶ月) + (役職+調整)×12
-  const tA=t.bs*15+(t.pos+t.adj)*12,tR=t.bR8*15+(t.pR8+t.aR8)*12,tU=tA>0?((tR-tA)/tA*100):0;
-  document.getElementById('tAS').textContent=Y(tA);document.getElementById('tASR8').textContent=Y(tR);
-  const ue=document.getElementById('tAUR');ue.textContent=(tU>=0?'+':'')+tU.toFixed(2)+'%';ue.style.color=tU>0?'#38ef7d':tU<0?'#ff6b6b':'rgba(255,255,255,.5)';
+  const tA=t.bs*15+(t.pos+t.adj)*12;
+  document.getElementById('tAS').textContent=Y(tA);
   // 月額人件費 = 基本給×1.25(基本給+賞与月割=基本給×3÷12) + 役職 + 調整 + 通勤
   document.getElementById('tMC').textContent=Y(Math.round(t.bs*1.25+t.pos+t.adj+t.cm));
-  document.getElementById('tMCR8').textContent=Y(Math.round(t.bR8*1.25+t.pR8+t.aR8+t.cm));
   document.getElementById('mTb').innerHTML=disp.map(e=>{
     const r=calcRet(e.baseSalary,e.hireDate,e.birthDate,rcd),a=age(e.birthDate),si=esc(e.id);
-    const uc=e._ur>0?'#38ef7d':e._ur<0?'#ff6b6b':'rgba(255,255,255,.5)';
     return`<tr style="${e._ex?'opacity:.4;background:rgba(235,51,73,.1)':''}">
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td>
 <td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}</td>
-<td>${Y(e.baseSalary||0)}<br><span class="sub">${Y(e.baseR8||0)}</span></td>
-<td>${Y(e.adjustment||0)}<br><span class="sub">${Y(e.adjR8||0)}</span></td>
+<td>${Y(e.baseSalary||0)}</td>
+<td>${Y(e.adjustment||0)}</td>
 <td>${Y(e.commute||0)}</td>
-<td>${Y(e.position||0)}<br><span class="sub">${Y(e.positionR8||0)}</span></td>
-<td>${Y(e._a7)}<br><span class="sub">${Y(e._a8)}</span></td>
-<td style="color:${uc};font-weight:500">${e._ur>=0?'+':''}${e._ur.toFixed(1)}%</td>
+<td>${Y(e.position||0)}</td>
+<td>${Y(e._as)}</td>
 <td>${Y(r.now)}<br><span class="sub">${Y(r.ret)}</span></td>
 <td><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
 }
@@ -321,8 +314,7 @@ function showModal(title,e){
 <div class="fr"><div class="fg"><label>職員番号</label><input id="eId" value="${esc(e.id||'')}"></div><div class="fg"><label>名前</label><input id="eNm" value="${esc(e.name||'')}"></div><div class="fg"><label>職種</label><input id="eJt" value="${esc(e.jobType||'')}"></div></div>
 <div class="fr"><div class="fg"><label>生年月日</label><input type="date" id="eBd" value="${e.birthDate||''}"></div><div class="fg"><label>採用日</label><input type="date" id="eHd" value="${e.hireDate||''}"></div></div>
 <div class="fr"><div class="fg"><label>基本給</label><input type="number" id="eBs" value="${e.baseSalary||0}"></div><div class="fg"><label>調整手当</label><input type="number" id="eAd" value="${e.adjustment||0}"></div><div class="fg"><label>通勤非課税</label><input type="number" id="eCm" value="${e.commute||0}"></div></div>
-<div class="fr"><div class="fg"><label>基本給R8</label><input type="number" id="eBR" value="${e.baseR8||0}"></div><div class="fg"><label>調整手当R8</label><input type="number" id="eAR" value="${e.adjR8||0}"></div></div>
-<div class="fr"><div class="fg"><label>役職手当</label><input type="number" id="ePs" value="${e.position||0}"></div><div class="fg"><label>役職手当R8</label><input type="number" id="ePR" value="${e.positionR8||0}"></div></div>
+<div class="fr"><div class="fg"><label>役職手当</label><input type="number" id="ePs" value="${e.position||0}"></div></div>
 <div style="display:flex;gap:.6rem;margin-top:1rem"><button class="btn" onclick="saveM()">💾保存</button><button class="btn btn-out" onclick="closeM()">キャンセル</button></div>`;
   document.getElementById('modal').classList.remove('hidden');
 }
@@ -331,7 +323,7 @@ function saveM(){
   const g=id=>document.getElementById(id).value;
   const emp={id:g('eId').trim(),name:g('eNm').trim(),jobType:g('eJt').trim(),birthDate:g('eBd'),hireDate:g('eHd'),
     baseSalary:Math.max(0,+g('eBs')||0),adjustment:+g('eAd')||0,commute:Math.max(0,+g('eCm')||0),
-    baseR8:Math.max(0,+g('eBR')||0),adjR8:+g('eAR')||0,position:Math.max(0,+g('ePs')||0),positionR8:Math.max(0,+g('ePR')||0)};
+    position:Math.max(0,+g('ePs')||0)};
   if(!emp.id||!emp.name){alert('番号と名前は必須');return}
   if(editIdx===null){if(EMP.some(e=>e.id===emp.id)){alert('番号重複');return}}
   else{if(EMP.some((e,i)=>e.id===emp.id&&i!==editIdx)){alert('番号重複');return}}
@@ -347,7 +339,7 @@ function renderBonusLump(){
     panel.innerHTML=`<div class="card"><h2>🎁 賞与</h2>
 <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
   <select id="bljf" onchange="renderBonusLump()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
-  <div style="background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;display:flex;align-items:center;gap:.3rem"><span style="color:rgba(255,255,255,.7);font-size:.78rem">基準日:</span><input type="date" id="bDate" value="2026-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
+  <div style="background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;display:flex;align-items:center;gap:.3rem"><span style="color:rgba(255,255,255,.7);font-size:.78rem">基準日:</span><input type="date" id="bDate" value="2027-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
   <span style="font-size:.82rem">対象者:<strong id="blCnt" style="color:#667eea">0</strong>名
     <span id="blExInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="blExC">0</strong>名 <button onclick="lsExclIds.clear();renderBonusLump()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
   </span>
@@ -362,7 +354,7 @@ function renderBonusLump(){
   <th>操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
   }
-  const jf=document.getElementById('bljf')?.value||'',bd=document.getElementById('bDate')?.value||'2026-03-31';
+  const jf=document.getElementById('bljf')?.value||'',bd=document.getElementById('bDate')?.value||'2027-03-31';
   let tgt=EMP.filter(e=>{if(jf==='病院')return HP.includes(e.jobType);if(jf)return e.jobType===jf;return true});
   tgt.forEach(e=>{
     e._blEx=lsExclIds.has(e.id);
@@ -417,6 +409,12 @@ async function init(){
   if(!EMP.length){
     try{const r=await fetch('../データ/employees.json');if(r.ok){const d=await r.json();if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}}catch(e){}
   }
+  // R8→主フィールドへマイグレーション
+  EMP.forEach(e=>{
+    if('baseR8' in e){e.baseSalary=e.baseR8;delete e.baseR8}
+    if('adjR8' in e){e.adjustment=e.adjR8;delete e.adjR8}
+    if('positionR8' in e){e.position=e.positionR8;delete e.positionR8}
+  });
   document.getElementById('tab-master').innerHTML=renderMasterHTML();
   document.getElementById('rcd').value=td();
   jOpts('jf','病院');
