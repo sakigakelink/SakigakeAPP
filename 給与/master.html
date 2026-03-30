@@ -216,6 +216,7 @@ function refreshAll(){
   document.getElementById('tab-master').innerHTML=renderMasterHTML();
   document.getElementById('rcd').value=td();
   jOpts('jf','病院');renderMaster();
+  renderBonusLump();jOpts('bljf','病院');
 }
 
 function switchTab(name){
@@ -419,6 +420,7 @@ async function init(){
   document.getElementById('rcd').value=td();
   jOpts('jf','病院');
   renderMaster();
+  renderBonusLump();jOpts('bljf','病院');
 }
 init();
 </script>
