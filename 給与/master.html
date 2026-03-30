@@ -39,7 +39,7 @@
     .tn{display:flex;gap:.4rem;margin-bottom:.5rem}
     .tb{padding:.5rem 1rem;border:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:.85rem;font-weight:500;cursor:pointer;font-family:inherit}
     .tb.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
-    .tp-wrap{display:grid;grid-template-rows:auto 1fr}.tp-wrap>.tp{grid-row:1/-1;grid-column:1;display:grid;grid-template-rows:subgrid;visibility:hidden}.tp-wrap>.tp.active{visibility:visible}.tp>.card{grid-row:1/-1;display:grid;grid-template-rows:subgrid}
+    .tp-wrap{display:grid;grid-template-rows:auto auto 1fr}.tp-wrap>.tp{grid-row:1/-1;grid-column:1;display:grid;grid-template-rows:subgrid;visibility:hidden}.tp-wrap>.tp.active{visibility:visible}.tp>.card{grid-row:1/-1;display:grid;grid-template-rows:subgrid}
     .bi{width:95px;padding:.35rem;border:1px solid rgba(255,255,255,.3);border-radius:4px;background:rgba(0,0,0,.3);color:#fff;font-size:.82rem;text-align:right;-moz-appearance:textfield}
     .bi::-webkit-outer-spin-button,.bi::-webkit-inner-spin-button{-webkit-appearance:none}
     .bi:focus{outline:none;border-color:#667eea}
@@ -229,8 +229,8 @@ function switchTab(name){
 document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')">🎁 賞与</button>';
 
 function renderMasterHTML(){
-  return`<div class="card"><div class="tab-header"><h2>職員マスター</h2>
-<div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;margin-bottom:1rem;overflow-x:auto">
+  return`<div class="card"><div class="tab-top"><h2>職員マスター</h2>
+<div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;overflow-x:auto">
   <select id="jf" onchange="renderMaster()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
   <span style="white-space:nowrap;font-size:.82rem">対象:<strong id="fc" style="color:#667eea">0</strong>名
     <span id="exInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="exC">0</strong>名 <button onclick="exclIds.clear();renderMaster()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
@@ -242,7 +242,7 @@ function renderMasterHTML(){
     <button onclick="chRD(365)" style="padding:.2rem .4rem;background:rgba(102,126,234,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">+1年</button>
     <button onclick="document.getElementById('rcd').value=td();renderMaster()" style="padding:.2rem .4rem;background:rgba(56,239,125,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">今日</button>
   </div>
-</div>
+</div></div>
 <div class="sg">
   <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="tMC" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">月額人件費</div></div>
   <div class="sc"><div class="sv" id="tAS">¥0</div><div class="sl">年俸総計</div></div>
@@ -250,7 +250,7 @@ function renderMasterHTML(){
   <div class="sc"><div class="sv" id="tPos">¥0</div><div class="sl">役職手当総計</div></div>
   <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div></div>  <div class="sc"><div class="sv" id="tCm">¥0</div><div class="sl">通勤手当総計</div></div>
   <div class="sc"><div class="sv" id="tRN">¥0</div><div class="sl">退職金総計</div><div class="sv dim" id="tR60" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">定年退職金</div></div>
-</div></div>
+</div>
 <div class="tc st"><table><thead><tr>
   <th style="cursor:pointer" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th>名前</th><th>職種</th>
   <th style="cursor:pointer" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
@@ -339,18 +339,18 @@ function updBonusC(id,val){if(val==='')delete bonusC[id];else bonusC[id]=+val||0
 function renderBonusLump(){
   const panel=document.getElementById('tab-bonuslump');
   if(!document.getElementById('blTb')){
-    panel.innerHTML=`<div class="card"><div class="tab-header"><h2>🎁 賞与</h2>
-<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
+    panel.innerHTML=`<div class="card"><div class="tab-top"><h2>🎁 賞与</h2>
+<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
   <select id="bljf" onchange="renderBonusLump()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
   <div style="background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;display:flex;align-items:center;gap:.3rem"><span style="color:rgba(255,255,255,.7);font-size:.78rem">基準日:</span><input type="date" id="bDate" value="2027-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
   <span style="font-size:.82rem">対象者:<strong id="blCnt" style="color:#667eea">0</strong>名
     <span id="blExInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="blExC">0</strong>名 <button onclick="lsExclIds.clear();renderBonusLump()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
   </span>
-</div>
+</div></div>
 <div class="sg">
   <div class="sc"><div class="sv" id="blBB">¥0</div><div class="sl">賞与基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">基本給×3 1万切上</div></div>
   <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blBCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">賞与確定総計</div></div>
-</div></div>
+</div>
 <div class="tc st"><table><thead><tr>
   <th style="cursor:pointer" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer" onclick="doBlSort('age')">年齢<span id="bl-s-age"></span></th><th style="cursor:pointer" onclick="doBlSort('svc')">勤続<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
   <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
