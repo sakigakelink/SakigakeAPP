@@ -178,11 +178,12 @@
 
 /* ---------- Content Area ---------- */
 .content {
-  margin-left: 240px;
-  flex: 1;
-  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 240px;
+  right: 0;
+  bottom: 0;
   overflow: auto;
-  position: relative;
   z-index: 1;
 }
 
