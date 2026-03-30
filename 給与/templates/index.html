@@ -708,8 +708,11 @@ function toggleDoctorBreakdown(row) {
   if (arrow) arrow.innerHTML = expanding ? '&#9660;' : '&#9654;';
 }
 
-// 初期化
-loadFolders();
+// 初期化: フォルダ一覧取得後、最新月を自動読込
+loadFolders().then(()=>{
+  const btns=[...document.querySelectorAll('.folder-btn:not(#loadAllBtn)')];
+  if(btns.length){btns[btns.length-1].click()}
+});
 </script>
 </body>
 </html>
