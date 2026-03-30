@@ -221,6 +221,12 @@ function refreshAll(){
   renderBonusLump();jOpts('bljf','病院');
 }
 
+function syncHeaderHeight(){
+  const hs=document.querySelectorAll('.tab-header');
+  hs.forEach(h=>h.style.minHeight='');
+  const max=Math.max(...[...hs].map(h=>h.offsetHeight));
+  hs.forEach(h=>h.style.minHeight=max+'px');
+}
 function switchTab(name){
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.t===name));
   document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
@@ -423,6 +429,7 @@ async function init(){
   jOpts('jf','病院');
   renderMaster();
   renderBonusLump();jOpts('bljf','病院');
+  syncHeaderHeight();
 }
 init();
 </script>
