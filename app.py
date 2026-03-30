@@ -320,8 +320,10 @@ def api_restart():
 
     def _restart():
         time.sleep(0.5)
-        # --no-browser を外して再起動 → 新しいウインドウが自動で開く
-        args = [a for a in sys.argv if a != '--no-browser']
+        # --no-browser を維持して再起動（新ウインドウを開かない）
+        args = list(sys.argv)
+        if '--no-browser' not in args:
+            args.append('--no-browser')
         subprocess.Popen([sys.executable] + args, cwd=BASE_DIR)
         time.sleep(0.3)
         os._exit(0)

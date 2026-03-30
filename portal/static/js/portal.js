@@ -21,31 +21,38 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // ページ再読込
+  // 再読込: iframe内のページをリロード
   const btnReload = document.getElementById('btn-reload');
   if (btnReload) {
     btnReload.addEventListener('click', () => {
-      location.reload();
+      const iframe = document.querySelector('.app-frame');
+      if (iframe) {
+        iframe.contentWindow.location.reload();
+      } else {
+        location.reload();
+      }
     });
   }
 
-  // サーバー終了
-  const btnShutdown = document.getElementById('btn-shutdown');
-  if (btnShutdown) {
-    btnShutdown.addEventListener('click', () => {
-      if (!confirm('サーバーを終了しますか？')) return;
-      navigator.sendBeacon('/api/shutdown');
-    });
-  }
-
-  // サーバー再起動
+  // 再起動: サーバー再起動→同じウィンドウで自動リロード
   const btnRestart = document.getElementById('btn-restart');
   if (btnRestart) {
     btnRestart.addEventListener('click', () => {
       if (!confirm('サーバーを再起動しますか？')) return;
-      fetch('/api/restart').then(() => {
-        setTimeout(() => location.reload(), 3000);
-      });
+      fetch('/api/restart', {method:'POST'});
+      const poll = setInterval(() => {
+        fetch('/').then(r => { if (r.ok) { clearInterval(poll); location.reload(); } }).catch(() => {});
+      }, 1000);
+    });
+  }
+
+  // 終了: サーバー停止+ウィンドウ閉じる
+  const btnShutdown = document.getElementById('btn-shutdown');
+  if (btnShutdown) {
+    btnShutdown.addEventListener('click', () => {
+      if (!confirm('サーバーを終了しますか？')) return;
+      fetch('/api/shutdown', {method:'POST'});
+      setTimeout(() => window.close(), 500);
     });
   }
 });
