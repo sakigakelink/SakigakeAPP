@@ -99,7 +99,7 @@
 
 <script>
 let EMP=[],editIdx=null,exclIds=new Set(),lsExclIds=new Set(),unsaved=false,curSort={key:'id',ord:'asc'},blSort={key:'id',ord:'asc'};
-let bonusC={},lsCorr={},lsNight={};
+let bonusC={};
 const SKEY='employeeAllDataV2';
 const HP=['事務','PSW','薬剤','看護','准看','補助','栄養','調理','OT','事業'];
 const JO=[...HP,'支援'];
@@ -143,14 +143,12 @@ function svcDays(hd,bd){
   return{d,r:Math.min(1,d/365)};
 }
 
-function buildAll(){return{version:2,employees:EMP,bonusContributions:bonusC,lumpsumCorrections:lsCorr,lumpsumNightShifts:lsNight}}
+function buildAll(){return{version:2,employees:EMP,bonusContributions:bonusC}}
 function applyAll(data){
   if(!data||typeof data!=='object')return false;
-  if(Array.isArray(data)){EMP=data.filter(valid);bonusC={};lsCorr={};lsNight={};return true}
+  if(Array.isArray(data)){EMP=data.filter(valid);bonusC={};return true}
   if(Array.isArray(data.employees))EMP=data.employees.filter(valid);
   bonusC=data.bonusContributions&&typeof data.bonusContributions==='object'?data.bonusContributions:{};
-  lsCorr=data.lumpsumCorrections&&typeof data.lumpsumCorrections==='object'?data.lumpsumCorrections:{};
-  lsNight=data.lumpsumNightShifts&&typeof data.lumpsumNightShifts==='object'?data.lumpsumNightShifts:{};
   return EMP.length>0;
 }
 
@@ -158,7 +156,7 @@ async function loadStorage(){
   try{const r=localStorage.getItem(SKEY);if(r)applyAll(JSON.parse(r))}catch(e){console.log('データなし（新規）')}
 }
 async function saveAll(){
-  // localStorageには全データ(賞与・一時金含む)を保存
+  // localStorageには全データ(賞与含む)を保存
   const payload=buildAll();
   try{localStorage.setItem(SKEY,JSON.stringify(payload,null,2))}catch(e){}
   // employees.jsonにはID順ソート済みフラット配列のみ保存
@@ -183,7 +181,7 @@ window.addEventListener('beforeunload',e=>{if(unsaved){e.preventDefault();e.retu
 function printTab(){
   const active=document.querySelector('.tb.active');
   const tab=active?active.dataset.t:'master';
-  const names={master:'職員マスター',bonuslump:'賞与計算・一時金'};
+  const names={master:'職員マスター',bonuslump:'賞与計算'};
   const title=names[tab]||'職員マスター管理';
   let sub=fd(new Date()).replace(/\//g,'-');
   if(tab==='master'){
@@ -226,7 +224,7 @@ function switchTab(name){
   document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
   if(name==='bonuslump'){renderBonusLump();jOpts('bljf','病院')}
 }
-document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')">🎁 賞与・一時金</button>';
+document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')">🎁 賞与</button>';
 
 function renderMasterHTML(){
   return`<div class="card"><h2>職員マスター</h2>
@@ -343,12 +341,10 @@ function saveM(){
 function delM(i){if(!confirm('削除？'))return;const removed=EMP.splice(i,1)[0];if(removed)exclIds.delete(removed.id);markDirty();const cv=document.getElementById('jf')?.value||'病院';jOpts('jf',cv);renderMaster()}
 
 function updBonusC(id,val){if(val==='')delete bonusC[id];else bonusC[id]=+val||0;markDirty();renderBonusLump()}
-function updLsCorr(id,val){if(val==='')delete lsCorr[id];else lsCorr[id]=+val||0;markDirty();renderBonusLump()}
-function updLsNight(id,val){if(val==='')delete lsNight[id];else lsNight[id]=+val||0;markDirty();renderBonusLump()}
 function renderBonusLump(){
   const panel=document.getElementById('tab-bonuslump');
   if(!document.getElementById('blTb')){
-    panel.innerHTML=`<div class="card"><h2>🎁 賞与・一時金</h2>
+    panel.innerHTML=`<div class="card"><h2>🎁 賞与</h2>
 <div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:1rem">
   <select id="bljf" onchange="renderBonusLump()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
   <div style="background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;display:flex;align-items:center;gap:.3rem"><span style="color:rgba(255,255,255,.7);font-size:.78rem">基準日:</span><input type="date" id="bDate" value="2026-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
@@ -359,16 +355,11 @@ function renderBonusLump(){
 <div class="sg">
   <div class="sc"><div class="sv" id="blBB">¥0</div><div class="sl">賞与基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">基本給×3 1万切上</div></div>
   <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blBCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">賞与確定総計</div></div>
-  <div class="sc"><div class="sv" id="blLB">¥0</div><div class="sl">一時金基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">(R8-R7年俸)÷3</div></div>
-  <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="blLN" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">夜勤付加総計</div></div>
-  <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blLCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">一時金確定総計</div></div>
-  <div class="sc" style="background:rgba(102,126,234,.25)"><div class="sv" id="blTotal" style="font-size:1.3rem;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">総合計</div></div>
 </div>
 <div class="tc st"><table><thead><tr>
   <th style="cursor:pointer" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer" onclick="doBlSort('age')">年齢<span id="bl-s-age"></span></th><th style="cursor:pointer" onclick="doBlSort('svc')">勤続<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
   <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
-  <th style="border-left:2px solid rgba(56,239,125,.4);cursor:pointer" onclick="doBlSort('lBase')">一時金基準<span id="bl-s-lBase"></span></th><th>補正</th><th>夜勤</th><th style="cursor:pointer" onclick="doBlSort('lConf')">一時金確定<span id="bl-s-lConf"></span></th>
-  <th style="border-left:2px solid rgba(102,126,234,.6);cursor:pointer" onclick="doBlSort('total')">総額<span id="bl-s-total"></span></th><th>操作</th>
+  <th>操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
   }
   const jf=document.getElementById('bljf')?.value||'',bd=document.getElementById('bDate')?.value||'2026-03-31';
@@ -379,10 +370,6 @@ function renderBonusLump(){
     const sv=svcDays(e.hireDate,bd);e._blSv=sv;
     const bFull=(e.baseSalary||0)*3,bRaw=bFull*sv.r;e._blBBase=Math.ceil(bRaw/10000)*10000;
     const cb=bonusC[e.id]||0,hasB=e.id in bonusC;e._blBConf=hasB?cb:e._blBBase;
-    const a7=ar7(e),a8=ar8(e);e._blLBase=Math.round((a8-a7)/3);
-    const ns=lsNight[e.id]||0,hasLC=e.id in lsCorr,lCorr=lsCorr[e.id]||0;
-    e._blLConf=hasLC?(lCorr+ns):(e._blLBase+ns);
-    e._blTotal=e._blBConf+e._blLConf;
   });
   const bk=blSort.key,bo=blSort.ord==='asc'?1:-1;
   tgt.sort((a,b)=>{switch(bk){
@@ -394,45 +381,27 @@ function renderBonusLump(){
     case'bs':return bo*((a.baseSalary||0)-(b.baseSalary||0));
     case'bBase':return bo*(a._blBBase-b._blBBase);
     case'bConf':return bo*(a._blBConf-b._blBConf);
-    case'lBase':return bo*(a._blLBase-b._blLBase);
-    case'lConf':return bo*(a._blLConf-b._blLConf);
-    case'total':return bo*(a._blTotal-b._blTotal);
     default:return 0}});
-  ['id','name','jt','age','svc','bs','bBase','bConf','lBase','lConf','total'].forEach(k=>{const el=document.getElementById('bl-s-'+k);if(el)el.textContent=blSort.key===k?(blSort.ord==='asc'?'▲':'▼'):''});
+  ['id','name','jt','age','svc','bs','bBase','bConf'].forEach(k=>{const el=document.getElementById('bl-s-'+k);if(el)el.textContent=blSort.key===k?(blSort.ord==='asc'?'▲':'▼'):''});
   const blEc=lsExclIds.size;document.getElementById('blExInfo').style.display=blEc?'inline':'none';if(blEc)document.getElementById('blExC').textContent=blEc;
-  let tBB=0,tBCf=0,tLB=0,tLN=0,tLCf=0;
+  let tBB=0,tBCf=0;
   document.getElementById('blTb').innerHTML=tgt.map(e=>{
     const a=age(e.birthDate,bd),sv=svcDays(e.hireDate,bd),si=esc(e.id);
     // 賞与: 基本給×3, 1年未満は按分し1万円切上
     const bFull=(e.baseSalary||0)*3,bRaw=bFull*sv.r,bBase=Math.ceil(bRaw/10000)*10000;
     const cb=bonusC[e.id]||0,hasB=e.id in bonusC,bConf=hasB?cb:bBase;
-    // 一時金: (R8年俸-R7年俸)÷3
-    const a7=ar7(e),a8=ar8(e),lBase=Math.round((a8-a7)/3);
-    const ns=lsNight[e.id]||0,hasLC=e.id in lsCorr,lCorr=lsCorr[e.id]||0;
-    const lConf=hasLC?(lCorr+ns):(lBase+ns);
-    // 総額
-    const total=bConf+lConf;
-    if(!e._blEx){tBB+=bBase;tBCf+=bConf;tLB+=lBase;tLN+=ns;tLCf+=lConf}
+    if(!e._blEx){tBB+=bBase;tBCf+=bConf}
     const u1=sv.r<1;
     const svTxt=u1?`<span class="red">${sv.d}日</span><br><span class="sub">(${Math.round(sv.r*100)}%)</span>`:`${Math.floor(sv.d/365)}年`;
     const bTxt=u1?Y(bBase)+`<br><span class="sub">満額${Y(bFull)}</span>`:Y(bBase);
-    const lbc=lBase>0?'#38ef7d':lBase<0?'#ff6b6b':'rgba(255,255,255,.5)';
     return`<tr style="${e._blEx?'opacity:.4;background:rgba(235,51,73,.1)':''}">
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td><td>${a}歳</td><td>${svTxt}</td><td>${Y(e.baseSalary||0)}</td>
 <td style="border-left:2px solid rgba(238,9,121,.15);${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
 <td><input type="number" class="bi" value="${cb||''}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
 <td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'}">${Y(bConf)}</td>
-<td style="border-left:2px solid rgba(56,239,125,.15);color:${lbc};font-weight:500;text-align:right">${Y(lBase)}</td>
-<td><input type="number" class="bi" value="${hasLC?lCorr:''}" placeholder="" onchange="updLsCorr('${si}',this.value)" style="${hasLC?'border-color:#ffd700':''}"></td>
-<td><input type="number" class="bi" value="${ns||''}" placeholder="0" onchange="updLsNight('${si}',this.value)"></td>
-<td style="${hasLC?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'};text-align:right">${Y(lConf)}</td>
-<td style="border-left:2px solid rgba(102,126,234,.3);font-weight:700;text-align:right;font-size:.9rem">${Y(total)}</td>
 <td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(235,51,73,.5)':''}">🚫</button></td></tr>`}).join('');
-  const totalAll=tBCf+tLCf;
   document.getElementById('blCnt').textContent=tgt.filter(e=>!e._blEx).length;
   document.getElementById('blBB').textContent=Y(tBB);document.getElementById('blBCf').textContent=Y(tBCf);
-  document.getElementById('blLB').textContent=Y(tLB);document.getElementById('blLN').textContent=Y(tLN);document.getElementById('blLCf').textContent=Y(tLCf);
-  document.getElementById('blTotal').textContent=Y(totalAll);
 }
 
 async function init(){
