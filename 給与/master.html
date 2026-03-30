@@ -164,16 +164,8 @@ async function saveAll(){
   // employees.jsonにはID順ソート済みフラット配列のみ保存
   EMP.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
   const json=JSON.stringify(EMP,null,2);
-  const path='../データ/employees.json';
-  let saved=false;
-  try{if(window.fs&&window.fs.writeFile){await window.fs.writeFile(path,json,{encoding:'utf8'});saved=true}}catch(e){}
-  if(!saved){
-    try{const r=await fetch(path,{method:'PUT',headers:{'Content-Type':'application/json'},body:json});if(r.ok)saved=true}catch(e){}
-  }
-  if(!saved){
-    try{const blob=new Blob([json],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='employees.json';document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(a.href);toast('⚠ ファイル書込不可のためダウンロードしました。データ/employees.json に上書きしてください');unsaved=false;updInd();return}catch(e){toast('保存に失敗しました',false);return}
-  }
-  unsaved=false;updInd();toast('✔ employees.json に保存しました');
+  try{const r=await fetch('/api/master/employees',{method:'PUT',headers:{'Content-Type':'application/json'},body:json});if(!r.ok)throw new Error(r.status)}catch(e){toast('保存に失敗しました',false);return}
+  unsaved=false;updInd();toast('✔ 保存しました');
   renderMaster(); // ソート後の表示を反映
 }
 function markDirty(){unsaved=true;updInd();saveAll()}
@@ -408,10 +400,7 @@ async function init(){
     await loadStorage();
   }
   if(!EMP.length){
-    try{const txt=await window.fs.readFile('../データ/employees.json',{encoding:'utf8'});const d=JSON.parse(txt);if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}catch(e){}
-  }
-  if(!EMP.length){
-    try{const r=await fetch('../データ/employees.json');if(r.ok){const d=await r.json();if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}}catch(e){}
+    try{const r=await fetch('/api/master/employees');if(r.ok){const d=await r.json();if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}}catch(e){}
   }
   // 貢献度リセット
   bonusC={};

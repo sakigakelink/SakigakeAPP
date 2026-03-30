@@ -252,6 +252,15 @@ def master_employees():
         return json.load(f)
 
 
+@app.route('/api/master/employees', methods=['PUT'])
+def master_employees_save():
+    path = os.path.join(BASE_DIR, 'shared', 'employees.json')
+    data = request.get_json(force=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return 'OK'
+
+
 @app.route('/api/master/dept-codes')
 def master_dept_codes():
     path = os.path.join(BASE_DIR, '給与', 'dept_codes.json')
