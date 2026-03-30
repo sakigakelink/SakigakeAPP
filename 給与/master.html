@@ -252,16 +252,16 @@ function renderMasterHTML(){
   <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div></div>  <div class="sc"><div class="sv" id="tCm">¥0</div><div class="sl">通勤手当総計</div></div>
   <div class="sc"><div class="sv" id="tRN">¥0</div><div class="sl">退職金総計</div><div class="sv dim" id="tR60" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">定年退職金</div></div>
 </div></div>
-<div class="tc st"><table><thead><tr>
-  <th style="cursor:pointer;width:4rem" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th style="width:6.5rem">名前</th><th style="width:3.5rem">職種</th>
-  <th style="cursor:pointer;width:6rem" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
-  <th style="cursor:pointer;width:6rem" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
-  <th style="width:5.5rem">基本給</th>
+<div class="tc st"><table style="table-layout:fixed"><thead><tr>
+  <th style="cursor:pointer" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th>名前</th><th>職種</th>
+  <th style="cursor:pointer" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
+  <th style="cursor:pointer" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
+  <th>基本給</th>
   <th style="cursor:pointer" onclick="doSort('pos')">役職<span id="s-pos"></span></th>
   <th>調整</th>
   <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
   <th style="cursor:pointer" onclick="doSort('as')">年俸<span id="s-as"></span></th>
-  <th style="width:6rem">退職金</th><th style="width:5.5rem">操作</th>
+  <th>退職金</th><th>操作</th>
 </tr></thead><tbody id="mTb"></tbody></table></div></div>`;
 }
 function chRD(d){const i=document.getElementById('rcd'),x=i.value?new Date(i.value):new Date();x.setDate(x.getDate()+d);i.value=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');renderMaster()}
