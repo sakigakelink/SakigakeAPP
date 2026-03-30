@@ -393,7 +393,7 @@ function renderBonusLump(){
     return`<tr style="${e._blEx?'opacity:.4;background:rgba(235,51,73,.1)':''}">
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td><td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}<br><span class="sub">${svTxt}</span></td><td>${Y(e.baseSalary||0)}</td>
 <td style="${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
-<td><input type="number" class="bi" value="${cb||''}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
+<td><input type="number" class="bi" value="${cb}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
 <td></td><td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'};text-align:right">${Y(bConf)}</td>
 <td></td><td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(235,51,73,.5)':''}">🚫</button></td></tr>`}).join('');
   document.getElementById('blCnt').textContent=tgt.filter(e=>!e._blEx).length;
