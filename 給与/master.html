@@ -253,7 +253,7 @@ function renderMasterHTML(){
   <div class="sc"><div class="sv" id="tRN">¥0</div><div class="sl">退職金総計</div><div class="sv dim" id="tR60" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">定年退職金</div></div>
 </div></div>
 <div class="tc st"><table><thead><tr>
-  <th style="cursor:pointer" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th>名前</th><th>職種</th>
+  <th style="cursor:pointer;width:4rem" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th style="width:5rem">名前</th><th style="width:3.5rem">職種</th>
   <th style="cursor:pointer" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
   <th style="cursor:pointer" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
   <th>基本給</th>
@@ -353,7 +353,7 @@ function renderBonusLump(){
   <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blBCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">賞与確定総計</div></div>
 </div></div>
 <div class="tc st"><table><thead><tr>
-  <th style="cursor:pointer" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer" onclick="doBlSort('age')">年齢<span id="bl-s-age"></span></th><th style="cursor:pointer" onclick="doBlSort('svc')">勤続<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
+  <th style="cursor:pointer;width:4rem" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:5rem" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:3.5rem" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer" onclick="doBlSort('age')">年齢<span id="bl-s-age"></span></th><th style="cursor:pointer" onclick="doBlSort('svc')">勤続<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
   <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
   <th>操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
