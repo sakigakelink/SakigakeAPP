@@ -28,4 +28,15 @@ document.addEventListener('DOMContentLoaded', () => {
       location.reload();
     });
   }
+
+  // サーバー再起動
+  const btnRestart = document.getElementById('btn-restart');
+  if (btnRestart) {
+    btnRestart.addEventListener('click', () => {
+      if (!confirm('サーバーを再起動しますか？')) return;
+      fetch('/api/restart').then(() => {
+        setTimeout(() => location.reload(), 3000);
+      });
+    });
+  }
 });
