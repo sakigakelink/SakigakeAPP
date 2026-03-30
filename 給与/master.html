@@ -341,12 +341,12 @@ function renderBonusLump(){
   const panel=document.getElementById('tab-bonuslump');
   if(!document.getElementById('blTb')){
     panel.innerHTML=`<div class="card"><div class="tab-head"><div class="tab-top"><h2>🎁 賞与</h2>
-<div style="display:flex;gap:.6rem;flex-wrap:wrap;align-items:center">
+<div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;overflow-x:auto">
   <select id="bljf" onchange="renderBonusLump()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
-  <div style="background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;display:flex;align-items:center;gap:.3rem"><span style="color:rgba(255,255,255,.7);font-size:.78rem">基準日:</span><input type="date" id="bDate" value="2027-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
-  <span style="font-size:.82rem">対象者:<strong id="blCnt" style="color:#667eea">0</strong>名
+  <span style="white-space:nowrap;font-size:.82rem">対象者:<strong id="blCnt" style="color:#667eea">0</strong>名
     <span id="blExInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="blExC">0</strong>名 <button onclick="lsExclIds.clear();renderBonusLump()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
   </span>
+  <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">📅<input type="date" id="bDate" value="2027-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
 </div></div>
 <div class="sg">
   <div class="sc"><div class="sv" id="blBB">¥0</div><div class="sl">賞与基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">基本給×3 1万切上</div></div>
@@ -354,7 +354,7 @@ function renderBonusLump(){
 </div></div>
 <div class="tc st"><table style="table-layout:fixed"><thead><tr>
   <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('age')">誕生日<span id="bl-s-age"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('svc')">採用日<span id="bl-s-svc"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
-  <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th style="width:calc(100%/12)">貢献度</th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
+  <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th style="width:calc(100%/12)">貢献度</th><th style="cursor:pointer;width:calc(100%/12);text-align:right" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
   <th style="width:calc(100%/12)"></th><th style="width:calc(100%/12)"></th><th style="width:calc(100%/12)">操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
   }
@@ -394,7 +394,7 @@ function renderBonusLump(){
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td><td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}<br><span class="sub">${svTxt}</span></td><td>${Y(e.baseSalary||0)}</td>
 <td style="${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
 <td><input type="number" class="bi" value="${cb||''}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
-<td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'}">${Y(bConf)}</td>
+<td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'};text-align:right">${Y(bConf)}</td>
 <td></td><td></td><td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(235,51,73,.5)':''}">🚫</button></td></tr>`}).join('');
   document.getElementById('blCnt').textContent=tgt.filter(e=>!e._blEx).length;
   document.getElementById('blBB').textContent=Y(tBB);document.getElementById('blBCf').textContent=Y(tBCf);
