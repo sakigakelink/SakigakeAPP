@@ -245,17 +245,17 @@ function renderMasterHTML(){
   <div class="sc"><div class="sv" id="tAS">¥0</div><div class="sl">年俸総計</div></div>
   <div class="sc"><div class="sv" id="tBS">¥0</div><div class="sl">基本給総計</div></div>
   <div class="sc"><div class="sv" id="tPos">¥0</div><div class="sl">役職手当総計</div></div>
-  <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div></div>
-  <div class="sc"><div class="sv" id="tCm">¥0</div><div class="sl">通勤手当総計</div></div>
+  <div class="sc"><div class="sv" id="tAdj">¥0</div><div class="sl">調整手当総計</div></div>  <div class="sc"><div class="sv" id="tCm">¥0</div><div class="sl">通勤手当総計</div></div>
   <div class="sc"><div class="sv" id="tRN">¥0</div><div class="sl">退職金総計</div><div class="sv dim" id="tR60" style="font-size:1rem;margin-top:.2rem">¥0</div><div class="sl" style="font-size:.65rem">定年退職金</div></div>
 </div>
 <div class="tc st"><table><thead><tr>
   <th style="cursor:pointer" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th>名前</th><th>職種</th>
   <th style="cursor:pointer" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
   <th style="cursor:pointer" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
-  <th>基本給</th><th>調整</th>
-  <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
+  <th>基本給</th>
   <th style="cursor:pointer" onclick="doSort('pos')">役職<span id="s-pos"></span></th>
+  <th>調整</th>
+  <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
   <th style="cursor:pointer" onclick="doSort('as')">年俸<span id="s-as"></span></th>
   <th>退職金<br><span class="sub">定年</span></th><th>操作</th>
 </tr></thead><tbody id="mTb"></tbody></table></div></div>`;
@@ -297,9 +297,9 @@ function renderMaster(){
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td>
 <td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}</td>
 <td>${Y(e.baseSalary||0)}</td>
+<td>${Y(e.position||0)}</td>
 <td>${Y(e.adjustment||0)}</td>
 <td>${Y(e.commute||0)}</td>
-<td>${Y(e.position||0)}</td>
 <td>${Y(e._as)}</td>
 <td>${Y(r.now)}<br><span class="sub">${Y(r.ret)}</span></td>
 <td><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
