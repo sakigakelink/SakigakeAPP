@@ -21,21 +21,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   });
 
-  // サーバー再起動（ウインドウ閉じて新しく立ち上げ）
-  const btnRestart = document.getElementById('btn-restart');
-  if (btnRestart) {
-    btnRestart.addEventListener('click', () => {
-      navigator.sendBeacon('/api/restart');
-      window.close();
-    });
-  }
-
-  // サーバー終了（ウインドウも閉じる）
-  const btnShutdown = document.getElementById('btn-shutdown');
-  if (btnShutdown) {
-    btnShutdown.addEventListener('click', () => {
-      navigator.sendBeacon('/api/shutdown');
-      window.close();
+  // ページ再読込
+  const btnReload = document.getElementById('btn-reload');
+  if (btnReload) {
+    btnReload.addEventListener('click', () => {
+      location.reload();
     });
   }
 });
