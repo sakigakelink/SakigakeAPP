@@ -190,7 +190,7 @@
 /* ---------- iframe ---------- */
 .app-frame {
   width: 100%;
-  height: 100vh;
+  height: 100%;
   border: none;
   background: var(--sk-bg-1);
 }
