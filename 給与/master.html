@@ -4,54 +4,54 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>職員マスター管理</title>
+  <link rel="stylesheet" href="/static/css/design-system.css">
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     html{overflow-y:scroll}
-    body{min-height:100vh;background:linear-gradient(135deg,#1a1a2e,#16213e,#0f3460);font-family:'Hiragino Kaku Gothic ProN',sans-serif;color:#e8e8e8;padding:1rem}
+    body{min-height:100vh;font-family:'Hiragino Kaku Gothic ProN',sans-serif;padding:1.5rem;color:var(--sk-text-1,#1a1a2e)}
     .container{max-width:1400px;margin:0 auto}
-    .card{background:rgba(255,255,255,.05);backdrop-filter:blur(10px);border:1px solid rgba(255,255,255,.1);border-radius:16px;padding:1.5rem;margin-bottom:1.5rem}
-    .card h2{margin-bottom:1rem;font-weight:500;font-size:1.1rem}
-    .btn{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.3rem}
+    .card{background:#fff;border:1px solid var(--sk-surface-border,#e0e0e0);border-radius:var(--sk-radius-lg,12px);padding:1.5rem;margin-bottom:1.5rem;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+    .card h2{margin-bottom:1rem;font-weight:600;font-size:1.1rem;color:var(--sk-text-1,#1e293b)}
+    .btn{background:var(--sk-grad-primary,linear-gradient(135deg,#667eea,#764ba2));color:#fff;border:none;padding:.5rem 1rem;border-radius:8px;font-size:.85rem;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:.3rem}
     .btn:hover{opacity:.9}
-    .btn-save{background:linear-gradient(135deg,#ee0979,#ff6a00)}
-    .btn-out{background:transparent;border:1px solid rgba(255,255,255,.3)}
-        .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin-bottom:1rem}
-    .sc{background:rgba(102,126,234,.15);border-radius:10px;padding:.8rem;text-align:center;overflow:hidden;min-height:7.2rem}
-    .sv{font-size:1.2rem;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;word-break:break-all}
-    .sl{font-size:.7rem;color:rgba(255,255,255,.6);margin-top:.2rem}
-    .tc{overflow-x:auto;border-radius:10px;background:rgba(0,0,0,.2);margin-bottom:1rem}
+    .btn-out{background:transparent;border:1px solid var(--sk-surface-border,#d0d0d0);color:var(--sk-text-2,#475569)}
+    .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin-bottom:1rem}
+    .sc{background:var(--sk-bg-1,#f1f3f7);border:1px solid var(--sk-surface-border,#e0e0e0);border-radius:10px;padding:.8rem;text-align:center;overflow:hidden;min-height:7.2rem}
+    .sv{font-size:1.2rem;font-weight:700;color:var(--sk-primary,#4f46e5);word-break:break-all}
+    .sl{font-size:.7rem;color:var(--sk-text-3,#94a3b8);margin-top:.2rem}
+    .tc{overflow-x:auto;border-radius:10px;border:1px solid var(--sk-surface-border,#e0e0e0);margin-bottom:1rem}
     .st{max-height:600px;overflow-y:auto}
     table{width:100%;border-collapse:collapse;font-size:.82rem}
-    th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.1)}
-    th{background:#1e2a4a;font-weight:500;position:sticky;top:0;white-space:nowrap;z-index:10}
-    tr:hover td{background:rgba(255,255,255,.05)}
+    th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid var(--sk-surface-border,#e8e8e8)}
+    th{background:var(--sk-bg-2,#e8ebf0);font-weight:600;position:sticky;top:0;white-space:nowrap;z-index:10;color:var(--sk-text-2,#475569)}
+    tr:hover td{background:var(--sk-bg-1,#f8f9fb)}
     .hidden{display:none!important}
     .fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:.6rem}
     .fg{display:flex;flex-direction:column;gap:.2rem}
-    .fg label{font-size:.75rem;color:rgba(255,255,255,.7)}
-    .fg input{padding:.5rem;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.3);color:#fff;font-size:.85rem;font-family:inherit}
-    .fg input:focus{outline:none;border-color:#667eea}
-    .mo{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:1000}
-    .md{background:#1a1a2e;border:1px solid rgba(255,255,255,.2);border-radius:16px;padding:1.5rem;max-width:600px;width:95%;max-height:90vh;overflow-y:auto}
+    .fg label{font-size:.75rem;color:var(--sk-text-3,#94a3b8)}
+    .fg input{padding:.5rem;border:1px solid var(--sk-surface-border,#d0d0d0);border-radius:6px;background:#fff;color:var(--sk-text-1,#1e293b);font-size:.85rem;font-family:inherit}
+    .fg input:focus{outline:none;border-color:#4f46e5}
+    .mo{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+    .md{background:#fff;border:1px solid var(--sk-surface-border,#d0d0d0);border-radius:16px;padding:1.5rem;max-width:600px;width:95%;max-height:90vh;overflow-y:auto;box-shadow:0 8px 30px rgba(0,0,0,.15)}
     .md h3{margin-bottom:1rem;font-size:1.1rem}
-    .eb,.db{background:rgba(102,126,234,.3);border:none;color:#fff;padding:.2rem .4rem;border-radius:4px;cursor:pointer;font-size:.78rem}
-    .db{background:rgba(235,51,73,.3)}
+    .eb,.db{background:rgba(102,126,234,.15);border:none;color:#4f46e5;padding:.2rem .4rem;border-radius:4px;cursor:pointer;font-size:.78rem}
+    .db{background:rgba(235,51,73,.15);color:#dc2626}
     .tn{display:flex;gap:.4rem;margin-bottom:.5rem;align-items:center}
-    .tb{padding:.5rem 1rem;border:none;border-radius:8px 8px 0 0;background:rgba(255,255,255,.1);color:rgba(255,255,255,.6);font-size:.85rem;font-weight:500;cursor:pointer;font-family:inherit}
-    .tb.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+    .tb{padding:.5rem 1rem;border:none;border-radius:8px 8px 0 0;background:var(--sk-bg-2,#e8ebf0);color:var(--sk-text-3,#94a3b8);font-size:.85rem;font-weight:500;cursor:pointer;font-family:inherit}
+    .tb.active{background:var(--sk-grad-primary,linear-gradient(135deg,#667eea,#764ba2));color:#fff}
     .tp{display:none}.tp.active{display:block}
     .tab-head{height:16rem;overflow:hidden}
-    .bi{width:70px;padding:.35rem;border:1px solid rgba(255,255,255,.3);border-radius:4px;background:rgba(0,0,0,.3);color:#fff;font-size:.82rem;text-align:right;-moz-appearance:textfield}
+    .bi{width:70px;padding:.35rem;border:1px solid var(--sk-surface-border,#d0d0d0);border-radius:4px;background:#fff;color:var(--sk-text-1,#1e293b);font-size:.82rem;text-align:right;-moz-appearance:textfield}
     .bi::-webkit-outer-spin-button,.bi::-webkit-inner-spin-button{-webkit-appearance:none}
-    .bi:focus{outline:none;border-color:#667eea}
-    .sub{font-size:.75rem;color:rgba(255,255,255,.5)}
-    .grn{color:#38ef7d}.red{color:#ff6b6b}.dim{color:rgba(255,255,255,.5)}
-    select{padding:.4rem;border:1px solid rgba(255,255,255,.2);border-radius:6px;background:rgba(0,0,0,.3);color:#fff;font-size:.82rem}
+    .bi:focus{outline:none;border-color:#4f46e5}
+    .sub{font-size:.75rem;color:var(--sk-text-4,#a0aec0)}
+    .grn{color:#16a34a}.red{color:#dc2626}.dim{color:var(--sk-text-4,#a0aec0)}
+    select{padding:.4rem;border:1px solid var(--sk-surface-border,#d0d0d0);border-radius:6px;background:#fff;color:var(--sk-text-1,#1e293b);font-size:.82rem}
     .toast{position:fixed;bottom:2rem;right:2rem;padding:.7rem 1.3rem;border-radius:10px;font-size:.88rem;z-index:3000;animation:toastAnim 2.2s ease forwards}
     @keyframes toastAnim{0%{opacity:0;transform:translateY(20px)}12%{opacity:1;transform:translateY(0)}80%{opacity:1}100%{opacity:0}}
-    .toast-ok{background:rgba(56,239,125,.92);color:#1a1a2e}
-    .toast-ng{background:rgba(255,107,107,.92);color:#fff}
-    .gbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem;padding:.5rem .8rem;background:rgba(0,0,0,.15);border-radius:10px}
+    .toast-ok{background:rgba(22,163,74,.92);color:#fff}
+    .toast-ng{background:rgba(220,38,38,.92);color:#fff}
+    .gbar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin-bottom:.6rem;padding:.5rem .8rem;background:var(--sk-bg-1,#f1f3f7);border-radius:10px}
     #printHeader{display:none}
     @media print{
       body{background:#fff!important;color:#000!important;padding:0;font-size:10pt}
@@ -214,25 +214,25 @@ function switchTab(name){
   document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
   if(name==='bonuslump'){renderBonusLump();jOpts('bljf','病院')}
 }
-document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')" style="width:10rem;text-align:center">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')" style="width:10rem;text-align:center">🎁 賞与</button><button class="btn btn-out" onclick="printTab()" style="margin-left:auto;padding:.5rem 1rem">🖨️ PDF出力</button><span id="saveInd" style="font-size:.8rem;white-space:nowrap;color:#38ef7d">✔ 保存済</span>';
+document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')" style="width:10rem;text-align:center">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')" style="width:10rem;text-align:center">🎁 賞与</button><button class="btn btn-out" onclick="printTab()" style="margin-left:auto;padding:.5rem 1rem">🖨️ PDF出力</button><span id="saveInd" style="font-size:.8rem;white-space:nowrap;color:#16a34a">✔ 保存済</span>';
 
 function renderMasterHTML(){
   return`<div class="card"><div class="tab-head"><div class="tab-top"><h2>職員マスター</h2>
 <div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;overflow-x:auto">
   <select id="jf" onchange="renderMaster()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
-  <span style="white-space:nowrap;font-size:.82rem">対象者:<strong id="fc" style="color:#667eea">0</strong>名
-    <span id="exInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="exC">0</strong>名 <button onclick="exclIds.clear();renderMaster()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
+  <span style="white-space:nowrap;font-size:.82rem">対象者:<strong id="fc" style="color:#4f46e5">0</strong>名
+    <span id="exInfo" style="color:#dc2626;font-size:.72rem;display:none"><br>除外:<strong id="exC">0</strong>名 <button onclick="exclIds.clear();renderMaster()" style="padding:0 .3rem;background:rgba(220,38,38,.12);border:none;border-radius:3px;color:#dc2626;cursor:pointer;font-size:.7rem">解除</button></span>
   </span>
   <button class="btn" onclick="showAdd()" style="white-space:nowrap;padding:.3rem .6rem">➕追加</button>
-  <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">
-    📅<input type="date" id="rcd" onchange="renderMaster()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem">
-    <button onclick="chRD(30)" style="padding:.2rem .4rem;background:rgba(102,126,234,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">+1月</button>
-    <button onclick="chRD(365)" style="padding:.2rem .4rem;background:rgba(102,126,234,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">+1年</button>
-    <button onclick="document.getElementById('rcd').value=td();renderMaster()" style="padding:.2rem .4rem;background:rgba(56,239,125,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">今日</button>
+  <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:var(--sk-bg-1,#f1f3f7);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">
+    📅<input type="date" id="rcd" onchange="renderMaster()" style="padding:.3rem;border:1px solid var(--sk-surface-border,#d0d0d0);border-radius:6px;background:#fff;color:var(--sk-text-1,#1e293b);font-size:.82rem">
+    <button onclick="chRD(30)" style="padding:.2rem .4rem;background:rgba(79,70,229,.12);border:none;border-radius:4px;color:#4f46e5;cursor:pointer;font-size:.78rem">+1月</button>
+    <button onclick="chRD(365)" style="padding:.2rem .4rem;background:rgba(79,70,229,.12);border:none;border-radius:4px;color:#4f46e5;cursor:pointer;font-size:.78rem">+1年</button>
+    <button onclick="document.getElementById('rcd').value=td();renderMaster()" style="padding:.2rem .4rem;background:rgba(22,163,74,.12);border:none;border-radius:4px;color:#16a34a;cursor:pointer;font-size:.78rem">今日</button>
   </div>
 </div></div>
 <div class="sg">
-  <div class="sc" style="background:rgba(56,239,125,.15)"><div class="sv" id="tMC" style="background:linear-gradient(135deg,#11998e,#38ef7d);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">月額人件費</div></div>
+  <div class="sc" style="background:rgba(22,163,74,.08)"><div class="sv" id="tMC" style="color:#16a34a">¥0</div><div class="sl">月額人件費</div></div>
   <div class="sc"><div class="sv" id="tAS">¥0</div><div class="sl">年俸総計</div></div>
   <div class="sc"><div class="sv" id="tBS">¥0</div><div class="sl">基本給総計</div></div>
   <div class="sc"><div class="sv" id="tPos">¥0</div><div class="sl">役職手当総計</div></div>
@@ -284,7 +284,7 @@ function renderMaster(){
   document.getElementById('tMC').textContent=Y(Math.round(t.bs*1.25+t.pos+t.adj+t.cm));
   document.getElementById('mTb').innerHTML=disp.map(e=>{
     const r=calcRet(e.baseSalary,e.hireDate,e.birthDate,rcd),a=age(e.birthDate),si=esc(e.id);
-    return`<tr style="${e._ex?'opacity:.4;background:rgba(235,51,73,.1)':''}">
+    return`<tr style="${e._ex?'opacity:.4;background:rgba(220,38,38,.06)':''}">
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td>
 <td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}<br><span class="sub">${e.hireDate?Math.floor(svcDays(e.hireDate).d/365)+'年':'-'}</span></td>
 <td>${Y(e.baseSalary||0)}</td>
@@ -293,7 +293,7 @@ function renderMaster(){
 <td>${Y(e.commute||0)}</td>
 <td style="text-align:right">${Y(e._as)}</td>
 <td>${Y(r.now)}<br><span class="sub">${Y(r.ret)}</span></td>
-<td style="white-space:nowrap"><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
+<td style="white-space:nowrap"><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(220,38,38,.3)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
 }
 function toggleEx(id){if(exclIds.has(id))exclIds.delete(id);else exclIds.add(id);renderMaster()}
 function toggleLsEx(id){if(lsExclIds.has(id))lsExclIds.delete(id);else lsExclIds.add(id);renderBonusLump()}
@@ -330,14 +330,14 @@ function renderBonusLump(){
     panel.innerHTML=`<div class="card"><div class="tab-head"><div class="tab-top"><h2>🎁 賞与</h2>
 <div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;overflow-x:auto">
   <select id="bljf" onchange="renderBonusLump()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
-  <span style="white-space:nowrap;font-size:.82rem">対象者:<strong id="blCnt" style="color:#667eea">0</strong>名
-    <span id="blExInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="blExC">0</strong>名 <button onclick="lsExclIds.clear();renderBonusLump()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
+  <span style="white-space:nowrap;font-size:.82rem">対象者:<strong id="blCnt" style="color:#4f46e5">0</strong>名
+    <span id="blExInfo" style="color:#dc2626;font-size:.72rem;display:none"><br>除外:<strong id="blExC">0</strong>名 <button onclick="lsExclIds.clear();renderBonusLump()" style="padding:0 .3rem;background:rgba(220,38,38,.12);border:none;border-radius:3px;color:#dc2626;cursor:pointer;font-size:.7rem">解除</button></span>
   </span>
-  <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">📅<input type="date" id="bDate" value="2027-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem"></div>
+  <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:var(--sk-bg-1,#f1f3f7);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">📅<input type="date" id="bDate" value="2027-03-31" onchange="renderBonusLump()" style="padding:.3rem;border:1px solid var(--sk-surface-border,#d0d0d0);border-radius:6px;background:#fff;color:var(--sk-text-1,#1e293b);font-size:.82rem"></div>
 </div></div>
 <div class="sg">
-  <div class="sc"><div class="sv" id="blBB">¥0</div><div class="sl">賞与基準総計</div><div style="font-size:.65rem;color:rgba(255,255,255,.4);margin-top:.2rem">基本給×3 1万切上</div></div>
-  <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blBCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">賞与確定総計</div></div>
+  <div class="sc"><div class="sv" id="blBB">¥0</div><div class="sl">賞与基準総計</div><div style="font-size:.65rem;color:var(--sk-text-4,#a0aec0);margin-top:.2rem">基本給×3 1万切上</div></div>
+  <div class="sc" style="background:rgba(220,38,38,.08)"><div class="sv" id="blBCf" style="color:#dc2626">¥0</div><div class="sl">賞与確定総計</div></div>
 </div></div>
 <div class="tc st"><table style="table-layout:fixed"><thead><tr>
   <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('age')">誕生日<span id="bl-s-age"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('svc')">採用日<span id="bl-s-svc"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
@@ -377,12 +377,12 @@ function renderBonusLump(){
     const u1=sv.r<1;
     const svTxt=u1?`<span class="red">${sv.d}日</span><br><span class="sub">(${Math.round(sv.r*100)}%)</span>`:`${Math.floor(sv.d/365)}年`;
     const bTxt=u1?Y(bBase)+`<br><span class="sub">満額${Y(bFull)}</span>`:Y(bBase);
-    return`<tr style="${e._blEx?'opacity:.4;background:rgba(235,51,73,.1)':''}">
+    return`<tr style="${e._blEx?'opacity:.4;background:rgba(220,38,38,.06)':''}">
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td><td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}<br><span class="sub">${svTxt}</span></td><td>${Y(e.baseSalary||0)}</td>
-<td style="${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
-<td><input type="number" class="bi" value="${cb}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
-<td></td><td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'};text-align:right">${Y(bConf)}</td>
-<td></td><td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(235,51,73,.5)':''}">🚫</button></td></tr>`}).join('');
+<td style="${hasB?'color:var(--sk-text-4,#a0aec0)':''}">${bTxt}</td>
+<td><input type="number" class="bi" value="${cb}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#d97706':''}"></td>
+<td></td><td style="${hasB?'color:#d97706;font-weight:600':'color:#16a34a;font-weight:600'};text-align:right">${Y(bConf)}</td>
+<td></td><td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(220,38,38,.3)':''}">🚫</button></td></tr>`}).join('');
   document.getElementById('blCnt').textContent=tgt.filter(e=>!e._blEx).length;
   document.getElementById('blBB').textContent=Y(tBB);document.getElementById('blBCf').textContent=Y(tBCf);
 }
