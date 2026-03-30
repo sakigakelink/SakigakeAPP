@@ -75,7 +75,7 @@ _pnl_spec.loader.exec_module(_pnl_mod)
 # ---------------------------------------------------------------------------
 # ポータル ルート
 # ---------------------------------------------------------------------------
-VALID_PAGES = {'shift', 'salary', 'pnl', 'data'}
+VALID_PAGES = {'shift', 'salary', 'pnl', 'data', 'master'}
 
 
 @app.route('/')
@@ -113,6 +113,12 @@ def legacy_shift_static(filename):
 def legacy_salary():
     return send_from_directory(
         os.path.join(BASE_DIR, '給与', 'templates'), 'index.html')
+
+
+@app.route('/legacy/master/')
+def legacy_master():
+    return send_from_directory(
+        os.path.join(BASE_DIR, '給与'), 'master.html')
 
 
 @app.route('/legacy/pnl/')
