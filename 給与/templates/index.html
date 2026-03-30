@@ -281,11 +281,17 @@ async function loadFolders() {
   } catch (e) { console.error(e); }
 }
 
-// フォルダ読込
+// フォルダ読込（キャッシュがあればそこから取得）
 async function loadFolder(name) {
   document.querySelectorAll('.folder-btn').forEach(b => b.classList.remove('active'));
   event.target.classList.add('active');
-  hideTrendTables();
+  if (allMonthsData && allMonthsData.months && allMonthsData.months[name]) {
+    const d = allMonthsData.months[name];
+    analysisData = { categories: d.categories, combined: d.combined, buka_summary: d.buka_summary };
+    renderDashboard();
+    document.getElementById('results').classList.remove('hidden');
+    return;
+  }
   showLoading();
   try {
     const res = await fetch('/api/parse_folder', {
