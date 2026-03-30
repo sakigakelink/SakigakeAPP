@@ -38,8 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnRestart = document.getElementById('btn-restart');
   if (btnRestart) {
     btnRestart.addEventListener('click', () => {
-      if (!confirm('サーバーを再起動しますか？')) return;
       fetch('/api/restart', {method:'POST'});
+      document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:1.2rem;color:#666">再起動中...</div>';
       const poll = setInterval(() => {
         fetch('/').then(r => { if (r.ok) { clearInterval(poll); location.reload(); } }).catch(() => {});
       }, 1000);
@@ -50,7 +50,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const btnShutdown = document.getElementById('btn-shutdown');
   if (btnShutdown) {
     btnShutdown.addEventListener('click', () => {
-      if (!confirm('サーバーを終了しますか？')) return;
       fetch('/api/shutdown', {method:'POST'});
       setTimeout(() => window.close(), 500);
     });
