@@ -23,7 +23,7 @@
     .st{max-height:600px;overflow-y:auto}
     table{width:100%;border-collapse:collapse;font-size:.82rem}
     th,td{padding:.5rem .6rem;text-align:left;border-bottom:1px solid rgba(255,255,255,.1)}
-    th{background:#1e2a4a;font-weight:500;position:sticky;top:0;white-space:nowrap;z-index:10;height:2.8em}
+    th{background:#1e2a4a;font-weight:500;position:sticky;top:0;white-space:nowrap;z-index:10}
     tr:hover td{background:rgba(255,255,255,.05)}
     .hidden{display:none!important}
     .fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.6rem;margin-bottom:.6rem}
@@ -261,7 +261,7 @@ function renderMasterHTML(){
   <th>調整</th>
   <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
   <th style="cursor:pointer" onclick="doSort('as')">年俸<span id="s-as"></span></th>
-  <th>退職金<br><span class="sub">定年</span></th><th>操作</th>
+  <th>退職金</th><th>操作</th>
 </tr></thead><tbody id="mTb"></tbody></table></div></div>`;
 }
 function chRD(d){const i=document.getElementById('rcd'),x=i.value?new Date(i.value):new Date();x.setDate(x.getDate()+d);i.value=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');renderMaster()}
