@@ -158,15 +158,16 @@ async function loadStorage(){
   try{const r=localStorage.getItem(SKEY);if(r)applyAll(JSON.parse(r))}catch(e){console.log('データなし（新規）')}
 }
 async function saveAll(){
-  // localStorageには全データ(賞与含む)を保存
-  const payload=buildAll();
-  try{localStorage.setItem(SKEY,JSON.stringify(payload,null,2))}catch(e){}
-  // employees.jsonにはID順ソート済みフラット配列のみ保存
   EMP.sort((a,b)=>(a.id||'').localeCompare(b.id||''));
-  const json=JSON.stringify(EMP,null,2);
-  try{const r=await fetch('/api/master/employees',{method:'PUT',headers:{'Content-Type':'application/json'},body:json});if(!r.ok)throw new Error(r.status)}catch(e){toast('保存に失敗しました',false);return}
+  try{
+    const [r1,r2]=await Promise.all([
+      fetch('/api/master/employees',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(EMP,null,2)}),
+      fetch('/api/master/bonus',{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(bonusC,null,2)})
+    ]);
+    if(!r1.ok||!r2.ok)throw new Error('save failed');
+  }catch(e){toast('保存に失敗しました',false);return}
   unsaved=false;updInd();toast('✔ 保存しました');
-  renderMaster(); // ソート後の表示を反映
+  renderMaster();
 }
 function markDirty(){unsaved=true;updInd();saveAll()}
 function updInd(){const el=document.getElementById('saveInd');if(!el)return;el.textContent=unsaved?'● 未保存':'✔ 保存済';el.style.color=unsaved?'#ff6b6b':'#38ef7d'}
@@ -402,8 +403,8 @@ async function init(){
   if(!EMP.length){
     try{const r=await fetch('/api/master/employees');if(r.ok){const d=await r.json();if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}}catch(e){}
   }
-  // 貢献度リセット
-  bonusC={};
+  // 貢献度をAPIから読込
+  try{const r=await fetch('/api/master/bonus');if(r.ok)bonusC=await r.json()}catch(e){bonusC={}}
   // R8→主フィールドへマイグレーション
   EMP.forEach(e=>{
     if('baseR8' in e){e.baseSalary=e.baseR8;delete e.baseR8}

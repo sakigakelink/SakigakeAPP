@@ -267,6 +267,24 @@ def master_employees_save():
     return 'OK'
 
 
+@app.route('/api/master/bonus')
+def master_bonus():
+    path = os.path.join(BASE_DIR, 'shared', 'bonus_contributions.json')
+    if not os.path.isfile(path):
+        return json.dumps({}, ensure_ascii=False), 200
+    with open(path, encoding='utf-8') as f:
+        return json.load(f)
+
+
+@app.route('/api/master/bonus', methods=['PUT'])
+def master_bonus_save():
+    path = os.path.join(BASE_DIR, 'shared', 'bonus_contributions.json')
+    data = request.get_json(force=True)
+    with open(path, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    return 'OK'
+
+
 @app.route('/api/master/dept-codes')
 def master_dept_codes():
     path = os.path.join(BASE_DIR, '給与', 'dept_codes.json')
