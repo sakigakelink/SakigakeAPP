@@ -101,43 +101,8 @@
 
   <!-- === TKC PX2 タブ === -->
   <div id="tabPDF">
-  <!-- アップロードセクション -->
   <div class="card" id="uploadCard">
-    <h2>PDF読込</h2>
-    <div id="folderSection">
-      <div style="font-size:.85rem;color:var(--sk-text-3);margin-bottom:.5rem">サーバー上のフォルダから読込:</div>
-      <div class="folder-btns" id="folderBtns"></div>
-      <div style="margin-top:.5rem">
-        <button class="btn btn-secondary" id="loadAllBtn" onclick="loadAllFolders()">全月読込</button>
-      </div>
-    </div>
-    <div style="font-size:.85rem;color:var(--sk-text-4);margin:1rem 0;text-align:center">── または PDFファイルをアップロード ──</div>
-    <div class="upload-grid">
-      <label class="upload-zone" data-key="ippan">
-        <input type="file" accept=".pdf" data-key="ippan">
-        <div class="upload-label">一般</div>
-        <div class="upload-status">PDFを選択</div>
-      </label>
-      <label class="upload-zone" data-key="ishi">
-        <input type="file" accept=".pdf" data-key="ishi">
-        <div class="upload-label">医師</div>
-        <div class="upload-status">PDFを選択</div>
-      </label>
-      <label class="upload-zone" data-key="chiiki">
-        <input type="file" accept=".pdf" data-key="chiiki">
-        <div class="upload-label">地域生活</div>
-        <div class="upload-status">PDFを選択</div>
-      </label>
-      <label class="upload-zone" data-key="hijoukin">
-        <input type="file" accept=".pdf" data-key="hijoukin">
-        <div class="upload-label">非常勤</div>
-        <div class="upload-status">PDFを選択</div>
-      </label>
-    </div>
-    <div class="btn-group">
-      <button class="btn" id="analyzeBtn" onclick="analyzeUpload()" disabled>解析実行</button>
-      <button class="btn btn-out" onclick="clearAll()">クリア</button>
-    </div>
+    <div class="folder-btns" id="folderBtns" style="align-items:center"></div>
   </div>
 
   <!-- 結果セクション -->
@@ -275,8 +240,8 @@ async function loadFolders() {
       container.innerHTML = '<span style="font-size:.82rem;color:rgba(255,255,255,.4)">月フォルダなし</span>';
       return;
     }
-    container.innerHTML = folders.map(f =>
-      `<button class="folder-btn" onclick="loadFolder('${f.name}')">${f.name} (${f.pdf_count}件)</button>`
+    container.innerHTML = '<button class="folder-btn" onclick="loadAllFolders()" id="loadAllBtn">全月読込</button>' + folders.map(f =>
+      `<button class="folder-btn" onclick="loadFolder('${f.name}')">${f.name}</button>`
     ).join('');
   } catch (e) { console.error(e); }
 }
