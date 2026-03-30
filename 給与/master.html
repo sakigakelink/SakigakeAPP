@@ -354,8 +354,8 @@ function renderBonusLump(){
 </div></div>
 <div class="tc st"><table style="table-layout:fixed"><thead><tr>
   <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('age')">誕生日<span id="bl-s-age"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('svc')">採用日<span id="bl-s-svc"></span></th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
-  <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th style="width:calc(100%/12)">貢献度</th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
-  <th style="width:calc(100%/12)"></th><th style="width:calc(100%/12)"></th><th style="width:calc(100%/12)">操作</th>
+  <th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th style="width:6rem">貢献度</th><th style="cursor:pointer;width:calc(100%/12)" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
+  <th></th><th></th><th style="width:calc(100%/12)">操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
   }
   const jf=document.getElementById('bljf')?.value||'',bd=document.getElementById('bDate')?.value||'2027-03-31';
