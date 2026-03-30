@@ -413,6 +413,8 @@ async function init(){
   if(!EMP.length){
     try{const r=await fetch('../データ/employees.json');if(r.ok){const d=await r.json();if(Array.isArray(d))EMP=d.filter(valid);else applyAll(d)}}catch(e){}
   }
+  // 貢献度リセット
+  bonusC={};
   // R8→主フィールドへマイグレーション
   EMP.forEach(e=>{
     if('baseR8' in e){e.baseSalary=e.baseR8;delete e.baseR8}
