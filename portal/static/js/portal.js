@@ -29,6 +29,15 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
+  // サーバー終了
+  const btnShutdown = document.getElementById('btn-shutdown');
+  if (btnShutdown) {
+    btnShutdown.addEventListener('click', () => {
+      if (!confirm('サーバーを終了しますか？')) return;
+      navigator.sendBeacon('/api/shutdown');
+    });
+  }
+
   // サーバー再起動
   const btnRestart = document.getElementById('btn-restart');
   if (btnRestart) {
