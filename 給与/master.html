@@ -15,6 +15,7 @@
     .btn:hover{opacity:.9}
     .btn-save{background:linear-gradient(135deg,#ee0979,#ff6a00)}
     .btn-out{background:transparent;border:1px solid rgba(255,255,255,.3)}
+    .tab-header{min-height:213px}
     .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:.8rem;margin-bottom:1rem}
     .sc{background:rgba(102,126,234,.15);border-radius:10px;padding:.8rem;text-align:center;overflow:hidden}
     .sv{font-size:1.2rem;font-weight:700;background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;word-break:break-all}
@@ -221,14 +222,6 @@ function refreshAll(){
   renderBonusLump();jOpts('bljf','病院');
 }
 
-function syncHeaderHeight(){
-  const hs=document.querySelectorAll('.tab-header');
-  hs.forEach(h=>h.style.minHeight='');
-  const heights=[...hs].map(h=>h.offsetHeight);
-  const max=Math.max(...heights);
-  console.log('tab-header heights:',heights,'→ max:',max);
-  hs.forEach(h=>h.style.minHeight=max+'px');
-}
 function switchTab(name){
   document.querySelectorAll('.tb').forEach(b=>b.classList.toggle('active',b.dataset.t===name));
   document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
@@ -431,7 +424,6 @@ async function init(){
   jOpts('jf','病院');
   renderMaster();
   renderBonusLump();jOpts('bljf','病院');
-  syncHeaderHeight();
 }
 init();
 </script>
