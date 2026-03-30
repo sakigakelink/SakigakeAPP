@@ -227,16 +227,16 @@ function switchTab(name){
   document.querySelectorAll('.tp').forEach(p=>p.classList.toggle('active',p.id==='tab-'+name));
   if(name==='bonuslump'){renderBonusLump();jOpts('bljf','病院')}
 }
-document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')">🎁 賞与</button>';
+document.getElementById('tabNav').innerHTML='<button class="tb active" data-t="master" onclick="switchTab(\'master\')" style="width:10rem;text-align:center">👤 職員マスター</button><button class="tb" data-t="bonuslump" onclick="switchTab(\'bonuslump\')" style="width:10rem;text-align:center">🎁 賞与</button>';
 
 function renderMasterHTML(){
   return`<div class="card"><div class="tab-head"><div class="tab-top"><h2>職員マスター</h2>
 <div style="display:flex;gap:.6rem;flex-wrap:nowrap;align-items:center;overflow-x:auto">
   <select id="jf" onchange="renderMaster()"><option value="">全職種</option><option value="病院" selected>病院</option></select>
-  <span style="white-space:nowrap;font-size:.82rem">対象:<strong id="fc" style="color:#667eea">0</strong>名
+  <span style="white-space:nowrap;font-size:.82rem">対象者:<strong id="fc" style="color:#667eea">0</strong>名
     <span id="exInfo" style="color:#ff6b6b;font-size:.72rem;display:none"><br>除外:<strong id="exC">0</strong>名 <button onclick="exclIds.clear();renderMaster()" style="padding:0 .3rem;background:rgba(235,51,73,.3);border:none;border-radius:3px;color:#fff;cursor:pointer;font-size:.7rem">解除</button></span>
   </span>
-  <button class="btn" onclick="showAdd()" style="white-space:nowrap">➕追加</button>
+  <button class="btn" onclick="showAdd()" style="white-space:nowrap;padding:.3rem .6rem">➕追加</button>
   <div style="display:flex;align-items:center;gap:.3rem;margin-left:auto;background:rgba(0,0,0,.2);padding:.3rem .6rem;border-radius:8px;white-space:nowrap">
     📅<input type="date" id="rcd" onchange="renderMaster()" style="padding:.3rem;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(0,0,0,.4);color:#fff;font-size:.82rem">
     <button onclick="chRD(30)" style="padding:.2rem .4rem;background:rgba(102,126,234,.3);border:none;border-radius:4px;color:#fff;cursor:pointer;font-size:.78rem">+1月</button>
