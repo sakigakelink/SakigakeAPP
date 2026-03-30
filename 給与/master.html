@@ -304,7 +304,7 @@ function renderMaster(){
 <td>${Y(e.position||0)}</td>
 <td>${Y(e.adjustment||0)}</td>
 <td>${Y(e.commute||0)}</td>
-<td>${Y(e._as)}</td>
+<td style="text-align:right">${Y(e._as)}</td>
 <td>${Y(r.now)}<br><span class="sub">${Y(r.ret)}</span></td>
 <td style="white-space:nowrap"><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
 }
