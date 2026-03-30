@@ -261,7 +261,7 @@ function renderMasterHTML(){
   <th>調整</th>
   <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
   <th style="cursor:pointer" onclick="doSort('as')">年俸<span id="s-as"></span></th>
-  <th>退職金</th><th>操作</th>
+  <th style="width:6rem">退職金</th><th style="width:5.5rem">操作</th>
 </tr></thead><tbody id="mTb"></tbody></table></div></div>`;
 }
 function chRD(d){const i=document.getElementById('rcd'),x=i.value?new Date(i.value):new Date();x.setDate(x.getDate()+d);i.value=x.getFullYear()+'-'+String(x.getMonth()+1).padStart(2,'0')+'-'+String(x.getDate()).padStart(2,'0');renderMaster()}
@@ -354,8 +354,8 @@ function renderBonusLump(){
 </div></div>
 <div class="tc st"><table><thead><tr>
   <th style="cursor:pointer;width:4rem" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:6.5rem" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:3.5rem" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer;width:6rem" onclick="doBlSort('age')">誕生日<span id="bl-s-age"></span></th><th style="cursor:pointer;width:6rem" onclick="doBlSort('svc')">採用日<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
-  <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
-  <th>操作</th>
+  <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer;width:6rem" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
+  <th style="width:5.5rem">操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
   }
   const jf=document.getElementById('bljf')?.value||'',bd=document.getElementById('bDate')?.value||'2027-03-31';
