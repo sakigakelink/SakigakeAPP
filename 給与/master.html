@@ -306,7 +306,7 @@ function renderMaster(){
 <td>${Y(e.commute||0)}</td>
 <td>${Y(e._as)}</td>
 <td>${Y(r.now)}<br><span class="sub">${Y(r.ret)}</span></td>
-<td><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
+<td style="white-space:nowrap"><button class="eb" onclick="toggleEx('${si}')" style="${e._ex?'background:rgba(235,51,73,.5)':''}">🚫</button> <button class="eb" onclick="editM(${e._i})">✏️</button> <button class="db" onclick="delM(${e._i})">🗑️</button></td></tr>`}).join('');
 }
 function toggleEx(id){if(exclIds.has(id))exclIds.delete(id);else exclIds.add(id);renderMaster()}
 function toggleLsEx(id){if(lsExclIds.has(id))lsExclIds.delete(id);else lsExclIds.add(id);renderBonusLump()}
