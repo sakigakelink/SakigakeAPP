@@ -224,7 +224,9 @@ function refreshAll(){
 function syncHeaderHeight(){
   const hs=document.querySelectorAll('.tab-header');
   hs.forEach(h=>h.style.minHeight='');
-  const max=Math.max(...[...hs].map(h=>h.offsetHeight));
+  const heights=[...hs].map(h=>h.offsetHeight);
+  const max=Math.max(...heights);
+  console.log('tab-header heights:',heights,'→ max:',max);
   hs.forEach(h=>h.style.minHeight=max+'px');
 }
 function switchTab(name){
