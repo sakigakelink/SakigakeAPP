@@ -176,7 +176,7 @@ async function saveAll(){
   unsaved=false;updInd();toast('✔ employees.json に保存しました');
   renderMaster(); // ソート後の表示を反映
 }
-function markDirty(){unsaved=true;updInd()}
+function markDirty(){unsaved=true;updInd();saveAll()}
 function updInd(){const el=document.getElementById('saveInd');if(!el)return;el.textContent=unsaved?'● 未保存':'✔ 保存済';el.style.color=unsaved?'#ff6b6b':'#38ef7d'}
 window.addEventListener('beforeunload',e=>{if(unsaved){e.preventDefault();e.returnValue=''}});
 
