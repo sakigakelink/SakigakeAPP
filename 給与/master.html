@@ -256,7 +256,7 @@ function renderMasterHTML(){
   <th style="cursor:pointer;width:4rem" onclick="doSort('id')">番号<span id="s-id">▼</span></th><th style="width:6.5rem">名前</th><th style="width:3.5rem">職種</th>
   <th style="cursor:pointer;width:6rem" onclick="doSort('bd')">誕生日<span id="s-bd"></span></th>
   <th style="cursor:pointer;width:6rem" onclick="doSort('hd')">採用日<span id="s-hd"></span></th>
-  <th>基本給</th>
+  <th style="width:5.5rem">基本給</th>
   <th style="cursor:pointer" onclick="doSort('pos')">役職<span id="s-pos"></span></th>
   <th>調整</th>
   <th style="cursor:pointer" onclick="doSort('cm')">通勤<span id="s-cm"></span></th>
@@ -353,8 +353,8 @@ function renderBonusLump(){
   <div class="sc" style="background:rgba(238,9,121,.15)"><div class="sv" id="blBCf" style="background:linear-gradient(135deg,#ee0979,#ff6a00);-webkit-background-clip:text;-webkit-text-fill-color:transparent">¥0</div><div class="sl">賞与確定総計</div></div>
 </div></div>
 <div class="tc st"><table><thead><tr>
-  <th style="cursor:pointer;width:4rem" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:6.5rem" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:3.5rem" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer;width:6rem" onclick="doBlSort('age')">誕生日<span id="bl-s-age"></span></th><th style="cursor:pointer;width:6rem" onclick="doBlSort('svc')">採用日<span id="bl-s-svc"></span></th><th style="cursor:pointer" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
-  <th style="border-left:2px solid rgba(238,9,121,.4);cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer;width:6rem" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
+  <th style="cursor:pointer;width:4rem" onclick="doBlSort('id')">番号<span id="bl-s-id">▼</span></th><th style="cursor:pointer;width:6.5rem" onclick="doBlSort('name')">名前<span id="bl-s-name"></span></th><th style="cursor:pointer;width:3.5rem" onclick="doBlSort('jt')">職種<span id="bl-s-jt"></span></th><th style="cursor:pointer;width:6rem" onclick="doBlSort('age')">誕生日<span id="bl-s-age"></span></th><th style="cursor:pointer;width:6rem" onclick="doBlSort('svc')">採用日<span id="bl-s-svc"></span></th><th style="cursor:pointer;width:5.5rem" onclick="doBlSort('bs')">基本給<span id="bl-s-bs"></span></th>
+  <th style="cursor:pointer" onclick="doBlSort('bBase')">賞与基準<span id="bl-s-bBase"></span></th><th>貢献度</th><th style="cursor:pointer;width:6rem" onclick="doBlSort('bConf')">賞与確定<span id="bl-s-bConf"></span></th>
   <th style="width:5.5rem">操作</th>
 </tr></thead><tbody id="blTb"></tbody></table></div></div>`;
   }
@@ -392,7 +392,7 @@ function renderBonusLump(){
     const bTxt=u1?Y(bBase)+`<br><span class="sub">満額${Y(bFull)}</span>`:Y(bBase);
     return`<tr style="${e._blEx?'opacity:.4;background:rgba(235,51,73,.1)':''}">
 <td>${si}</td><td>${esc(e.name)}</td><td>${esc(e.jobType)||'-'}</td><td>${fd(e.birthDate)}<br><span class="sub">${a!=null?a+'歳':'-'}</span></td><td>${fd(e.hireDate)}<br><span class="sub">${svTxt}</span></td><td>${Y(e.baseSalary||0)}</td>
-<td style="border-left:2px solid rgba(238,9,121,.15);${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
+<td style="${hasB?'color:rgba(255,255,255,.5)':''}">${bTxt}</td>
 <td><input type="number" class="bi" value="${cb||''}" placeholder="0" onchange="updBonusC('${si}',this.value)" style="${hasB?'border-color:#ffd700':''}"></td>
 <td style="${hasB?'color:#ffd700;font-weight:600':'color:#38ef7d;font-weight:600'}">${Y(bConf)}</td>
 <td><button class="eb" onclick="toggleLsEx('${si}')" style="${e._blEx?'background:rgba(235,51,73,.5)':''}">🚫</button></td></tr>`}).join('');
