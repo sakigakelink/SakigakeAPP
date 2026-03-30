@@ -11,4 +11,4 @@ If fso.FileExists("C:\Program Files\Google\Chrome\Application\chrome.exe") Then
 ElseIf fso.FileExists("C:\Program Files (x86)\Google\Chrome\Application\chrome.exe") Then
   chrome = "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe"
 End If
-If chrome <> "" Then ws.Run """" & chrome & """ --app=http://localhost:5000/", 0, False
+If chrome <> "" Then ws.Run """" & chrome & """ --app=http://localhost:5000/ --start-maximized", 0, False
