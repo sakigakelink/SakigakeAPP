@@ -22,6 +22,20 @@
 1. ローカルでコード編集
 2. デプロイ: `bash deploy.sh "変更内容のメモ"`（add → commit → push → リモート pull を一括実行）
 
+## ポータル構成 (portal/)
+- `portal/app.py` が統合エントリーポイント（Flask + pywebview を単一プロセスで実行）
+- Flaskはバックグラウンドスレッド、pywebviewはメインスレッドで起動
+- 各モジュール（シフト・給与・損益）はiframe経由で配信（`/legacy/shift/` 等）
+- シフトのルートは Blueprint ではなく `register_routes(app, ..., portal_mode=True)` で app に直接登録
+  - `portal_mode=True` 時、`/`・`/api/shutdown`・`/api/restart` はポータル側と衝突するためスキップ
+- 給与・損益は `importlib.util.exec_module` で読み込み、プロキシルートで API を中継
+- `SakigakeAPP.lnk` は環境固有（パスが異なる）のため git 管理外
+
+## シフトデータの永続化
+- フロントエンドは localStorage（`sakigakeData`）にデータ保存
+- 変更のたびにサーバーバックアップ（`/api/backup`）へ自動同期（3秒デバウンス）
+- localStorage が空の場合、サーバーバックアップから自動復元（pywebview は Chrome と別ストレージのため初回起動時に発動）
+
 ## シフト管理 (シフト/)
 - Python + Flask Webアプリ
 - OR-Tools CP-SAT ソルバーによるシフト自動生成
