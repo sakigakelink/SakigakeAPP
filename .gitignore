@@ -20,11 +20,9 @@ temp/
 *.mp4
 独立ツール/処方/demo/frames/
 
-# PDF（元データ・月次帳票）
+# PDF（給与・損益の月次帳票）
 給与/*月/*.pdf
 損益/data/*.pdf
-診療/*月/元データ/
-診療/*月/薬剤*/
 
 # pytest cache
 .pytest_cache/
