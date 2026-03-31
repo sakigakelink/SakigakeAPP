@@ -7,6 +7,7 @@ import subprocess
 import os
 import sys
 import time
+import threading
 import urllib.request
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -43,6 +44,28 @@ def wait_for_server(timeout=15):
     return False
 
 
+def monitor_server(window):
+    """サーバー停止を検知してウィンドウを閉じる"""
+    time.sleep(3)  # 初回は待機
+    while True:
+        time.sleep(2)
+        try:
+            urllib.request.urlopen(URL, timeout=2)
+        except Exception:
+            # サーバーが応答しない → 終了ボタンが押された
+            # 再起動の場合は数秒で復帰するので少し待つ
+            time.sleep(5)
+            try:
+                urllib.request.urlopen(URL, timeout=2)
+            except Exception:
+                # 5秒待っても復帰しない → 本当に終了
+                try:
+                    window.destroy()
+                except Exception:
+                    pass
+                return
+
+
 if __name__ == '__main__':
     kill_existing_server()
     time.sleep(0.3)
@@ -59,4 +82,11 @@ if __name__ == '__main__':
         height=900,
         maximized=True,
     )
+
+    # サーバー停止検知スレッド開始
+    threading.Thread(target=monitor_server, args=(window,), daemon=True).start()
+
     webview.start()
+
+    # ウィンドウが閉じられたらサーバーも停止
+    kill_existing_server()

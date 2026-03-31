@@ -27,7 +27,12 @@ document.addEventListener('DOMContentLoaded', () => {
     btnReload.addEventListener('click', () => {
       const iframe = document.querySelector('.app-frame');
       if (iframe) {
-        iframe.contentWindow.location.reload();
+        try {
+          iframe.contentWindow.location.reload();
+        } catch (e) {
+          // クロスオリジン制限時はsrc再設定でリロード
+          iframe.src = iframe.src;
+        }
       } else {
         location.reload();
       }
@@ -51,7 +56,11 @@ document.addEventListener('DOMContentLoaded', () => {
   if (btnShutdown) {
     btnShutdown.addEventListener('click', () => {
       fetch('/api/shutdown', {method:'POST'});
-      setTimeout(() => window.close(), 500);
+      setTimeout(() => {
+        try { window.close(); } catch(e) {}
+        // pywebviewではwindow.closeが効かない場合がある
+        // サーバー停止で画面がエラー表示になるのが終了の合図
+      }, 500);
     });
   }
 });
