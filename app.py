@@ -7,9 +7,7 @@ import sys
 import re
 import json
 import threading
-import webbrowser
 import importlib.util
-
 import subprocess
 import time
 
@@ -329,28 +327,8 @@ def api_restart():
 # ---------------------------------------------------------------------------
 # 起動
 # ---------------------------------------------------------------------------
-def open_browser():
-    import subprocess
-    url = "http://localhost:5000/"
-    browser_paths = [
-        r"C:\Program Files\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
-        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
-        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
-    ]
-    for path in browser_paths:
-        if os.path.exists(path):
-            try:
-                subprocess.Popen([path, f"--app={url}"])
-                return
-            except Exception:
-                pass
-    webbrowser.open(url)
-
-
 def generate_shinryo_reports():
     """診療/N月/ 内の元データPDFからHTMLレポートを自動生成（未生成 or 古い場合のみ）"""
-    import subprocess
     shinryo_dir = os.path.join(BASE_DIR, '診療')
     if not os.path.isdir(shinryo_dir):
         return
@@ -377,7 +355,6 @@ def generate_shinryo_reports():
             if oldest_html > latest_src:
                 continue
         needs_inpatient = True
-        # 薬剤レポート（月ごと）
         print(f"  薬剤レポート生成: {entry} ...")
         try:
             subprocess.run(
@@ -386,7 +363,6 @@ def generate_shinryo_reports():
             )
         except Exception as e:
             print(f"    薬剤レポートエラー ({entry}): {e}")
-    # 入院レポート（全月一括、引数なし）
     if needs_inpatient:
         print("  入院レポート生成（全月一括）...")
         try:
@@ -399,12 +375,44 @@ def generate_shinryo_reports():
     print("  診療レポート生成完了")
 
 
-if __name__ == '__main__':
-    print("=" * 40)
-    print("  SakigakeAPP 統合ポータル")
-    print("  http://localhost:5000/")
-    print("=" * 40)
+def _hide_console():
+    """コンソールウィンドウを非表示にする"""
+    import ctypes
+    ctypes.windll.user32.ShowWindow(
+        ctypes.windll.kernel32.GetConsoleWindow(), 0
+    )
+
+
+def _start_flask():
+    """Flaskサーバーをバックグラウンドスレッドで起動"""
     generate_shinryo_reports()
-    if "--no-browser" not in sys.argv:
-        threading.Timer(1.0, open_browser).start()
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
+
+
+if __name__ == '__main__':
+    _hide_console()
+
+    # Flaskをバックグラウンドスレッドで起動
+    server_thread = threading.Thread(target=_start_flask, daemon=True)
+    server_thread.start()
+
+    # サーバーの応答を待機
+    import urllib.request
+    url = "http://localhost:5000/"
+    for _ in range(50):
+        try:
+            urllib.request.urlopen(url, timeout=1)
+            break
+        except Exception:
+            time.sleep(0.3)
+
+    # pywebviewでネイティブウィンドウ表示
+    import webview
+    webview.create_window(
+        'SakigakeAPP',
+        url,
+        width=1280,
+        height=900,
+        maximized=True,
+    )
+    webview.start(private_mode=True)
