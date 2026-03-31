@@ -20,7 +20,7 @@
 
 ## 開発フロー
 1. ローカルでコード編集
-2. デプロイ: `bash deploy.sh "変更内容のメモ"`（add → commit → push → リモート pull を一括実行）
+2. デプロイ: `bash deploy.sh "変更内容"`（add → commit → push → リモート pull を一括実行）
 
 ## ポータル構成 (portal/)
 - `portal/app.py` が統合エントリーポイント（Flask + pywebview を単一プロセスで実行）
