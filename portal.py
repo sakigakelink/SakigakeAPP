@@ -86,7 +86,7 @@ if __name__ == '__main__':
     # サーバー停止検知スレッド開始
     threading.Thread(target=monitor_server, args=(window,), daemon=True).start()
 
-    webview.start()
+    webview.start(private_mode=True)
 
     # ウィンドウが閉じられたらサーバーも停止
     kill_existing_server()
