@@ -66,7 +66,16 @@ def monitor_server(window):
                 return
 
 
+def hide_console():
+    """自身のコンソールウィンドウを非表示にする"""
+    import ctypes
+    ctypes.windll.user32.ShowWindow(
+        ctypes.windll.kernel32.GetConsoleWindow(), 0
+    )
+
+
 if __name__ == '__main__':
+    hide_console()
     kill_existing_server()
     time.sleep(0.3)
     start_server()
