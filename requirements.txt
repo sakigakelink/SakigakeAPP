@@ -1,9 +1,0 @@
-flask>=3.1
-flask-cors>=6.0
-ortools>=9.15
-pdfplumber
-reportlab>=4.4
-openpyxl>=3.1
-pywebview>=6.0
-pythonnet>=3.1.0rc0
-pytest>=9.0

@@ -12,6 +12,7 @@
 ## Python環境
 - パス: `C:\Python314\python.exe`（ローカル・リモート共通）
 - バージョン: Python 3.14.3
+- 依存パッケージ: flask, flask-cors, ortools, pdfplumber, reportlab, openpyxl, pywebview, pythonnet, pytest
 
 ## 起動方法
 - `SakigakeAPP.lnk` ダブルクリック → Flaskサーバー起動 + pywebviewウィンドウ表示
