@@ -38,12 +38,12 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 CORS(app)
 
 # ---------------------------------------------------------------------------
-# シフト管理 Blueprint（直接Blueprint登録 — ルートが /api/shift/* で一致）
+# シフト管理 Blueprint（プレフィックスなし — routes.py内のパスがそのまま使われる）
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.join(BASE_DIR, 'シフト'))
 os.makedirs(os.path.join(BASE_DIR, 'シフト', 'backup'), exist_ok=True)
 
-shift_bp = Blueprint('shift', __name__, url_prefix='/api/shift',
+shift_bp = Blueprint('shift', __name__,
                      template_folder=os.path.join(BASE_DIR, 'シフト', 'templates'),
                      static_folder=os.path.join(BASE_DIR, 'シフト', 'static'),
                      static_url_path='/shift-static')
