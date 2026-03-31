@@ -36,3 +36,4 @@ server.pid
 # OS generated
 Thumbs.db
 Desktop.ini
+*.lnk
