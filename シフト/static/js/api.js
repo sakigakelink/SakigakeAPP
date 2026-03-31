@@ -187,33 +187,49 @@ export function load() {
             setD(JSON.parse(s));
         } catch (e) {
             console.error("LocalStorageデータ破損 - サーバーバックアップから自動復元を試行:", e);
-            // サーバーバックアップから自動復元
-            try {
-                var xhr = new XMLHttpRequest();
-                xhr.open("GET", "/api/backup/load", false); // 同期リクエスト
-                xhr.send();
-                if (xhr.status === 200) {
-                    var res = JSON.parse(xhr.responseText);
-                    if (res.status === "success" && res.data) {
-                        setD(res.data);
-                        localStorage.setItem("sakigakeData", JSON.stringify(D));
-                        alert("保存データが破損していたためサーバーバックアップから復元しました（" + (res.timestamp || "不明") + "時点）");
-                    } else {
-                        setD({ staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} });
-                        alert("保存データが破損しており、バックアップも見つかりませんでした。初期状態で起動します。");
-                    }
-                } else {
-                    setD({ staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} });
-                    alert("保存データが破損していたため初期状態で起動します。");
-                }
-            } catch (e2) {
-                console.error("バックアップ復元失敗:", e2);
-                setD({ staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} });
-                alert("保存データが破損していたため初期状態で起動します。");
-            }
+            _restoreFromServer("保存データが破損していたため");
         }
+    } else {
+        // localStorageが空の場合もサーバーバックアップから復元を試行
+        _restoreFromServer("");
     }
     if (!D.dayHours) D.dayHours = {};
+}
+
+function _restoreFromServer(reason) {
+    try {
+        var xhr = new XMLHttpRequest();
+        xhr.open("GET", "/api/backup/load", false); // 同期リクエスト
+        xhr.send();
+        if (xhr.status === 200) {
+            var res = JSON.parse(xhr.responseText);
+            if (res.status === "success" && res.data) {
+                setD(res.data);
+                localStorage.setItem("sakigakeData", JSON.stringify(D));
+                if (reason) {
+                    alert(reason + "サーバーバックアップから復元しました（" + (res.timestamp || "不明") + "時点）");
+                } else {
+                    console.log("サーバーバックアップから復元しました（" + (res.timestamp || "不明") + "時点）");
+                }
+            } else {
+                setD({ staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} });
+                if (reason) {
+                    alert(reason + "バックアップも見つかりませんでした。初期状態で起動します。");
+                }
+            }
+        } else {
+            setD({ staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} });
+            if (reason) {
+                alert(reason + "初期状態で起動します。");
+            }
+        }
+    } catch (e) {
+        console.error("バックアップ復元失敗:", e);
+        setD({ staff: [], shifts: {}, wishes: {}, shiftVersions: {}, wardSettings: {}, shiftCreationNum: {}, dayHours: {} });
+        if (reason) {
+            alert(reason + "初期状態で起動します。");
+        }
+    }
 }
 
 export function save() {
