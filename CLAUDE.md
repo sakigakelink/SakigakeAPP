@@ -14,8 +14,8 @@
 - バージョン: Python 3.14.3
 
 ## 起動方法
-- `portal.vbs` ダブルクリック → サーバー起動 + ブラウザ自動オープン (http://localhost:5000/)
-- デバッグ: `C:\Python314\python.exe app.py`（コンソール表示）
+- `SakigakeAPP.lnk` ダブルクリック → Flaskサーバー起動 + pywebviewウィンドウ表示
+- デバッグ: `C:\Python314\python.exe portal\app.py`（コンソール表示）
 
 ## 開発フロー
 1. ローカルでコード編集

@@ -15,8 +15,8 @@ from flask import Flask, Blueprint, render_template, send_from_directory, reques
 from flask_cors import CORS
 from jinja2 import ChoiceLoader, FileSystemLoader
 
-# ベースディレクトリ
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+# ベースディレクトリ（プロジェクトルート = portal/ の親）
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # ---------------------------------------------------------------------------
 # Flask初期化
