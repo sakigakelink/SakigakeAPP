@@ -38,20 +38,14 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 CORS(app)
 
 # ---------------------------------------------------------------------------
-# シフト管理 Blueprint（プレフィックスなし — routes.py内のパスがそのまま使われる）
+# シフト管理（appに直接ルート登録、/はポータル側で定義するためスキップ）
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.join(BASE_DIR, 'シフト'))
 os.makedirs(os.path.join(BASE_DIR, 'シフト', 'backup'), exist_ok=True)
 
-shift_bp = Blueprint('shift', __name__,
-                     template_folder=os.path.join(BASE_DIR, 'シフト', 'templates'),
-                     static_folder=os.path.join(BASE_DIR, 'シフト', 'static'),
-                     static_url_path='/shift-static')
-
 from routes import register_routes as shift_register_routes, start_daily_backup
 SHIFT_BACKUP_DIR = os.path.join(BASE_DIR, 'シフト', 'backup')
-shift_register_routes(shift_bp, SHIFT_BACKUP_DIR)
-app.register_blueprint(shift_bp)
+shift_register_routes(app, SHIFT_BACKUP_DIR, portal_mode=True)
 start_daily_backup(SHIFT_BACKUP_DIR)
 
 # ---------------------------------------------------------------------------

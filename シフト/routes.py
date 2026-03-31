@@ -283,7 +283,7 @@ def start_daily_backup(backup_dir):
     logger.info("日次バックアップスレッド起動（次回: AM3:00）")
 
 
-def register_routes(app, BACKUP_DIR):
+def register_routes(app, BACKUP_DIR, portal_mode=False):
     """Flaskアプリにルートを登録"""
 
     @app.route("/solve", methods=["POST"])
@@ -817,38 +817,37 @@ def register_routes(app, BACKUP_DIR):
         except Exception as e:
             return _safe_internal_error(e, "import_settings")
 
-    @app.route("/api/shutdown", methods=["POST"])
-    def shutdown():
-        """サーバーを終了（localhost からのみ許可）"""
-        # セキュリティ: localhost からのリクエストのみ許可
-        if not is_localhost(request):
-            return jsonify({"status": "error", "message": "この操作は許可されていません"}), 403
+    if not portal_mode:
+        @app.route("/api/shutdown", methods=["POST"])
+        def shutdown():
+            """サーバーを終了（localhost からのみ許可）"""
+            if not is_localhost(request):
+                return jsonify({"status": "error", "message": "この操作は許可されていません"}), 403
 
-        def shutdown_server():
-            time.sleep(0.5)
-            os._exit(0)
+            def shutdown_server():
+                time.sleep(0.5)
+                os._exit(0)
 
-        threading.Thread(target=shutdown_server).start()
-        return jsonify({"status": "success", "message": "サーバーを終了します"})
+            threading.Thread(target=shutdown_server).start()
+            return jsonify({"status": "success", "message": "サーバーを終了します"})
 
-    @app.route("/api/restart", methods=["POST"])
-    def restart():
-        """サーバーを再起動（localhost からのみ許可）"""
-        if not is_localhost(request):
-            return jsonify({"status": "error", "message": "この操作は許可されていません"}), 403
+        @app.route("/api/restart", methods=["POST"])
+        def restart():
+            """サーバーを再起動（localhost からのみ許可）"""
+            if not is_localhost(request):
+                return jsonify({"status": "error", "message": "この操作は許可されていません"}), 403
 
-        def restart_server():
-            time.sleep(0.5)
-            # 新しいプロセスを起動してから自分を終了（Windows対応）
-            subprocess.Popen(
-                [sys.executable] + sys.argv,
-                cwd=os.path.dirname(os.path.abspath(__file__))
-            )
-            time.sleep(0.3)
-            os._exit(0)
+            def restart_server():
+                time.sleep(0.5)
+                subprocess.Popen(
+                    [sys.executable] + sys.argv,
+                    cwd=os.path.dirname(os.path.abspath(__file__))
+                )
+                time.sleep(0.3)
+                os._exit(0)
 
-        threading.Thread(target=restart_server).start()
-        return jsonify({"status": "success", "message": "サーバーを再起動します"})
+            threading.Thread(target=restart_server).start()
+            return jsonify({"status": "success", "message": "サーバーを再起動します"})
 
     @app.route("/export_json", methods=["POST"])
     def export_json():
@@ -1437,9 +1436,10 @@ def register_routes(app, BACKUP_DIR):
         except Exception as e:
             return _safe_internal_error(e, "get_holidays")
 
-    @app.route("/")
-    def index():
-        return render_template("index.html")
+    if not portal_mode:
+        @app.route("/")
+        def index():
+            return render_template("index.html")
 
     # ========== 新規API（病棟別エンジン対応） ==========
 
