@@ -609,6 +609,7 @@ def build_data(folder):
     # 精神科専門のベースアップ（位置ベース抽出: idx7=入院金額）
     psych_path = find_pdf(folder, '精神科専門.pdf')
     psych_baseup = 0
+    psych_baseup_adm = 0  # 入院ベースアップのみ（180729410）
     if psych_path:
         with pdfplumber.open(psych_path) as pdf:
             for page in pdf.pages:
@@ -619,8 +620,11 @@ def build_data(folder):
                         nums = [_parse_num(p) for p in re.findall(r'[0-9,.]+', line)]
                         if len(nums) >= 8:
                             psych_baseup += nums[7]  # 入院金額 = idx7
+                            if '180729410' in line:
+                                psych_baseup_adm += nums[7]
     print(f'  精神科ベースアップ: {psych_baseup:,}円（精神科専門から除外のみ、入院料側で計上済）')
-    total_baseup = adm_baseup  # 入院料PDFのみを使用（精神科専門PDFへの計上は月により不安定）
+    # 入院料PDFにベースアップがあればそちらを使用、なければ精神科専門PDFから
+    total_baseup = adm_baseup if adm_baseup > 0 else psych_baseup_adm
 
     # --- 食事②.pdf がある場合の追加取得 ---
     food2_path = find_pdf(folder, '食事②.pdf', '食事2.pdf')
