@@ -11,7 +11,7 @@ import importlib.util
 import subprocess
 import time
 
-from flask import Flask, Blueprint, render_template, send_from_directory, request
+from flask import Flask, Blueprint, render_template, send_from_directory, request, jsonify
 from flask_cors import CORS
 from jinja2 import ChoiceLoader, FileSystemLoader
 
@@ -56,13 +56,10 @@ _salary_mod = importlib.util.module_from_spec(_salary_spec)
 _salary_spec.loader.exec_module(_salary_mod)
 
 # ---------------------------------------------------------------------------
-# 損益計算（モジュール読み込み — プロキシルートで配信）
+# 損益計算（ビジネスロジック直接import）
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.join(BASE_DIR, '損益'))
-_pnl_spec = importlib.util.spec_from_file_location(
-    'pnl_app', os.path.join(BASE_DIR, '損益', 'app.py'))
-_pnl_mod = importlib.util.module_from_spec(_pnl_spec)
-_pnl_spec.loader.exec_module(_pnl_mod)
+import pnl_logic
 
 # ---------------------------------------------------------------------------
 # ポータル ルート
@@ -154,21 +151,32 @@ def salary_sheets_data():
     return _salary_mod.get_sheets_data()
 
 # ---------------------------------------------------------------------------
-# 損益API プロキシ
+# 損益API
 # ---------------------------------------------------------------------------
 @app.route('/api/autoload')
 def pnl_autoload():
-    return _pnl_mod.autoload_data()
+    result = pnl_logic.load_all_data()
+    if 'error' in result:
+        return jsonify(result), 404
+    return jsonify(result)
 
 
 @app.route('/api/manual_inputs', methods=['POST'])
 def pnl_manual_inputs():
-    return _pnl_mod.save_manual_inputs()
+    data = request.get_json()
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    pnl_logic.save_manual_inputs(data)
+    return jsonify({'ok': True})
 
 
 @app.route('/api/export_pdf', methods=['POST'])
 def pnl_export_pdf():
-    return _pnl_mod.export_pdf()
+    data = request.json
+    if not data:
+        return jsonify({'error': 'No data'}), 400
+    ctx = pnl_logic.build_pdf_context(data)
+    return render_template('pdf_summary.html', **ctx)
 
 # ---------------------------------------------------------------------------
 # 診療報酬API
