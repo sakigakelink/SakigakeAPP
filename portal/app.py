@@ -7,7 +7,7 @@ import sys
 import re
 import json
 import threading
-import importlib.util
+
 import subprocess
 import time
 
@@ -47,13 +47,10 @@ shift_register_routes(app, SHIFT_BACKUP_DIR, portal_mode=True)
 start_daily_backup(SHIFT_BACKUP_DIR)
 
 # ---------------------------------------------------------------------------
-# 給与分析（モジュール読み込み — プロキシルートで配信）
+# 給与分析（ビジネスロジック直接import）
 # ---------------------------------------------------------------------------
 sys.path.insert(0, os.path.join(BASE_DIR, '給与'))
-_salary_spec = importlib.util.spec_from_file_location(
-    'salary_app', os.path.join(BASE_DIR, '給与', 'app.py'))
-_salary_mod = importlib.util.module_from_spec(_salary_spec)
-_salary_spec.loader.exec_module(_salary_mod)
+import salary_logic
 
 # ---------------------------------------------------------------------------
 # 損益計算（ビジネスロジック直接import）
@@ -124,31 +121,44 @@ def legacy_data(tool):
     return 'Not Found', 404
 
 # ---------------------------------------------------------------------------
-# 給与API プロキシ（iframe内の /api/* 呼び出しを中継）
+# 給与API
 # ---------------------------------------------------------------------------
 @app.route('/api/folders')
 def salary_folders():
-    return _salary_mod.list_folders()
+    return jsonify(salary_logic.list_folders_data())
 
 
 @app.route('/api/parse', methods=['POST'])
 def salary_parse():
-    return _salary_mod.parse_pdfs()
+    result = salary_logic.parse_uploaded_files(request.files)
+    if result is None:
+        return jsonify({'error': 'ファイルが選択されていません'}), 400
+    return jsonify(result)
 
 
 @app.route('/api/parse_folder', methods=['POST'])
 def salary_parse_folder():
-    return _salary_mod.parse_folder()
+    folder = request.json.get('folder', '')
+    result = salary_logic.parse_folder_data(folder)
+    if result is None:
+        return jsonify({'error': f'フォルダが見つかりません: {folder}'}), 404
+    return jsonify(result)
 
 
 @app.route('/api/parse_all_folders', methods=['POST'])
 def salary_parse_all():
-    return _salary_mod.parse_all_folders()
+    result = salary_logic.parse_all_folders_data()
+    if result is None:
+        return jsonify({'error': '月フォルダが見つかりません'}), 404
+    return jsonify(result)
 
 
 @app.route('/api/sheets_data')
 def salary_sheets_data():
-    return _salary_mod.get_sheets_data()
+    data = salary_logic.get_sheets_json()
+    if data is None:
+        return jsonify({'error': 'R7支払いデータなし'}), 404
+    return jsonify(data)
 
 # ---------------------------------------------------------------------------
 # 損益API
