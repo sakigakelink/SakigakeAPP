@@ -48,6 +48,14 @@ app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
 CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000"])
 
+
+@app.after_request
+def _set_security_headers(response):
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    return response
+
+
 # ---------------------------------------------------------------------------
 # シフト管理（appに直接ルート登録、/はポータル側で定義するためスキップ）
 # ---------------------------------------------------------------------------
@@ -106,6 +114,8 @@ def legacy_shift():
 
 @app.route('/legacy/shift/static/<path:filename>')
 def legacy_shift_static(filename):
+    if '..' in filename:
+        return 'Not Found', 404
     return send_from_directory(
         os.path.join(BASE_DIR, 'シフト', 'static'), filename)
 
@@ -336,15 +346,34 @@ def master_employees():
     return jsonify([e for e in all_emps if _is_master_target(e)])
 
 
+_employees_lock = threading.Lock()
+
+
+def _validate_employee_list(data):
+    """従業員リストの基本構造を検証。不正ならエラーメッセージを返す"""
+    if not isinstance(data, list):
+        return '従業員データはリスト形式である必要があります'
+    for emp in data:
+        if not isinstance(emp, dict):
+            return '各従業員はオブジェクト形式である必要があります'
+        if 'id' not in emp or 'name' not in emp:
+            return '従業員にはidとnameが必須です'
+    return None
+
+
 @app.route('/api/master/employees', methods=['PUT'])
 def master_employees_save():
     path = os.path.join(BASE_DIR, 'shared', 'employees.json')
     master_data = request.get_json(force=True)
-    # master対象外の職員を保持してマージ
-    with open(path, encoding='utf-8') as f:
-        all_emps = json.load(f)
-    non_master = [e for e in all_emps if not _is_master_target(e)]
-    _atomic_json_write(path, master_data + non_master)
+    err = _validate_employee_list(master_data)
+    if err:
+        return jsonify({'error': err}), 400
+    with _employees_lock:
+        # master対象外の職員を保持してマージ
+        with open(path, encoding='utf-8') as f:
+            all_emps = json.load(f)
+        non_master = [e for e in all_emps if not _is_master_target(e)]
+        _atomic_json_write(path, master_data + non_master)
     return 'OK'
 
 
@@ -361,6 +390,8 @@ def master_bonus():
 def master_bonus_save():
     path = os.path.join(BASE_DIR, 'shared', 'bonus_contributions.json')
     data = request.get_json(force=True)
+    if not isinstance(data, dict):
+        return jsonify({'error': 'ボーナスデータはオブジェクト形式である必要があります'}), 400
     _atomic_json_write(path, data)
     return 'OK'
 

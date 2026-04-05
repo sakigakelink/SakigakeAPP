@@ -45,7 +45,14 @@ document.addEventListener('DOMContentLoaded', () => {
     btnRestart.addEventListener('click', () => {
       fetch('/api/restart', {method:'POST'});
       document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:1.2rem;color:#666">再起動中...</div>';
+      let elapsed = 0;
       const poll = setInterval(() => {
+        elapsed += 1000;
+        if (elapsed > 30000) {
+          clearInterval(poll);
+          document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-size:1.2rem;color:#c00">再起動に失敗しました。ページを手動でリロードしてください。</div>';
+          return;
+        }
         fetch('/').then(r => { if (r.ok) { clearInterval(poll); location.reload(); } }).catch(() => {});
       }, 1000);
     });

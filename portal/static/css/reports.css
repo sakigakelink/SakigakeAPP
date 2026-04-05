@@ -1,0 +1,78 @@
+.reports-page { display: flex; flex-direction: column; height: 100vh; }
+.reports-header { padding: 24px 28px 16px; border-bottom: 1px solid var(--sk-surface-border); }
+.reports-header h2 { margin-bottom: 12px; }
+.reports-controls { display: flex; justify-content: space-between; align-items: center; }
+.report-tabs { display: flex; gap: 6px; }
+.report-tab {
+  padding: 7px 16px; border: 1px solid var(--sk-surface-border);
+  border-radius: var(--sk-radius-sm); background: var(--sk-bg-3);
+  color: var(--sk-text-3); cursor: pointer; font-size: 13px;
+  font-family: var(--sk-font); transition: all .15s var(--sk-ease);
+}
+.report-tab:hover { border-color: var(--sk-primary); color: var(--sk-text); }
+.report-tab.active { background: var(--sk-grad-primary); color: #fff; border-color: transparent; }
+.btn-pdf {
+  padding: 7px 16px; background: var(--sk-grad-primary); color: #fff; border: none;
+  border-radius: var(--sk-radius-sm); cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: var(--sk-font);
+}
+.btn-pdf:hover { opacity: .9; }
+.reports-body { flex: 1; overflow: auto; padding: 20px 28px; }
+.reports-body .placeholder { text-align: center; padding: 60px 0; color: var(--sk-text-3); }
+
+/* テーブル */
+.shinryo-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; table-layout: fixed; }
+.shinryo-table caption { text-align: left; font-size: 14px; font-weight: 700; padding: 8px 0; color: var(--sk-text); }
+.shinryo-table th { background: var(--sk-bg-3); padding: 8px 10px; text-align: right; border-bottom: 2px solid var(--sk-surface-border); font-weight: 600; white-space: nowrap; font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.shinryo-table th:first-child { text-align: left; }
+.shinryo-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--sk-surface-border); font-variant-numeric: tabular-nums; overflow: hidden; text-overflow: ellipsis; }
+.shinryo-table td:first-child { text-align: left; font-weight: 500; }
+.shinryo-table tr.total-row { font-weight: 700; border-top: 2px solid var(--sk-text-3); }
+.shinryo-table tr.total-row td { padding-top: 8px; }
+
+/* サマリーカード */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.summary-card { background: var(--sk-bg-1); border: 1px solid var(--sk-surface-border); border-radius: var(--sk-radius-sm); padding: 14px; }
+.summary-card .label { font-size: 11px; color: var(--sk-text-3); margin-bottom: 4px; }
+.summary-card .value { font-size: 20px; font-weight: 700; color: var(--sk-text); }
+.summary-card .sub { font-size: 11px; color: var(--sk-text-3); margin-top: 2px; }
+.card-line { display: flex; justify-content: space-between; font-size: 13px; padding: 3px 0; color: var(--sk-text); }
+.card-line span { font-weight: 600; font-variant-numeric: tabular-nums; }
+.card-line.sub { font-size: 11px; color: var(--sk-text-3); justify-content: flex-end; padding: 0 0 3px; }
+
+/* 折りたたみ明細行（デフォルト展開） */
+.drug-detail-row, .inp-detail-row { display: table-row; }
+.drug-detail-row.hidden, .inp-detail-row.hidden { display: none; }
+.drug-detail-row td { font-size: 11px; color: var(--sk-text-3); }
+.drug-detail-row td:first-child { padding-left: 24px; font-weight: 400; }
+
+/* 月別詳細切替 */
+.pharm-view-btns { display: flex; gap: 6px; margin-bottom: 16px; flex-wrap: wrap; }
+.pharm-iframe { width: 100%; border: 1px solid var(--sk-surface-border); border-radius: var(--sk-radius-sm); min-height: 700px; background: #fff; }
+
+/* 印刷用 */
+@media print {
+  @page { size: A4 portrait; margin: 6mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { padding: 0 !important; font-size: 7px !important; }
+  .sidebar, .no-print { display: none !important; }
+  .content { position: static !important; left: 0 !important; }
+  .reports-page { height: auto; }
+  .reports-header { display: none !important; }
+  .reports-body { padding: 0; overflow: visible; }
+  .summary-cards { grid-template-columns: repeat(3, 1fr) !important; gap: 4px !important; margin-bottom: 8px; }
+  .summary-card { padding: 4px 6px; }
+  .summary-card .label { font-size: 8px; margin-bottom: 1px; }
+  .summary-card .value { font-size: 9px !important; }
+  .card-line { font-size: 7px; padding: 1px 0; }
+  .card-line.sub { font-size: 6.5px; }
+  .shinryo-table { font-size: 7px; margin-bottom: 0; }
+  .shinryo-table caption { font-size: 9px; padding: 4px 0; }
+  .shinryo-table th, .shinryo-table td { padding: 1.5px 4px; }
+  .shinryo-table col:first-child { width: 28% !important; }
+  .sk-breakdown-row td { font-size: 6.5px; }
+  .drug-detail-row, .inp-detail-row { display: table-row !important; }
+  .drug-detail-row.hidden, .inp-detail-row.hidden { display: table-row !important; }
+  .pharm-iframe { display: none !important; }
+  .pharm-view-btns { display: none !important; }
+}

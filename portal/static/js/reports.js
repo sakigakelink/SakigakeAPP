@@ -1,0 +1,417 @@
+(function() {
+  var DATA = null;
+  var currentTab = 'inpatient';
+  var pharmView = 'summary'; // 'summary' or month key like '1月'
+
+  function fmt(n) {
+    if (!n && n !== 0) return '-';
+    return n === 0 ? '-' : Number(n).toLocaleString();
+  }
+
+  // 点数→円変換して表示
+  function fmtYen(n) {
+    if (!n && n !== 0) return '-';
+    return n === 0 ? '-' : Number(n * 10).toLocaleString();
+  }
+
+  function fmtMan(n) {
+    if (!n) return '-';
+    return Math.round(n / 10000) + '万円';
+  }
+
+  function pct(n, total) {
+    if (!total || !n) return '';
+    return (n / total * 100).toFixed(1) + '%';
+  }
+
+  function switchTab(tab, btn) {
+    currentTab = tab;
+    pharmView = 'summary';
+    document.querySelectorAll('.report-tab').forEach(function(t) { t.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    render();
+  }
+  window.switchTab = switchTab;
+
+  function render() {
+    if (!DATA) return;
+    var body = document.getElementById('reportsBody');
+    if (currentTab === 'inpatient') {
+      body.innerHTML = renderInpatient();
+    } else {
+      body.innerHTML = renderPharmacy();
+    }
+  }
+
+  // colgroup生成: 項目列 + 月列 + 合計列
+  function colgroup(monthCount) {
+    var monthWidth = Math.floor(50 / monthCount);
+    var labelWidth = 100 - monthWidth * monthCount - 12;
+    var html = '<colgroup><col style="width:' + labelWidth + '%">';
+    for (var i = 0; i < monthCount; i++) {
+      html += '<col style="width:' + monthWidth + '%">';
+    }
+    html += '<col style="width:12%"></colgroup>';
+    return html;
+  }
+
+  function renderInpatient() {
+    var inp = DATA.inpatient;
+    var months = Object.keys(inp).sort(function(a, b) {
+      return parseInt(a) - parseInt(b);
+    });
+    if (!months.length) return '<div class="placeholder"><p>入院収益データがありません</p></div>';
+
+    var latest = inp[months[months.length - 1]];
+    var latestMonth = months[months.length - 1];
+
+    // サマリーカード（各月）
+    var year = new Date().getFullYear();
+    var html = '<div class="summary-cards">';
+    months.forEach(function(m) {
+      var d = inp[m];
+      var summary = d.summary || {};
+      var monthNum = parseInt(m);
+      var daysInMonth = new Date(year, monthNum, 0).getDate();
+
+      // 小計（診療区分 + 入院料）
+      var subtotal = 0;
+      for (var c in d.compare) subtotal += d.compare[c];
+      for (var w in d.ward) subtotal += d.ward[w];
+      var dailyRevenue = subtotal ? Math.round(subtotal * 10 / daysInMonth) : 0;
+
+      // 平均入院患者数患者数
+      var avgCensus = summary.days ? (summary.days / daysInMonth).toFixed(1) : '-';
+
+      var lines = '';
+      lines += '<div class="card-line">請求額 <span>' + fmtYen(summary.points) + '円</span></div>';
+      lines += '<div class="card-line">食事 <span>' + fmtYen(d.food) + '円</span></div>';
+      lines += '<div class="card-line">小計 <span>' + fmtYen(subtotal) + '円</span></div>';
+      lines += '<div class="card-line sub">日額 ' + fmt(dailyRevenue) + '円/' + daysInMonth + '日</div>';
+      lines += '<div class="card-line">平均入院患者数 <span>' + avgCensus + '人</span></div>';
+      html += '<div class="summary-card"><div class="label">' + m + '</div>' + lines + '</div>';
+    });
+    html += '</div>';
+
+    // 統合テーブル（診療区分 + 病棟別入院料）
+    var detailMap = {
+      '診察': 'exam_detail',
+      '投薬': 'touyaku_detail',
+      '注射': 'chusha_detail',
+      '検査': 'test_detail',
+      '画像': 'image_detail',
+      '精神科専門': 'psych_detail'
+    };
+    // 病棟名とdetailキーの対応
+    var wardDetailMap = {};
+    months.forEach(function(m) {
+      var ward = inp[m].ward || {};
+      for (var wk in ward) {
+        if (wk.indexOf('1病棟') >= 0) wardDetailMap[wk] = 'w1_detail';
+        else if (wk.indexOf('2病棟') >= 0) wardDetailMap[wk] = 'w2_detail';
+        else if (wk.indexOf('3病棟') >= 0) wardDetailMap[wk] = 'w3_detail';
+      }
+    });
+    html += buildCompareTable(months, inp, detailMap, wardDetailMap);
+
+    return html;
+  }
+
+  var COMPARE_ORDER = [
+    '診察', '投薬', '注射', '処置',
+    '検査', '画像', '精神科専門', 'ベースアップ評価料', 'その他・器材'
+  ];
+
+  var DETAIL_ORDER = {
+    'psych_detail': [
+      '医療保護入院等', '治療抵抗性統合失調症管理料',
+      '入院精神療法(I)', '入院精神療法(II)(6月以内)', '入院精神療法(II)(6月超)',
+      '精神科作業療法',
+      '退院指導料', '退院前訪問指導料', 'その他'
+    ],
+    'test_detail': ['検体検査', '生体検査', '心理検査']
+  };
+
+  function buildCompareTable(months, data, detailMap, wardDetailMap) {
+    var allKeys = {};
+    months.forEach(function(m) {
+      var section = data[m].compare || {};
+      for (var k in section) allKeys[k] = true;
+    });
+    var names = Object.keys(allKeys).sort(function(a, b) {
+      var ia = COMPARE_ORDER.indexOf(a);
+      var ib = COMPARE_ORDER.indexOf(b);
+      if (ia === -1) ia = 999;
+      if (ib === -1) ib = 999;
+      return ia - ib;
+    });
+
+    var html = '<table class="shinryo-table"><caption>入院収益内訳</caption>';
+    html += colgroup(months.length);
+    html += '<thead><tr><th>項目</th>';
+    months.forEach(function(m) { html += '<th>' + m + '</th>'; });
+    html += '<th>合計</th></tr></thead><tbody>';
+
+    var detailIdx = 0;
+
+    // ヘルパー: 明細付き行を出力
+    function renderRow(name, getVal, detailKey) {
+      var hasDetail = false;
+      if (detailKey) {
+        months.forEach(function(m) {
+          if (data[m][detailKey] && Object.keys(data[m][detailKey]).length) hasDetail = true;
+        });
+      }
+      var rowTotal = 0;
+      if (hasDetail) {
+        var idx = detailIdx++;
+        html += '<tr class="sk-collapsible" onclick="toggleInpDetail(' + idx + ')">';
+        html += '<td><span class="sk-toggle-arrow" id="inp_arrow_' + idx + '" style="transform:rotate(90deg)">&#9654;</span>' + name + '</td>';
+      } else {
+        html += '<tr><td>' + name + '</td>';
+      }
+      months.forEach(function(m) {
+        var v = getVal(m);
+        html += '<td>' + fmtYen(v) + '</td>';
+        rowTotal += v;
+      });
+      html += '<td>' + fmtYen(rowTotal) + '</td></tr>';
+
+      if (hasDetail) {
+        var subKeys = {};
+        months.forEach(function(m) {
+          var sub = data[m][detailKey] || {};
+          for (var sk in sub) subKeys[sk] = true;
+        });
+        var sortedSubKeys = Object.keys(subKeys);
+        var order = DETAIL_ORDER[detailKey];
+        if (order) {
+          sortedSubKeys.sort(function(a, b) {
+            var ia = order.indexOf(a);
+            var ib = order.indexOf(b);
+            if (ia === -1) ia = 999;
+            if (ib === -1) ib = 999;
+            return ia - ib;
+          });
+        }
+        sortedSubKeys.forEach(function(sk) {
+          html += '<tr class="inp-detail-row sk-breakdown-row" data-inp="' + (detailIdx - 1) + '">';
+          html += '<td>' + sk + '</td>';
+          var skTotal = 0;
+          months.forEach(function(m) {
+            var v = (data[m][detailKey] || {})[sk] || 0;
+            html += '<td>' + fmtYen(v) + '</td>';
+            skTotal += v;
+          });
+          html += '<td>' + fmtYen(skTotal) + '</td></tr>';
+        });
+      }
+    }
+
+    // 診療区分
+    names.forEach(function(name) {
+      renderRow(name, function(m) { return (data[m].compare || {})[name] || 0; }, detailMap[name]);
+    });
+
+    // 病棟別入院料
+    var wardKeys = {};
+    months.forEach(function(m) {
+      var ward = data[m].ward || {};
+      for (var wk in ward) wardKeys[wk] = true;
+    });
+    var wardNames = Object.keys(wardKeys).sort();
+    wardNames.forEach(function(wk) {
+      var wDetailKey = wardDetailMap[wk] || null;
+      renderRow(wk, function(m) { return (data[m].ward || {})[wk] || 0; }, wDetailKey);
+    });
+
+    // 小計（診療区分 + 入院料）
+    html += '<tr class="total-row"><td>小計</td>';
+    var gt = 0;
+    months.forEach(function(m) {
+      var sub = 0;
+      var compare = data[m].compare || {};
+      for (var c in compare) sub += compare[c];
+      var ward = data[m].ward || {};
+      for (var w in ward) sub += ward[w];
+      html += '<td>' + fmtYen(sub) + '</td>';
+      gt += sub;
+    });
+    html += '<td>' + fmtYen(gt) + '</td></tr>';
+
+    // 食事
+    renderRow('食事', function(m) { return data[m].food || 0; }, null);
+
+    html += '</tbody></table>';
+    return html;
+  }
+
+  function renderPharmacy() {
+    var pharm = DATA.pharmacy;
+    var months = Object.keys(pharm).sort(function(a, b) {
+      return parseInt(a) - parseInt(b);
+    });
+    if (!months.length) return '<div class="placeholder"><p>薬剤データがありません</p></div>';
+
+    // 月別詳細表示中
+    if (pharmView !== 'summary') {
+      return renderPharmDetail(months);
+    }
+
+    var latest = pharm[months[months.length - 1]];
+    var latestMonth = months[months.length - 1];
+
+    // 精神科薬剤合計算出
+    var psychCats = [
+      '抗精神病薬（非定型）', '抗精神病薬（定型）', '抗うつ薬', '睡眠薬',
+      '抗不安薬', '気分安定薬・抗てんかん薬', '抗パーキンソン薬', 'ADHD治療薬',
+      '認知症治療薬'
+    ];
+    var psychTotal = 0;
+    psychCats.forEach(function(c) { psychTotal += (latest.categories || {})[c] || 0; });
+    var nonPsychTotal = latest.grand_total - psychTotal;
+
+    // サマリーカード
+    var html = '<div class="summary-cards">';
+    html += card('入院薬剤費合計', fmtMan(latest.grand_total), latestMonth + ' / ' + fmt(latest.grand_total) + '円');
+    html += card('精神科薬剤', fmtMan(psychTotal), pct(psychTotal, latest.grand_total));
+    html += card('その他薬剤', fmtMan(nonPsychTotal), pct(nonPsychTotal, latest.grand_total));
+    html += card('品目数', fmt(latest.unique_drugs), 'レコード ' + fmt(latest.record_count));
+    html += '</div>';
+
+    // 月別詳細ボタン
+    html += '<div class="pharm-view-btns no-print">';
+    months.forEach(function(m) {
+      html += '<button class="report-tab" onclick="showPharmMonth(\'' + m + '\')">' + m + ' 詳細</button>';
+    });
+    html += '</div>';
+
+    // カテゴリ別テーブル（折りたたみ明細付き）
+    var allCats = {};
+    months.forEach(function(m) {
+      var cats = pharm[m].categories || {};
+      for (var c in cats) allCats[c] = true;
+    });
+    var catNames = Object.keys(allCats);
+
+    html += '<table class="shinryo-table">';
+    html += '<caption>カテゴリ別薬剤費</caption>';
+    html += colgroup(months.length);
+    html += '<thead><tr><th>カテゴリ</th>';
+    months.forEach(function(m) { html += '<th>' + m + '</th>'; });
+    html += '<th>合計</th></tr></thead><tbody>';
+
+    var monthTotals = {};
+    months.forEach(function(m) { monthTotals[m] = 0; });
+    var grandTotal = 0;
+
+    catNames.forEach(function(cat, catIdx) {
+      // カテゴリ集計行
+      html += '<tr class="sk-collapsible" onclick="toggleDrugDetail(' + catIdx + ')">';
+      html += '<td><span class="sk-toggle-arrow" id="arrow_' + catIdx + '" style="transform:rotate(90deg)">&#9654;</span>' + cat + '</td>';
+      var rowTotal = 0;
+      months.forEach(function(m) {
+        var v = (pharm[m].categories || {})[cat] || 0;
+        html += '<td>' + fmt(v) + '</td>';
+        rowTotal += v;
+        monthTotals[m] += v;
+      });
+      html += '<td>' + fmt(rowTotal) + '</td></tr>';
+      grandTotal += rowTotal;
+
+      // 明細行（最新月のdrugs_by_category）
+      var latestDrugs = (pharm[latestMonth].drugs_by_category || {})[cat] || [];
+      latestDrugs.forEach(function(d) {
+        html += '<tr class="drug-detail-row sk-breakdown-row" data-cat="' + catIdx + '">';
+        html += '<td>' + d.name + '</td>';
+        // 月列は最新月のみ金額表示、他は空
+        months.forEach(function(m, mi) {
+          if (m === latestMonth) {
+            html += '<td>' + fmt(d.amt) + '</td>';
+          } else {
+            // 他月のdrugs_by_categoryがあれば同名薬剤を検索
+            var otherDrugs = (pharm[m].drugs_by_category || {})[cat] || [];
+            var found = null;
+            for (var k = 0; k < otherDrugs.length; k++) {
+              if (otherDrugs[k].name === d.name) { found = otherDrugs[k]; break; }
+            }
+            html += '<td>' + (found ? fmt(found.amt) : '-') + '</td>';
+          }
+        });
+        html += '<td></td></tr>';
+      });
+    });
+
+    html += '<tr class="total-row"><td>合計</td>';
+    months.forEach(function(m) { html += '<td>' + fmt(monthTotals[m]) + '</td>'; });
+    html += '<td>' + fmt(grandTotal) + '</td></tr>';
+    html += '</tbody></table>';
+
+    return html;
+  }
+
+  function renderPharmDetail(months) {
+    var html = '<div class="pharm-view-btns no-print">';
+    html += '<button class="report-tab active" onclick="showPharmSummary()">月別比較</button>';
+    months.forEach(function(m) {
+      var cls = m === pharmView ? ' style="font-weight:700"' : '';
+      html += '<button class="report-tab"' + cls + ' onclick="showPharmMonth(\'' + m + '\')">' + m + '</button>';
+    });
+    html += '</div>';
+    var num = pharmView.replace('月', '');
+    var src = '/api/reports/' + pharmView + '/薬剤月次サマリー_' + num + '月.html';
+    html += '<iframe class="pharm-iframe" src="' + src + '"></iframe>';
+    return html;
+  }
+
+  window.showPharmMonth = function(m) {
+    if (!/^\d{1,2}月$/.test(m)) return;
+    pharmView = m;
+    render();
+  };
+  window.showPharmSummary = function() {
+    pharmView = 'summary';
+    render();
+  };
+
+  window.toggleInpDetail = function(idx) {
+    var rows = document.querySelectorAll('.inp-detail-row[data-inp="' + idx + '"]');
+    var arrow = document.getElementById('inp_arrow_' + idx);
+    var isHidden = rows.length > 0 && rows[0].classList.contains('hidden');
+    rows.forEach(function(r) { r.classList.toggle('hidden', !isHidden); });
+    if (arrow) arrow.style.transform = isHidden ? 'rotate(90deg)' : '';
+  };
+
+  window.toggleDrugDetail = function(catIdx) {
+    var rows = document.querySelectorAll('.drug-detail-row[data-cat="' + catIdx + '"]');
+    var arrow = document.getElementById('arrow_' + catIdx);
+    var isHidden = rows.length > 0 && rows[0].classList.contains('hidden');
+    rows.forEach(function(r) { r.classList.toggle('hidden', !isHidden); });
+    if (arrow) arrow.style.transform = isHidden ? 'rotate(90deg)' : '';
+  };
+
+  function card(label, value, sub) {
+    var html = '<div class="summary-card"><div class="label">' + label + '</div><div class="value">' + value + '</div>';
+    if (sub) html += '<div class="sub">' + sub + '</div>';
+    html += '</div>';
+    return html;
+  }
+
+  // データ読み込み
+  fetch('/api/shinryo_data')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      DATA = d;
+      render();
+    })
+    .catch(function(e) {
+      var el = document.getElementById('reportsBody');
+      el.textContent = '';
+      var div = document.createElement('div');
+      div.className = 'placeholder';
+      var p = document.createElement('p');
+      p.textContent = 'データ読み込みエラー: ' + e.message;
+      div.appendChild(p);
+      el.appendChild(div);
+    });
+})();
