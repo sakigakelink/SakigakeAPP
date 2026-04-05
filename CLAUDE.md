@@ -16,4 +16,6 @@ Sakigake Hospital管理業務支援。損益計算、診療報酬分析、給与
 - 不要なファイル・コードを増やさない（既存パターンを再利用）
 - リモートへの反映は `git pull` のみ（リモートで直接編集しない）
 - シフトは通常ディレクトリ（サブモジュールではない）
-- 秘匿データ（`shared/employees.json`, `給与/data/`の給与CSV/JSON）はgit管理しない。デプロイ時はローカル・リモートにのみ保存
+- 秘匿データ（`shared/employees.json`, `給与/data/`, `損益/data/`, `診療/*月/`, 各種PDF）はgit管理しない
+- 秘匿データの同期: `bash .claude/sync-data.sh pull`（リモート→ローカル）/ `push`（ローカル→リモート）
+- PDFの更新・追加はリモートで行い、`sync-data.sh pull` でローカルに反映

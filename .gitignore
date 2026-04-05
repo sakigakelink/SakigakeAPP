@@ -13,16 +13,10 @@ temp/
 # 生成物・出力
 損益/output/
 *.xlsx
-診療/*月/*サマリー*.html
-診療/*月/*データ*.json
 
 # 動画・デモフレーム
 *.mp4
 独立ツール/処方/demo/frames/
-
-# PDF（給与・損益の月次帳票）
-給与/*月/*.pdf
-損益/data/*.pdf
 
 # pytest cache
 .pytest_cache/
@@ -33,10 +27,27 @@ temp/
 # 実行時生成
 server.pid
 
+# ============================================================
 # 秘匿データ（ローカル・リモートのみ保存、git管理しない）
+# 同期は .claude/sync-data.sh を使用
+# ============================================================
+
+# 共通マスタ
 shared/employees.json
-給与/data/R7支払.csv
-給与/data/r7_sheets.json
+
+# 給与: PDF・給与データ
+給与/*月/*.pdf
+給与/data/
+
+# 損益: PDF・財務データ
+損益/data/
+
+# 診療: PDF・帳票・レポート生成物
+診療/*.pdf
+診療/*.docx
+診療/*月/
+診療/入院収益月次サマリー.html
+診療/入院収益月次データ.json
 
 # OS generated
 Thumbs.db
