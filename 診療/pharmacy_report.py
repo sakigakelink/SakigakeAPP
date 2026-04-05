@@ -678,6 +678,18 @@ def main():
         'record_count': len(drugs),
         'unique_drugs': len(drugs),
         'categories': {cat: agg[cat]['total_amt'] for cat in CLASSIFICATION_ORDER if cat in agg},
+        'drugs_by_category': {
+            cat: [
+                {
+                    'name': f'[{SHINKU_MAP.get(d["shinku"], d["shinku"])}] {strip_maker_name(d["name"])}',
+                    'qty': d.get('inpatient_qty', 0),
+                    'amt': d['inpatient_amt'],
+                }
+                for d in sorted(agg[cat]['drugs'], key=lambda x: x['name'])
+                if d['inpatient_amt'] > 0
+            ]
+            for cat in CLASSIFICATION_ORDER if cat in agg
+        },
     }
     json_path = os.path.join(month_dir, f'薬剤月次データ_{month}月.json')
     tmp_json = json_path + '.tmp'

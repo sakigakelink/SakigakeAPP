@@ -115,6 +115,39 @@ def extract_grand_total(pdf_path):
     return 0
 
 
+def extract_summary_sheet(pdf_path):
+    """総括表PDFから保険計の請求点数・件数・延べ日数・食事を抽出
+
+    テーブル構造:
+        col0: 保険区分, col1: 細目, col2: 件数, col3: 日数,
+        col4: 点数, col8: 診療報酬合計(円), col14: 実績額(円)
+
+    最終行「合計」（保険計と同値）を読む。
+    """
+    result = {'cases': 0, 'days': 0, 'points': 0, 'food_yen': 0}
+    try:
+        with pdfplumber.open(pdf_path) as pdf:
+            tables = pdf.pages[0].extract_tables()
+            if not tables:
+                return result
+            # 最終「合計」行を探す（保険計と同値）
+            for row in tables[0]:
+                label0 = str(row[0] or '')
+                # 「合計」or「合 計」がcol0にある行（最終合計行）
+                if '合' in label0 and '計' in label0 and '小計' not in label0:
+                    cases = _parse_num(row[2])
+                    if cases > 0:
+                        result['cases'] = cases
+                        result['days'] = _parse_num(row[3])
+                        result['points'] = _parse_num(row[4])
+            # 食事: 入院料PDFの診区97から取得済みだが、
+            # 総括表では実績額(col14)に含まれる
+            # 食事は別途build_dataで処理するためここでは省略
+    except Exception as e:
+        logger.warning('総括表解析エラー: %s', e)
+    return result
+
+
 def extract_drug_subtotals(pdf_path):
     """薬剤PDFから診区別小計（円）を抽出
     テーブル構造: [診区, コード, 名称, 単価, 外来数量, 入院数量, 合計数量,
@@ -305,16 +338,16 @@ def extract_exam_detail(pdf_path):
 
 def extract_test_detail(pdf_path):
     """検査PDFからサブカテゴリ別入院金額（円）を抽出
-    心電図・呼吸心拍等: ECG, EEG, 呼吸心拍監視, 脈波
-    心理検査: 認知機能検査, 心理検査
-    一般: それ以外
+    生体検査: ECG, EEG, 呼吸心拍監視, 脈波
+    心理検査: 認知機能検査, 心理検査, 知能検査, 発達検査
+    検体検査: それ以外
     テキスト行の数値配列(ASCII正規表現): idx0=診区, idx1=コード, idx2=点数, ..., idx7=入院金額
     """
     ecg_total = 0
     psych_test_total = 0
     general_total = 0
 
-    ecg_keywords = ['ＥＣＧ', 'ECG', 'ＥＥＧ', 'EEG', '心電図', '呼吸心拍', '脈波', '賦活検査', '脳波']
+    ecg_keywords = ['ＥＣＧ', 'ECG', 'ＥＥＧ', 'EEG', '生体検査', '呼吸心拍', '脈波', '賦活検査', '脳波']
     psych_keywords = ['認知機能検査', '心理検査', '知能検査', '発達検査']
 
     with pdfplumber.open(pdf_path) as pdf:
@@ -341,7 +374,7 @@ def extract_test_detail(pdf_path):
                 else:
                     general_total += amt
 
-    return {'一般': general_total, '心電図': ecg_total, '心理': psych_test_total}
+    return {'検体検査': general_total, '生体検査': ecg_total, '心理検査': psych_test_total}
 
 
 def extract_image_detail(pdf_path):
@@ -565,6 +598,17 @@ def build_data(folder):
             pdf_totals[key] = 0
             logger.warning('  %s: PDF未検出', key)
 
+    # --- 総括表（最終請求データ） ---
+    summary_path = find_pdf(folder, '総括表.pdf')
+    if summary_path:
+        summary = extract_summary_sheet(summary_path)
+        data['summary'] = summary
+        logger.info('  総括表: 件数=%d, 延べ日数=%d, 請求点数=%s',
+                     summary['cases'], summary['days'], f'{summary["points"]:,}')
+    else:
+        data['summary'] = {'cases': 0, 'days': 0, 'points': 0}
+        logger.warning('  総括表: PDF未検出')
+
     # --- 薬剤 診区別小計（分割ファイル対応） ---
     drug_paths = find_pdfs(folder, '薬剤.pdf')
     drug_subtotals = {}
@@ -658,8 +702,8 @@ def build_data(folder):
 
     compare_data = {
         '診察': _yen2pt(pdf_totals.get('診察', 0)),
-        '投薬（薬剤+調剤処方）': touyaku,
-        '注射（手技+薬剤）': chusha,
+        '投薬': touyaku,
+        '注射': chusha,
         '処置': shochi,
         '検査': _yen2pt(pdf_totals.get('検査', 0)),
         '画像': _yen2pt(pdf_totals.get('画像', 0)),
@@ -668,6 +712,18 @@ def build_data(folder):
         'その他・器材': _yen2pt(pdf_totals.get('器材', 0)),
     }
     data['compare'] = compare_data
+
+    # 投薬内訳（点）
+    data['touyaku_detail'] = {
+        '薬剤': _yen2pt(drug_touyaku),
+        '調剤処方': _yen2pt(pdf_totals.get('調剤処方', 0)),
+    }
+
+    # 注射内訳（点）
+    data['chusha_detail'] = {
+        '薬剤': _yen2pt(drug_chusha),
+        '手技': _yen2pt(pdf_totals.get('注射手技', 0)),
+    }
 
     # --- 病棟データ（点） ---
     adm90 = adm_subtotals.get('90', 0)
@@ -735,9 +791,11 @@ def build_data(folder):
                     if amt == 0:
                         continue
                     if '入院精神療法' in line and ('（１）' in line or '(I)' in line or '180018110' in line):
-                        psych_detail['入院精神療法'] = psych_detail.get('入院精神療法', 0) + amt
-                    elif '入院精神療法' in line and ('（２）' in line or '(II)' in line or '180012010' in line or '180012110' in line):
-                        psych_detail['入院精神療法'] = psych_detail.get('入院精神療法', 0) + amt
+                        psych_detail['入院精神療法(I)'] = psych_detail.get('入院精神療法(I)', 0) + amt
+                    elif '入院精神療法' in line and ('６月超' in line or '180012110' in line):
+                        psych_detail['入院精神療法(II)(6月超)'] = psych_detail.get('入院精神療法(II)(6月超)', 0) + amt
+                    elif '入院精神療法' in line and ('（２）' in line or '(II)' in line or '180012010' in line):
+                        psych_detail['入院精神療法(II)(6月以内)'] = psych_detail.get('入院精神療法(II)(6月以内)', 0) + amt
                     elif '精神科作業療法' in line or '180007410' in line:
                         psych_detail['精神科作業療法'] = amt
                     elif '医療保護入院等' in line or '180026410' in line:
@@ -745,7 +803,7 @@ def build_data(folder):
                     elif '退院指導' in line and '退院前' not in line:
                         psych_detail['退院指導料'] = amt
                     elif '治療抵抗性' in line:
-                        psych_detail['治療抵抗性統合失調症'] = amt
+                        psych_detail['治療抵抗性統合失調症管理料'] = amt
                     elif '退院前訪問' in line:
                         psych_detail['退院前訪問指導料'] = amt
                     elif 'ベースアップ' not in line:
@@ -768,14 +826,14 @@ def build_data(folder):
     # 検査サブカテゴリ（分割ファイル対応）
     test_paths = find_pdfs(folder, '検査.pdf')
     if test_paths:
-        combined_test = {'一般': 0, '心電図': 0, '心理': 0}
+        combined_test = {'検体検査': 0, '生体検査': 0, '心理検査': 0}
         for tp in test_paths:
             td = extract_test_detail(tp)
             for k, v in td.items():
                 combined_test[k] = combined_test.get(k, 0) + v
         data['test_detail'] = {k: _yen2pt(v) for k, v in combined_test.items()}
     else:
-        data['test_detail'] = {'一般': 0, '心電図': 0, '心理': 0}
+        data['test_detail'] = {'検体検査': 0, '生体検査': 0, '心理検査': 0}
 
     # 画像サブカテゴリ
     image_path = find_pdf(folder, '画像.pdf')
@@ -936,8 +994,8 @@ def _build_row_items(data):
     total = data['total']
     items = []
     simple_cats = [
-        ('診察', '診察'), ('投薬', '投薬（薬剤+調剤処方）'),
-        ('注射', '注射（手技+薬剤）'), ('処置', '処置'),
+        ('診察', '診察'), ('投薬', '投薬'),
+        ('注射', '注射'), ('処置', '処置'),
         ('検査', '検査'), ('画像', '画像'),
     ]
     for disp, key in simple_cats:
@@ -1143,6 +1201,12 @@ def main():
             'exam_detail': d.get('exam_detail', {}),
             'test_detail': d.get('test_detail', {}),
             'image_detail': d.get('image_detail', {}),
+            'touyaku_detail': d.get('touyaku_detail', {}),
+            'chusha_detail': d.get('chusha_detail', {}),
+            'w1_detail': d.get('w1_detail', {}),
+            'w2_detail': d.get('w2_detail', {}),
+            'w3_detail': d.get('w3_detail', {}),
+            'summary': d.get('summary', {}),
         }
     import json
     tmp_path = json_path + '.tmp'
