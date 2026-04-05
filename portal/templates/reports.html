@@ -467,6 +467,7 @@
   }
 
   window.showPharmMonth = function(m) {
+    if (!/^\d{1,2}月$/.test(m)) return;
     pharmView = m;
     render();
   };

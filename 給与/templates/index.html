@@ -210,6 +210,7 @@
 </div>
 
 <script>
+function escHtml(s) { const d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
 const FILES = {};
 let analysisData = null;
 
@@ -242,9 +243,10 @@ async function loadFolders() {
       container.innerHTML = '<span style="font-size:.82rem;color:rgba(255,255,255,.4)">月フォルダなし</span>';
       return;
     }
-    container.innerHTML = '<button class="folder-btn" onclick="loadAllFolders()" id="loadAllBtn">全月読込</button>' + folders.map(f =>
-      `<button class="folder-btn" onclick="loadFolder('${f.name}')">${f.name}</button>`
-    ).join('');
+    container.innerHTML = '<button class="folder-btn" onclick="loadAllFolders()" id="loadAllBtn">全月読込</button>' + folders.map(f => {
+      const safe = escHtml(f.name);
+      return `<button class="folder-btn" onclick="loadFolder('${safe}')">${safe}</button>`;
+    }).join('');
   } catch (e) { console.error(e); }
 }
 

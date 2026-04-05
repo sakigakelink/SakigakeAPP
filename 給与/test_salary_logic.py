@@ -129,8 +129,8 @@ class TestListFolders:
     """フォルダ一覧テスト"""
 
     def test_list(self, tmp_path):
-        original_dir = salary_logic._DIR
-        salary_logic._DIR = str(tmp_path)
+        original = salary_logic._DATA_ROOT
+        salary_logic._DATA_ROOT = str(tmp_path)
         try:
             (tmp_path / '1月').mkdir()
             (tmp_path / '2月').mkdir()
@@ -146,4 +146,4 @@ class TestListFolders:
             f1 = next(f for f in result if f['name'] == '1月')
             assert f1['pdf_count'] == 1
         finally:
-            salary_logic._DIR = original_dir
+            salary_logic._DATA_ROOT = original

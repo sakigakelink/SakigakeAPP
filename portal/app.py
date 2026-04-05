@@ -260,8 +260,12 @@ _REPORT_FONT_STYLE = '<style>body{font-family:"Segoe UI","Meiryo","Noto Sans JP"
 
 def _safe_read_html(base_dir, filename):
     """パストラバーサル防止付きHTML読み込み。安全でなければNoneを返す"""
+    real_base = os.path.realpath(base_dir)
     safe_path = os.path.realpath(os.path.join(base_dir, filename))
-    if not safe_path.startswith(os.path.realpath(base_dir) + os.sep):
+    try:
+        if os.path.commonpath([real_base, safe_path]) != real_base:
+            return None
+    except ValueError:
         return None
     if not os.path.isfile(safe_path):
         return None
