@@ -5,7 +5,7 @@ sys.path.insert(0, ".")
 from validation import employee_to_frontend
 from solver import ShiftSolver
 
-emps = json.load(open("shared/employees.json", "r", encoding="utf-8"))
+emps = json.load(open("../shared/employees.json", "r", encoding="utf-8"))
 san = [employee_to_frontend(e) for e in emps if e.get("ward") == "sanbyoutou"]
 
 # minNight全員0

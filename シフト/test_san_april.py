@@ -8,7 +8,7 @@ from validation import employee_to_frontend, WARD_ID_TO_CODE
 from solver import ShiftSolver
 
 # 1. 職員データ読み込み
-emps = json.load(open("shared/employees.json", "r", encoding="utf-8"))
+emps = json.load(open("../shared/employees.json", "r", encoding="utf-8"))
 san = [e for e in emps if e.get("ward") == "sanbyoutou"]
 print(f"三病棟職員数: {len(san)}")
 

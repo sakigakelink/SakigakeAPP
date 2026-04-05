@@ -22,7 +22,7 @@ class WardEngine:
 
     def load_staff(self):
         """shared/employees.jsonから当該病棟の職員を読み込み"""
-        employees_path = Path(__file__).parent.parent / 'shared' / 'employees.json'
+        employees_path = Path(__file__).parent.parent.parent / 'shared' / 'employees.json'
         if not employees_path.exists():
             return {
                 'flexRequest': [],

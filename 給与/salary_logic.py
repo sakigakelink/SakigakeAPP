@@ -8,13 +8,51 @@ TKC PX2 一人別給与統計表 PDF解析
 import os
 import re
 import json
+import logging
 import tempfile
+from datetime import date
 import pdfplumber
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # パス
 # ---------------------------------------------------------------------------
 _DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_DIR)
+_DATA_ROOT = os.path.join(_PROJECT_ROOT, 'shared', '給与')
+_CACHE_PATH = os.path.join(_DATA_ROOT, 'data', 'salary_cache.json')
+
+# 共通キャッシュユーティリティ（プロジェクトルートから importlib で読み込み）
+import importlib.util as _imputil
+_cu_spec = _imputil.spec_from_file_location('cache_utils', os.path.join(os.path.dirname(_DIR), 'cache_utils.py'))
+_cu = _imputil.module_from_spec(_cu_spec)
+_cu_spec.loader.exec_module(_cu)
+_load_cache_util, _save_cache_util = _cu.load_cache, _cu.save_cache
+
+
+# ---------------------------------------------------------------------------
+# キャッシュ（元PDFのmtimeと照合し、差分なければ再解析スキップ）
+# ---------------------------------------------------------------------------
+def _build_source_map():
+    """全月フォルダの全PDFの {relative_path: mtime} を構築"""
+    sources = {}
+    if not os.path.isdir(_DATA_ROOT):
+        return sources
+    for name in os.listdir(_DATA_ROOT):
+        if not os.path.isdir(os.path.join(_DATA_ROOT, name)) or not re.match(r'^\d+月$', name):
+            continue
+        for f in os.listdir(os.path.join(_DATA_ROOT, name)):
+            if f.endswith('.pdf'):
+                rel = f'{name}/{f}'
+                sources[rel] = os.path.getmtime(os.path.join(_DATA_ROOT, name, f))
+    return sources
+
+
+def ensure_cache():
+    """起動時呼び出し: キャッシュが古ければ再生成"""
+    parse_all_folders_data()
+
 
 # ---------------------------------------------------------------------------
 # 部課コード → 名称マッピング
@@ -30,6 +68,7 @@ except (FileNotFoundError, ValueError):
 # PDF テーブル定数
 # ---------------------------------------------------------------------------
 EMPLOYEE_COL_OFFSETS = [4, 9, 14, 19, 24, 29]
+NAME_COL_OFFSETS = [4, 7, 12, 17, 22, 27]
 
 NAME_ROW = 1
 CODE_ROW = 2
@@ -42,40 +81,40 @@ SALARY_ROW_MAP = {
     '調整手当': 8,
     'その他固定': 9,
     'その他変動': 10,
+    '基本給パート': 11,
     '欠勤控除': 12,
-    '時間外手当': 14,
-    '深夜手当': 15,
-    '休日手当': 16,
-    '時間外計': 17,
-    '通勤費': 19,
-    '支給合計': 21,
-    '健康保険料': 24,
-    '介護保険料': 25,
-    '厚生年金': 26,
-    '雇用保険料': 27,
-    '所得税': 29,
-    '住民税': 30,
-    '年末控除': 31,
-    'その他控除': 33,
-    '控除合計': 35,
-    '差引支給額': 37,
-    '出勤日数': 40,
-    '時間外': 42,
+    '準夜手当': 13,
+    '深夜手当': 14,
+    '夜手当': 15,
+    '明手当': 16,
+    '遅出手当': 17,
+    '準深手当': 18,
+    '時間外手当': 19,
+    '回数手当': 20,
+    '課税通勤手当': 21,
+    '課税支給額': 23,
+    '通勤費': 24,
+    '非課税当直手当': 25,
+    '支給合計': 26,
+    '健保介護': 27,
+    '健保一般': 28,
+    '厚生年金': 30,
+    '雇用保険料': 31,
+    '社会保険料計': 32,
+    '所得税': 34,
+    '住民税': 35,
+    '控除合計': 46,
+    '差引支給額': 49,
 }
 
-CATEGORY_MAP = {
-    '一般.pdf': '一般',
-    '医師.pdf': '医師',
-    '地域生活.pdf': '地域生活',
-    '非常勤.pdf': '非常勤',
-}
-
-UPLOAD_CATEGORIES = {
-    'ippan': '一般',
-    'ishi': '医師',
-    'chiiki': '地域生活',
-    'hijoukin': '非常勤',
-}
+CATEGORIES = [
+    ('ippan', '一般.pdf', '一般'),
+    ('ishi', '医師.pdf', '医師'),
+    ('chiiki', '地域生活.pdf', '地域生活'),
+    ('hijoukin', '非常勤.pdf', '非常勤'),
+]
+CATEGORY_MAP = {pdf: label for _, pdf, label in CATEGORIES}
+UPLOAD_CATEGORIES = {key: label for key, _, label in CATEGORIES}
 
 
 # ---------------------------------------------------------------------------
@@ -101,9 +140,15 @@ def safe_cell(table, row, col):
 
 
 def parse_value(table, row, col):
-    v = parse_number(safe_cell(table, row, col))
-    if v == 0:
-        v2 = parse_number(safe_cell(table, row, col - 1))
+    raw = safe_cell(table, row, col)
+    prev = safe_cell(table, row, col - 1) if col > 0 else ''
+    # 桁あふれで前列に先頭桁が入るケースを結合して解析
+    if prev and prev.strip().isdigit() and raw and raw.startswith(','):
+        combined = prev.strip() + raw
+        return parse_number(combined)
+    v = parse_number(raw)
+    if v == 0 and prev:
+        v2 = parse_number(prev)
         if v2 != 0:
             return v2
     return v
@@ -119,15 +164,22 @@ def is_summary_page(table):
 
 
 def extract_names_from_text(text, expected_count):
-    names = []
+    """ページテキストの「氏 名 ...」行から職員名を抽出する"""
     for line in text.split('\n'):
         line = line.strip()
-        m = re.match(r'^([^\d\s]{1,4})\s+([^\d\s]{1,4})$', line)
-        if m:
-            names.append(f"{m.group(1)} {m.group(2)}")
-        if len(names) >= expected_count:
-            break
-    return names
+        if not re.match(r'^氏\s*名\s+', line):
+            continue
+        # 「氏 名」プレフィックスを除去
+        rest = re.sub(r'^氏\s*名\s+', '', line)
+        # 非数字・非空白の塊（姓/名）を抽出し、2つずつペアにする
+        parts = re.findall(r'[^\d\s]+', rest)
+        names = []
+        i = 0
+        while i < len(parts) - 1 and len(names) < expected_count:
+            names.append(f"{parts[i]}\u3000{parts[i+1]}")
+            i += 2
+        return names
+    return []
 
 
 def extract_prefixed_cell(table, row, col_offset):
@@ -144,9 +196,27 @@ def detect_employee_columns(table):
     for col_off in EMPLOYEE_COL_OFFSETS:
         code_val = safe_cell(table, CODE_ROW, col_off)
         code_clean = re.sub(r'^[A-Z]', '', code_val)
-        if code_clean.strip() and re.match(r'^\d+$', code_clean.strip()):
+        if code_clean.strip() and re.match(r'^[\d\s\-]+', code_clean.strip()):
             cols.append(col_off)
     return cols
+
+
+def parse_era_date(s):
+    """和暦文字列をdateオブジェクトに変換。(date, era_char) or (None, None)を返す"""
+    if not s:
+        return None, None
+    m = re.search(r'(昭和|平成|令和|大正|[SHTRsht昭平令])\s*\.?\s*(\d+)\s*[./年]\s*(\d+)\s*[./月]\s*(\d+)', s)
+    if m:
+        era_raw = m.group(1)
+        era = era_raw[0].upper() if len(era_raw) == 1 else era_raw[0]
+        y, mo, d = int(m.group(2)), int(m.group(3)), int(m.group(4))
+        era_map = {'S': 1925, '昭': 1925, 'H': 1988, '平': 1988, 'T': 1911, 'R': 2018, '令': 2018}
+        western = era_map.get(era, 2018) + y
+        try:
+            return date(western, mo, d), era
+        except ValueError:
+            pass
+    return None, None
 
 
 def parse_employee_page(table, page_text=''):
@@ -158,19 +228,26 @@ def parse_employee_page(table, page_text=''):
     names_from_text = extract_names_from_text(page_text, len(active_cols))
 
     for idx, col_off in enumerate(active_cols):
-        name = extract_prefixed_cell(table, NAME_ROW, col_off)
-        if not name and idx < len(names_from_text):
-            name = names_from_text[idx]
+        # テキスト抽出名を優先（テーブル抽出は先頭文字欠落の問題あり）
+        name = names_from_text[idx] if idx < len(names_from_text) else None
+        if not name:
+            name_col = NAME_COL_OFFSETS[idx] if idx < len(NAME_COL_OFFSETS) else col_off
+            name = extract_prefixed_cell(table, NAME_ROW, name_col)
         if not name:
             continue
 
         code_raw = extract_prefixed_cell(table, CODE_ROW, col_off)
         code_clean = re.sub(r'^[A-Z]', '', code_raw) if code_raw else ''
 
-        dob_raw = extract_prefixed_cell(table, DOB_ROW, col_off)
-        hire_raw = extract_prefixed_cell(table, HIRE_ROW, col_off)
+        # 生年月日・入職日は元号が前列(col_off-1)に分離している
+        dob_era = safe_cell(table, DOB_ROW, col_off - 1)
+        dob_body = safe_cell(table, DOB_ROW, col_off)
+        dob_raw = (dob_era + dob_body) if dob_era else dob_body
+        hire_era = safe_cell(table, HIRE_ROW, col_off - 1)
+        hire_body = safe_cell(table, HIRE_ROW, col_off)
+        hire_raw = (hire_era + hire_body) if hire_era else hire_body
 
-        taikei, buka, shain_no, gender = '', '', '', ''
+        taikei, buka, shain_no = '', '', ''
         age, tenure = 0, 0
         if code_clean:
             parts = re.findall(r'\d+', code_clean)
@@ -179,29 +256,16 @@ def parse_employee_page(table, page_text=''):
                 buka = parts[1].zfill(3)
                 shain_no = parts[2]
 
-        def parse_era_date(s):
-            if not s:
-                return None, None
-            m = re.search(r'([SHTRsht昭平令])\s*\.?\s*(\d+)\s*[./年]\s*(\d+)\s*[./月]\s*(\d+)', s)
-            if m:
-                era, y, mo, d = m.group(1).upper(), int(m.group(2)), int(m.group(3)), int(m.group(4))
-                era_map = {'S': 1925, '昭': 1925, 'H': 1988, '平': 1988, 'T': 1911, 'R': 2018, '令': 2018}
-                western = era_map.get(era, 2018) + y
-                from datetime import date
-                try:
-                    return date(western, mo, d), era
-                except ValueError:
-                    pass
-            return None, None
+        # 有効な職員コードがない場合はスキップ（合計行等）
+        if not shain_no:
+            continue
 
         dob_date, _ = parse_era_date(dob_raw)
         hire_date, _ = parse_era_date(hire_raw)
 
-        from datetime import date
         today = date.today()
         if dob_date:
             age = (today - dob_date).days / 365.25
-            gender = '女性' if dob_raw and ('2' in dob_raw[:3] or safe_cell(table, DOB_ROW, col_off + 1).strip() == '2') else '男性'
         if hire_date:
             tenure = (today - hire_date).days / 365.25
 
@@ -216,10 +280,10 @@ def parse_employee_page(table, page_text=''):
             'buka': buka_name,
             'buka_code': buka,
             'shain_no': shain_no,
-            'gender': gender,
             'age': round(age, 1),
             'tenure': round(tenure, 1),
             'salary': salary,
+            'id': taikei.zfill(3) + buka + shain_no.zfill(6),
         })
 
     return employees
@@ -331,7 +395,8 @@ def build_combined_summary(results):
             + e['salary'].get('通勤費', 0)
             for e in employees
         )
-        jikangai = sum(e['salary'].get('時間外計', 0) for e in employees)
+        jikangai = sum(e['salary'].get('時間外手当', 0) for e in employees)
+        tsuukin = sum(e['salary'].get('通勤費', 0) for e in employees)
 
         category_summaries.append({
             'category': label,
@@ -341,6 +406,7 @@ def build_combined_summary(results):
             '基本給計': kihonkyu,
             '手当計': teate,
             '時間外計': jikangai,
+            '通勤費計': tsuukin,
             'avg_age': summary.get('avg_age', 0),
             'avg_tenure': summary.get('avg_tenure', 0),
         })
@@ -368,9 +434,13 @@ def build_buka_summary(results):
         for emp in data.get('employees', []):
             buka = emp.get('buka', '不明')
             if buka not in buka_data:
-                buka_data[buka] = {'buka': buka, 'headcount': 0, '基本給計': 0, '手当計': 0, '時間外計': 0, '支給合計': 0}
+                buka_data[buka] = {'buka': buka, 'headcount': 0, '基本給計': 0, '手当計': 0, '時間外計': 0, '通勤費計': 0, '支給合計': 0, '_ages': [], '_tenures': []}
             b = buka_data[buka]
             b['headcount'] += 1
+            if emp.get('age', 0) > 0:
+                b['_ages'].append(emp['age'])
+            if emp.get('tenure', 0) > 0:
+                b['_tenures'].append(emp['tenure'])
             sal = emp.get('salary', {})
             b['基本給計'] += sal.get('基本給', 0)
             b['手当計'] += (
@@ -380,12 +450,16 @@ def build_buka_summary(results):
                 + sal.get('その他変動', 0)
                 + sal.get('通勤費', 0)
             )
-            b['時間外計'] += sal.get('時間外計', 0)
+            b['時間外計'] += sal.get('時間外手当', 0)
+            b['通勤費計'] += sal.get('通勤費', 0)
             b['支給合計'] += sal.get('支給合計', 0)
 
     buka_list = sorted(buka_data.values(), key=lambda x: -x['支給合計'])
     for b in buka_list:
         b['一人当たり'] = round(b['支給合計'] / b['headcount']) if b['headcount'] else 0
+        b['avg_age'] = round(sum(b['_ages']) / len(b['_ages']), 1) if b['_ages'] else 0
+        b['avg_tenure'] = round(sum(b['_tenures']) / len(b['_tenures']), 1) if b['_tenures'] else 0
+        del b['_ages'], b['_tenures']
     return buka_list
 
 
@@ -396,8 +470,10 @@ def build_buka_summary(results):
 def list_folders_data():
     """月フォルダ一覧を返す"""
     folders = []
-    for name in sorted(os.listdir(_DIR)):
-        path = os.path.join(_DIR, name)
+    if not os.path.isdir(_DATA_ROOT):
+        return folders
+    for name in sorted(os.listdir(_DATA_ROOT)):
+        path = os.path.join(_DATA_ROOT, name)
         if os.path.isdir(path) and re.match(r'^\d+月$', name):
             pdfs = [f for f in os.listdir(path) if f.endswith('.pdf')]
             folders.append({'name': name, 'pdf_count': len(pdfs)})
@@ -414,6 +490,7 @@ def parse_uploaded_files(files_dict):
                 try:
                     results[label] = parse_payroll_pdf_upload(f, label)
                 except Exception as e:
+                    logger.exception("PDF解析エラー [%s]: %s", label, e)
                     results[label] = {'error': str(e), 'category': label}
     if not results:
         return None
@@ -424,7 +501,10 @@ def parse_uploaded_files(files_dict):
 
 def parse_folder_data(folder_name):
     """指定フォルダのPDFを解析"""
-    folder_path = os.path.join(_DIR, folder_name)
+    if not re.match(r'^\d+月$', folder_name):
+        logger.warning("不正なフォルダ名: %s", folder_name)
+        return None
+    folder_path = os.path.join(_DATA_ROOT, folder_name)
     if not os.path.isdir(folder_path):
         return None
     results = {}
@@ -434,6 +514,7 @@ def parse_folder_data(folder_name):
             try:
                 results[label] = parse_payroll_pdf_path(filepath, label)
             except Exception as e:
+                logger.exception("PDF解析エラー [%s/%s]: %s", folder_name, label, e)
                 results[label] = {'error': str(e), 'category': label}
     if not results:
         return None
@@ -448,10 +529,17 @@ def _month_sort_key(name):
 
 
 def parse_all_folders_data():
-    """全月フォルダを一括解析し月別推移データを返す"""
+    """全月フォルダを一括解析し月別推移データを返す（キャッシュ優先）"""
+    cached = _load_cache_util(_CACHE_PATH, _build_source_map())
+    if cached is not None:
+        logger.info("給与キャッシュ有効 — PDF解析スキップ")
+        return cached
+
     month_folders = []
-    for name in os.listdir(_DIR):
-        path = os.path.join(_DIR, name)
+    if not os.path.isdir(_DATA_ROOT):
+        return None
+    for name in os.listdir(_DATA_ROOT):
+        path = os.path.join(_DATA_ROOT, name)
         if os.path.isdir(path) and re.match(r'^\d+月$', name):
             month_folders.append(name)
     month_folders.sort(key=_month_sort_key)
@@ -464,7 +552,7 @@ def parse_all_folders_data():
     category_trend = []
 
     for folder_name in month_folders:
-        folder_path = os.path.join(_DIR, folder_name)
+        folder_path = os.path.join(_DATA_ROOT, folder_name)
         results = {}
         for filename, label in CATEGORY_MAP.items():
             filepath = os.path.join(folder_path, filename)
@@ -472,6 +560,7 @@ def parse_all_folders_data():
                 try:
                     results[label] = parse_payroll_pdf_path(filepath, label)
                 except Exception as e:
+                    logger.exception("PDF解析エラー [%s/%s]: %s", folder_name, label, e)
                     results[label] = {'error': str(e), 'category': label}
 
         if not results:
@@ -507,16 +596,19 @@ def parse_all_folders_data():
                 '一人当たり': cs['一人当たり'],
             })
 
-    return {
+    data = {
         'months': months,
         'monthly_trend': monthly_trend,
         'category_trend': category_trend,
     }
+    _save_cache_util(_CACHE_PATH, data, _build_source_map())
+    logger.info("給与キャッシュ生成完了")
+    return data
 
 
 def get_sheets_json():
     """R7支払いデータを返す"""
-    data_path = os.path.join(_DIR, 'data', 'r7_sheets.json')
+    data_path = os.path.join(_DATA_ROOT, 'data', 'r7_sheets.json')
     if not os.path.exists(data_path):
         return None
     with open(data_path, encoding='utf-8') as f:

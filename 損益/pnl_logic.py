@@ -19,8 +19,37 @@ logger = logging.getLogger(__name__)
 # パス
 # ---------------------------------------------------------------------------
 _DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_DIR = os.path.join(_DIR, 'data')
+_PROJECT_ROOT = os.path.dirname(_DIR)
+DATA_DIR = os.path.join(_PROJECT_ROOT, 'shared', '損益', 'data')
 MANUAL_INPUT_FILE = os.path.join(DATA_DIR, 'manual_inputs.json')
+_CACHE_PATH = os.path.join(DATA_DIR, 'pnl_cache.json')
+
+# 共通キャッシュユーティリティ（プロジェクトルートから importlib で読み込み）
+import importlib.util as _imputil
+_cu_spec = _imputil.spec_from_file_location('cache_utils', os.path.join(os.path.dirname(_DIR), 'cache_utils.py'))
+_cu = _imputil.module_from_spec(_cu_spec)
+_cu_spec.loader.exec_module(_cu)
+_load_cache_util, _save_cache_util = _cu.load_cache, _cu.save_cache
+
+
+# ---------------------------------------------------------------------------
+# キャッシュ（元PDF/TXTのmtimeと照合し、差分なければ再解析スキップ）
+# ---------------------------------------------------------------------------
+def _build_source_map():
+    """DATA_DIR内の全PDF+TXTの {filename: mtime} を構築"""
+    sources = {}
+    if not os.path.isdir(DATA_DIR):
+        return sources
+    for f in os.listdir(DATA_DIR):
+        if f.lower().endswith(('.pdf', '.txt')):
+            sources[f] = os.path.getmtime(os.path.join(DATA_DIR, f))
+    return sources
+
+
+def ensure_cache():
+    """起動時呼び出し: キャッシュが古ければ再生成"""
+    load_all_data()
+
 
 # ---------------------------------------------------------------------------
 # 定数
@@ -124,13 +153,81 @@ def parse_chutaikyo_txt(txt_path):
     return {'debit': debit_data, 'credit': credit_data, 'debug': debug_lines}
 
 
+def _parse_number_pnl(s):
+    """損益PDF用の数値パーサー"""
+    try:
+        return float(s.replace(',', '').replace(' ', ''))
+    except (ValueError, AttributeError):
+        return 0
+
+
+def _extract_period_info(full_text):
+    """PDF全文からヘッダー情報（期間・経理区分・組織名）を抽出"""
+    info = {'period': '', 'period_month': 0, 'period_year': 0, 'keiri_kubun': '', 'organization': ''}
+    period_match = re.search(r'令和\s*(\d+)年\s*(\d+)月\s*(\d+)日[〜～]令和\s*(\d+)年\s*(\d+)月\s*(\d+)日', full_text)
+    if period_match:
+        info['period'] = f"{2018+int(period_match.group(1))}年{int(period_match.group(2))}月〜{2018+int(period_match.group(4))}年{int(period_match.group(5))}月"
+        info['period_month'] = int(period_match.group(5))
+        info['period_year'] = 2018 + int(period_match.group(4))
+    keiri_match = re.search(r'経理区分[：:]\s*(\d+)\s*(\S+)', full_text)
+    if keiri_match:
+        info['keiri_kubun'] = f"{keiri_match.group(1)} {keiri_match.group(2)}"
+    org_match = re.search(r'医療法人\s*(\S+)', full_text)
+    if org_match:
+        info['organization'] = f"医療法人 {org_match.group(1)}"
+    return info
+
+
+def _parse_account_line(line):
+    """勘定科目行（4桁コード）を解析。マッチしなければNone"""
+    match = re.match(r'^(\d{4})\s+(.+?)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)', line)
+    if not match:
+        return None
+    code, name = match.group(1), match.group(2).strip()
+    prev_month_balance = _parse_number_pnl(match.group(3))
+    debit = _parse_number_pnl(match.group(4))
+    credit = _parse_number_pnl(match.group(5))
+    current_balance = _parse_number_pnl(match.group(6))
+    prev_year_balance = _parse_number_pnl(match.group(7))
+    monthly_amount = credit - debit if code.startswith('4') or code.startswith('71') else debit - credit
+    return {
+        'code': code, 'name': name,
+        'prev_month_balance': prev_month_balance, 'debit': debit, 'credit': credit,
+        'current_balance': current_balance, 'prev_year_balance': prev_year_balance,
+        'monthly_amount': monthly_amount, 'is_subtotal': False,
+    }
+
+
+def _parse_subtotal_line(line):
+    """小計行を解析。マッチしなければNone"""
+    if re.match(r'^\d{4}', line):
+        return None
+    subtotal_match = re.search(
+        r'([\u4e00-\u9fa5（）\uff08\uff09]+[計合]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)', line)
+    if not subtotal_match:
+        return None
+    name = subtotal_match.group(1).strip()
+    prev_month_balance = _parse_number_pnl(subtotal_match.group(2))
+    debit = _parse_number_pnl(subtotal_match.group(3))
+    credit = _parse_number_pnl(subtotal_match.group(4))
+    current_balance = _parse_number_pnl(subtotal_match.group(5))
+    prev_year_balance = _parse_number_pnl(subtotal_match.group(6))
+    is_revenue = '収益' in name or (('医業' in name or '事業' in name) and '費用' not in name)
+    monthly_amount = credit - debit if is_revenue else debit - credit
+    return {
+        'code': 'SUBTOTAL', 'name': name,
+        'prev_month_balance': prev_month_balance, 'debit': debit, 'credit': credit,
+        'current_balance': current_balance, 'prev_year_balance': prev_year_balance,
+        'monthly_amount': monthly_amount, 'is_subtotal': True, 'is_revenue': is_revenue,
+    }
+
+
 def parse_tkc_pdf(pdf_path):
-    result = {'filename': os.path.basename(pdf_path), 'organization': '', 'period': '', 'period_month': 0, 'period_year': 0, 'keiri_kubun': '', 'accounts': [], 'keiri2_accounts': [], 'keiri1_keijo': None}
-    def parse_number(s):
-        try:
-            return float(s.replace(',', '').replace(' ', ''))
-        except (ValueError, AttributeError):
-            return 0
+    result = {
+        'filename': os.path.basename(pdf_path), 'organization': '', 'period': '',
+        'period_month': 0, 'period_year': 0, 'keiri_kubun': '',
+        'accounts': [], 'keiri2_accounts': [], 'keiri1_keijo': None,
+    }
     with pdfplumber.open(pdf_path) as pdf:
         all_lines = []
         for page in pdf.pages:
@@ -138,62 +235,44 @@ def parse_tkc_pdf(pdf_path):
             if text:
                 all_lines.extend(text.split('\n'))
         full_text = '\n'.join(all_lines)
-        period_match = re.search(r'令和\s*(\d+)年\s*(\d+)月\s*(\d+)日[〜～]令和\s*(\d+)年\s*(\d+)月\s*(\d+)日', full_text)
-        if period_match:
-            result['period'] = f"{2018+int(period_match.group(1))}年{int(period_match.group(2))}月〜{2018+int(period_match.group(4))}年{int(period_match.group(5))}月"
-            result['period_month'] = int(period_match.group(5))
-            result['period_year'] = 2018 + int(period_match.group(4))
-        keiri_match = re.search(r'経理区分[：:]\s*(\d+)\s*(\S+)', full_text)
-        if keiri_match:
-            result['keiri_kubun'] = f"{keiri_match.group(1)} {keiri_match.group(2)}"
-        org_match = re.search(r'医療法人\s*(\S+)', full_text)
-        if org_match:
-            result['organization'] = f"医療法人 {org_match.group(1)}"
+        info = _extract_period_info(full_text)
+        result.update(info)
         current_keiri, keiri1_keijo_found, keiri2_keijo_found = '01', False, False
         for i, line in enumerate(all_lines):
             keiri_change = re.search(r'経理区分[：:]\s*(\d+)\s*(\S*)', line)
             if keiri_change:
                 current_keiri = keiri_change.group(1)
-            match = re.match(r'^(\d{4})\s+(.+?)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)', line)
-            if match:
-                code, name = match.group(1), match.group(2).strip()
-                prev_month_balance, debit, credit = parse_number(match.group(3)), parse_number(match.group(4)), parse_number(match.group(5))
-                current_balance, prev_year_balance = parse_number(match.group(6)), parse_number(match.group(7))
-                monthly_amount = credit - debit if code.startswith('4') or code.startswith('71') else debit - credit
-                account = {'code': code, 'name': name, 'prev_month_balance': prev_month_balance, 'debit': debit, 'credit': credit, 'current_balance': current_balance, 'prev_year_balance': prev_year_balance, 'monthly_amount': monthly_amount, 'is_subtotal': False}
+            account = _parse_account_line(line)
+            if account:
                 if current_keiri in ['01', '1']:
                     result['accounts'].append(account)
                 elif current_keiri == '2':
                     result['keiri2_accounts'].append(account)
                 continue
-            subtotal_match = re.search(r'([\u4e00-\u9fa5（）\uff08\uff09]+[計合]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)\s+([\d,.-]+)', line)
-            if subtotal_match and not re.match(r'^\d{4}', line):
-                name = subtotal_match.group(1).strip()
-                prev_month_balance, debit, credit = parse_number(subtotal_match.group(2)), parse_number(subtotal_match.group(3)), parse_number(subtotal_match.group(4))
-                current_balance, prev_year_balance = parse_number(subtotal_match.group(5)), parse_number(subtotal_match.group(6))
-                is_revenue = '収益' in name or (('医業' in name or '事業' in name) and '費用' not in name)
-                monthly_amount = credit - debit if is_revenue else debit - credit
-                account = {'code': 'SUBTOTAL', 'name': name, 'prev_month_balance': prev_month_balance, 'debit': debit, 'credit': credit, 'current_balance': current_balance, 'prev_year_balance': prev_year_balance, 'monthly_amount': monthly_amount, 'is_subtotal': True, 'is_revenue': is_revenue}
+            subtotal = _parse_subtotal_line(line)
+            if subtotal:
                 if current_keiri in ['01', '1']:
-                    result['accounts'].append(account)
+                    result['accounts'].append(subtotal)
                 elif current_keiri == '2':
-                    result['keiri2_accounts'].append(account)
+                    result['keiri2_accounts'].append(subtotal)
                 continue
-            if current_keiri in ['01', '1'] and not keiri1_keijo_found:
-                next_line = all_lines[i + 1] if i + 1 < len(all_lines) else ''
-                if re.match(r'^8111\s', next_line):
-                    keijo_match = re.search(r'(-?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s*(?:[\d.]+\s*\*?)?\s*$', line)
-                    if keijo_match:
-                        val1, val2, val3, val4, val5 = [parse_number(keijo_match.group(j)) for j in range(1, 6)]
-                        result['keiri1_keijo'] = {'code': 'KEIJO', 'name': '経常利益', 'prev_month_balance': val1, 'debit': val2, 'credit': val3, 'current_balance': val4, 'prev_year_balance': val5, 'monthly_amount': val3 - val2}
+            # 経常利益の検出（次行が8111で始まる場合）
+            next_line = all_lines[i + 1] if i + 1 < len(all_lines) else ''
+            if re.match(r'^8111\s', next_line):
+                keijo_match = re.search(r'(-?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s*(?:[\d.]+\s*\*?)?\s*$', line)
+                if keijo_match:
+                    vals = [_parse_number_pnl(keijo_match.group(j)) for j in range(1, 6)]
+                    keijo = {'code': 'KEIJO', 'name': '経常利益',
+                             'prev_month_balance': vals[0], 'debit': vals[1], 'credit': vals[2],
+                             'current_balance': vals[3], 'prev_year_balance': vals[4],
+                             'monthly_amount': vals[2] - vals[1]}
+                    if current_keiri in ['01', '1'] and not keiri1_keijo_found:
+                        result['keiri1_keijo'] = keijo
                         keiri1_keijo_found = True
-            if current_keiri == '2' and not keiri2_keijo_found:
-                next_line = all_lines[i + 1] if i + 1 < len(all_lines) else ''
-                if re.match(r'^8111\s', next_line):
-                    keijo_match = re.search(r'(-?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s+([-]?[\d,]+)\s*(?:[\d.]+\s*\*?)?\s*$', line)
-                    if keijo_match:
-                        val1, val2, val3, val4, val5 = [parse_number(keijo_match.group(j)) for j in range(1, 6)]
-                        result['keiri2_accounts'].append({'code': 'KEIJO', 'name': '経常利益', 'prev_month_balance': val1, 'debit': val2, 'credit': val3, 'current_balance': val4, 'prev_year_balance': val5, 'monthly_amount': val3 - val2, 'is_subtotal': True, 'is_revenue': False})
+                    elif current_keiri == '2' and not keiri2_keijo_found:
+                        keijo['is_subtotal'] = True
+                        keijo['is_revenue'] = False
+                        result['keiri2_accounts'].append(keijo)
                         keiri2_keijo_found = True
     return result
 
@@ -372,20 +451,30 @@ def create_display_data(all_data, display_items):
 # ---------------------------------------------------------------------------
 
 def load_all_data():
-    """損益/data/ 内のPDF・TXTを自動読み込み + 手入力値をマージ。dict を返す。"""
+    """損益/data/ 内のPDF・TXTを自動読み込み + 手入力値をマージ（キャッシュ優先）"""
     if not os.path.isdir(DATA_DIR):
         return {'error': 'data/ folder not found'}
+
+    # キャッシュ照合
+    cached = _load_cache_util(_CACHE_PATH, _build_source_map())
+    if cached is not None:
+        logger.info("損益キャッシュ有効 — PDF解析スキップ")
+        import copy
+        result = copy.deepcopy(cached)
+        return _merge_manual_inputs(result)
+
+    # キャッシュ無効 → 全解析
     pdf_results, chutaikyo_data = [], {}
     for fname in sorted(os.listdir(DATA_DIR)):
         filepath = os.path.join(DATA_DIR, fname)
         try:
             if fname.lower().endswith('.pdf'):
-                result = parse_tkc_pdf(filepath)
+                r = parse_tkc_pdf(filepath)
                 year_f, month_f = parse_month_from_filename(fname)
                 if year_f and month_f:
-                    result['period_year'] = year_f
-                    result['period_month'] = month_f
-                pdf_results.append(result)
+                    r['period_year'] = year_f
+                    r['period_month'] = month_f
+                pdf_results.append(r)
             elif fname.lower().endswith('.txt'):
                 chutaikyo_data = parse_chutaikyo_txt(filepath)
         except Exception as e:
@@ -401,7 +490,13 @@ def load_all_data():
         'output_display': create_display_data(all_data, OUTPUT_DISPLAY_ITEMS),
         'chutaikyo_data': chutaikyo_data,
     }
-    # 手入力値をマージ
+    _save_cache_util(_CACHE_PATH, result, _build_source_map())
+    logger.info("損益キャッシュ生成完了")
+    return _merge_manual_inputs(result)
+
+
+def _merge_manual_inputs(result):
+    """手入力値をresultにマージ（キャッシュからの復元時にも使用）"""
     if os.path.isfile(MANUAL_INPUT_FILE):
         try:
             with open(MANUAL_INPUT_FILE, encoding='utf-8') as f:
@@ -431,10 +526,14 @@ def load_all_data():
 
 
 def save_manual_inputs(data):
-    """手入力値をJSONファイルに保存"""
+    """手入力値をJSONファイルに保存（アトミック書き込み）"""
     os.makedirs(os.path.dirname(MANUAL_INPUT_FILE), exist_ok=True)
-    with open(MANUAL_INPUT_FILE, 'w', encoding='utf-8') as f:
+    tmp = MANUAL_INPUT_FILE + '.tmp'
+    with open(tmp, 'w', encoding='utf-8') as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, MANUAL_INPUT_FILE)
 
 
 def build_pdf_context(data):

@@ -18,7 +18,7 @@ from datetime import datetime
 import openpyxl
 
 # --- 定数 ---
-EMPLOYEES_PATH = os.path.join(os.path.dirname(__file__), "shared", "employees.json")
+EMPLOYEES_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "shared", "employees.json")
 SHIFTS_DIR = os.path.join(os.path.dirname(__file__), "shifts")
 
 SHEET_WARD_MAP = {

@@ -119,7 +119,7 @@ class ShiftSolver:
     def _sync_max_night_from_backend(self):
         """employees.json の maxPerMonth で各職員の maxNight を補正する。
         フロントエンドの LocalStorage に古い値が残留するケースへの対策。"""
-        employees_path = os.path.join(os.path.dirname(__file__), 'shared', 'employees.json')
+        employees_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'shared', 'employees.json')
         if not os.path.exists(employees_path):
             return
         try:
@@ -147,7 +147,7 @@ class ShiftSolver:
 
     def _sync_skill_point_from_backend(self):
         """employees.json の skillPoint で各職員の skillPoint を補正する。"""
-        employees_path = os.path.join(os.path.dirname(__file__), 'shared', 'employees.json')
+        employees_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'shared', 'employees.json')
         if not os.path.exists(employees_path):
             return
         try:

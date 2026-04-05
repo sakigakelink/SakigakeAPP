@@ -16,6 +16,7 @@ import os
 import re
 import sys
 import json
+import logging
 import datetime
 import unicodedata
 from collections import defaultdict
@@ -23,24 +24,27 @@ from collections import defaultdict
 import pdfplumber
 import glob as _glob
 
+logger = logging.getLogger(__name__)
+
 # ======================================================================
 # パス定義
 # ======================================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_CODE_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_CODE_DIR)
+BASE_DIR = os.path.join(_PROJECT_ROOT, 'shared', '診療')
 
 # ======================================================================
 # 薬効分類マッピング辞書（JSONファイルから読み込み）
 # ======================================================================
-_drug_class_path = os.path.join(BASE_DIR, 'drug_classification.json')
+_drug_class_path = os.path.join(_CODE_DIR, 'drug_classification.json')
 try:
     with open(_drug_class_path, encoding='utf-8') as _f:
         _drug_class_data = json.load(_f)
     DRUG_CLASSIFICATION = _drug_class_data['classification']
     CLASSIFICATION_ORDER = _drug_class_data['order']
 except (FileNotFoundError, ValueError, KeyError):
-    # フォールバック: JSONが見つからない場合は空で起動（エラーは出力）
-    import logging
-    logging.getLogger(__name__).warning("drug_classification.json not found, using empty classification")
+    # フォールバック: JSONが見つからない場合は空で起動
+    logger.warning("drug_classification.json not found, using empty classification")
     DRUG_CLASSIFICATION = {}
     CLASSIFICATION_ORDER = ['その他']
 
@@ -467,8 +471,12 @@ function saveHTML(){{
     if not os.path.isdir(month_dir):
         month_dir = BASE_DIR
     html_path = os.path.join(month_dir, save_name)
-    with open(html_path, 'w', encoding='utf-8') as f:
+    tmp_path = html_path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
         f.write(html_text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, html_path)
     return html_path
 
 
@@ -585,9 +593,10 @@ def get_month_from_folder(month_dir):
 # ======================================================================
 
 def main():
-    print('=' * 60)
-    print('薬剤月次レポート生成')
-    print('=' * 60)
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    logger.info('=' * 60)
+    logger.info('薬剤月次レポート生成')
+    logger.info('=' * 60)
 
     # 1. PDF検出
     month_arg = sys.argv[1] if len(sys.argv) > 1 else None
@@ -595,17 +604,17 @@ def main():
 
     if not pdf_paths:
         target = month_arg or '(自動検出)'
-        print(f'ERROR: 薬剤PDFが見つかりません: {target}')
+        logger.error('薬剤PDFが見つかりません: %s', target)
         return
 
-    print(f'対象フォルダ: {month_dir}')
+    logger.info('対象フォルダ: %s', month_dir)
 
     # 2. PDF解析
     drugs = []
     for pp in pdf_paths:
-        print(f'PDF読み込み: {os.path.basename(pp)}')
+        logger.info('PDF読み込み: %s', os.path.basename(pp))
         d = extract_drugs_from_pdf(pp)
-        print(f'  → {len(d)}件')
+        logger.info('  → %d件', len(d))
         drugs.extend(d)
 
     # 複数ファイルからの重複除去（ページ境界の重複を排除）
@@ -617,10 +626,10 @@ def main():
             seen.add(key)
             unique_drugs.append(d)
     drugs = unique_drugs
-    print(f'  抽出薬剤数（重複除去後）: {len(drugs)}件')
+    logger.info('  抽出薬剤数（重複除去後）: %d件', len(drugs))
 
     if not drugs:
-        print('ERROR: 薬剤データを抽出できませんでした。')
+        logger.error('薬剤データを抽出できませんでした。')
         return
 
     # 3. 薬効分類
@@ -630,12 +639,12 @@ def main():
     agg = aggregate_by_classification(drugs)
     grand_total = sum(d['inpatient_amt'] for d in drugs)
 
-    print(f'  入院金額合計: {grand_total:,.0f}円')
-    print(f'  分類数: {len(agg)}')
+    logger.info('  入院金額合計: %s円', f'{grand_total:,.0f}')
+    logger.info('  分類数: %d', len(agg))
     for cat in CLASSIFICATION_ORDER:
         data = agg.get(cat, {})
         if data:
-            print(f'    {cat}: {data["total_amt"]:>12,.0f}円 ({data["count"]}品目)')
+            logger.info('    %s: %s円 (%d品目)', cat, f'{data["total_amt"]:>12,.0f}', data["count"])
 
     # 対象月（フォルダ名優先、フォールバックはPDF内テキスト）
     folder_month = get_month_from_folder(month_dir)
@@ -649,24 +658,45 @@ def main():
     else:
         year, month = pdf_year, pdf_month
     current_ym = f'{year}-{month:02d}'
-    print(f'  対象月: {year}年{month}月')
+    logger.info('  対象月: %d年%d月', year, month)
 
     # 5. HTML生成
-    print('\n薬剤HTML生成中...')
+    logger.info('薬剤HTML生成中...')
     html_path = generate_drug_html(agg, drugs, grand_total, year, month)
-    print(f'OK: {html_path}')
+    logger.info('OK: %s', html_path)
 
-    # JSONサイドカーは前月比較用（不要）のため保存をスキップ
+    # 6. JSONデータ保存（キャッシュ + sources記録）
+    source_map = {}
+    for pp in pdf_paths:
+        rel = os.path.relpath(pp, month_dir)
+        source_map[rel] = round(os.path.getmtime(pp), 2)
+    json_data = {
+        'sources': source_map,
+        'year': year,
+        'month': month,
+        'grand_total': grand_total,
+        'record_count': len(drugs),
+        'unique_drugs': len(drugs),
+        'categories': {cat: agg[cat]['total_amt'] for cat in CLASSIFICATION_ORDER if cat in agg},
+    }
+    json_path = os.path.join(month_dir, f'薬剤月次データ_{month}月.json')
+    tmp_json = json_path + '.tmp'
+    with open(tmp_json, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_json, json_path)
+    logger.info('JSON: %s', json_path)
 
     # 検証
     total_classified = sum(
         len(agg.get(c, {}).get('drugs', [])) for c in CLASSIFICATION_ORDER
     )
-    print(f'\n--- 検証 ---')
-    print(f'  全薬剤数: {len(drugs)}')
-    print(f'  分類済み: {total_classified}')
-    print(f'  入院金額合計: {grand_total:,.0f}円')
-    print(f'  PDFファイル数: {len(pdf_paths)}')
+    logger.info('--- 検証 ---')
+    logger.info('  全薬剤数: %d', len(drugs))
+    logger.info('  分類済み: %d', total_classified)
+    logger.info('  入院金額合計: %s円', f'{grand_total:,.0f}')
+    logger.info('  PDFファイル数: %d', len(pdf_paths))
 
 
 if __name__ == '__main__':

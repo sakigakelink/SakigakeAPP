@@ -5,7 +5,7 @@ from solver import ShiftSolver
 from validation import employee_to_frontend
 from shift_quality import evaluate_shift_quality, format_quality
 
-with open('shared/employees.json', 'r', encoding='utf-8') as f:
+with open('../shared/employees.json', 'r', encoding='utf-8') as f:
     all_emps = json.load(f)
 
 with open('shared/ward_settings.json', 'r', encoding='utf-8') as f:

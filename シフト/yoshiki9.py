@@ -321,7 +321,7 @@ def load_config():
 
 
 def load_employees():
-    path = os.path.join(BASE_DIR, "shared", "employees.json")
+    path = os.path.join(os.path.dirname(BASE_DIR), "shared", "employees.json")
     with open(path, "r", encoding="utf-8") as f:
         return json.load(f)
 

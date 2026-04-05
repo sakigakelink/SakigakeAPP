@@ -133,6 +133,7 @@
               <th class="num">基本給計</th>
               <th class="num">手当計</th>
               <th class="num">時間外計</th>
+              <th class="num">通勤費計</th>
               <th class="num">支給合計</th>
               <th class="num">一人当たり</th>
             </tr>
@@ -156,6 +157,7 @@
               <th class="num">基本給計</th>
               <th class="num">手当計</th>
               <th class="num">時間外計</th>
+              <th class="num">通勤費計</th>
               <th class="num">支給合計</th>
               <th class="num">一人当たり</th>
             </tr>
@@ -332,11 +334,12 @@ function renderDashboard() {
     <tr>
       <td>${c.category}</td>
       <td class="num">${c.headcount}</td>
-      <td class="num">${c.avg_age}歳</td>
-      <td class="num">${c.avg_tenure}年</td>
+      <td class="num">${Number(c.avg_age).toFixed(1)}歳</td>
+      <td class="num">${Number(c.avg_tenure).toFixed(1)}年</td>
       <td class="num">${yen(c['基本給計'])}</td>
       <td class="num">${yen(c['手当計'])}</td>
       <td class="num">${yen(c['時間外計'])}</td>
+      <td class="num">${yen(c['通勤費計'])}</td>
       <td class="num pay-value">${yen(c['支給合計'])}</td>
       <td class="num">${yen(c['一人当たり'])}</td>
     </tr>
@@ -344,11 +347,12 @@ function renderDashboard() {
     <tr class="total-row">
       <td>合計</td>
       <td class="num">${t.headcount}</td>
-      <td class="num">${t.avg_age}歳</td>
-      <td class="num">${t.avg_tenure}年</td>
+      <td class="num">${Number(t.avg_age).toFixed(1)}歳</td>
+      <td class="num">${Number(t.avg_tenure).toFixed(1)}年</td>
       <td class="num">${yen(sumField(combined.category_summaries, '基本給計'))}</td>
       <td class="num">${yen(sumField(combined.category_summaries, '手当計'))}</td>
       <td class="num">${yen(sumField(combined.category_summaries, '時間外計'))}</td>
+      <td class="num">${yen(sumField(combined.category_summaries, '通勤費計'))}</td>
       <td class="num pay-value">${yen(t['支給合計'])}</td>
       <td class="num">${yen(t['一人当たり'])}</td>
     </tr>
@@ -361,11 +365,12 @@ function renderDashboard() {
     <tr>
       <td>${b.buka}</td>
       <td class="num">${b.headcount}</td>
-      <td class="num">${b.avg_age}歳</td>
-      <td class="num">${b.avg_tenure}年</td>
+      <td class="num">${Number(b.avg_age).toFixed(1)}歳</td>
+      <td class="num">${Number(b.avg_tenure).toFixed(1)}年</td>
       <td class="num">${yen(b['基本給計'])}</td>
       <td class="num">${yen(b['手当計'])}</td>
       <td class="num">${yen(b['時間外計'])}</td>
+      <td class="num">${yen(b['通勤費計'])}</td>
       <td class="num pay-value">${yen(b['支給合計'])}</td>
       <td class="num">${yen(b['一人当たり'])}</td>
     </tr>
@@ -378,6 +383,7 @@ function renderDashboard() {
       <td class="num">${yen(sumField(bukaData, '基本給計'))}</td>
       <td class="num">${yen(sumField(bukaData, '手当計'))}</td>
       <td class="num">${yen(sumField(bukaData, '時間外計'))}</td>
+      <td class="num">${yen(sumField(bukaData, '通勤費計'))}</td>
       <td class="num pay-value">${yen(sumField(bukaData, '支給合計'))}</td>
       <td class="num">${yen(Math.round(sumField(bukaData, '支給合計') / sumField(bukaData, 'headcount')))}</td>
     </tr>
@@ -412,13 +418,15 @@ function renderDetails(categories) {
               <tr>
                 <th>社員番号</th>
                 <th>氏名</th>
-                <th>性別</th>
                 <th class="num">年齢</th>
                 <th class="num">勤続</th>
                 <th class="num">基本給</th>
                 <th class="num">役職手当</th>
                 <th class="num">調整手当</th>
+                <th class="num">その他固定</th>
+                <th class="num">その他変動</th>
                 <th class="num">時間外</th>
+                <th class="num">通勤費</th>
                 <th class="num">支給合計</th>
               </tr>
             </thead>
@@ -427,13 +435,15 @@ function renderDetails(categories) {
                 <tr>
                   <td>${e.taikei}-${e.buka}-${e.shain_no}</td>
                   <td>${e.name}</td>
-                  <td>${e.gender}</td>
-                  <td class="num">${e.age != null ? e.age + '歳' : '-'}</td>
-                  <td class="num">${e.tenure != null ? e.tenure + '年' : '-'}</td>
+                  <td class="num">${e.age != null ? Number(e.age).toFixed(1) + '歳' : '-'}</td>
+                  <td class="num">${e.tenure != null ? Number(e.tenure).toFixed(1) + '年' : '-'}</td>
                   <td class="num">${yen(e.salary['基本給'])}</td>
                   <td class="num">${yen(e.salary['役職手当'])}</td>
                   <td class="num">${yen(e.salary['調整手当'])}</td>
+                  <td class="num">${yen(e.salary['その他固定'])}</td>
+                  <td class="num">${yen(e.salary['その他変動'])}</td>
                   <td class="num">${yen(e.salary['時間外手当'])}</td>
+                  <td class="num">${yen(e.salary['通勤費'])}</td>
                   <td class="num pay-value">${yen(e.salary['支給合計'])}</td>
                 </tr>
               `).join('')}

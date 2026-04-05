@@ -16,15 +16,20 @@ import os
 import re
 import sys
 import glob
+import logging
 import datetime
 from collections import defaultdict, Counter
 
 import pdfplumber
 
+logger = logging.getLogger(__name__)
+
 # ======================================================================
 # パス定義
 # ======================================================================
-BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_CODE_DIR = os.path.dirname(os.path.abspath(__file__))
+_PROJECT_ROOT = os.path.dirname(_CODE_DIR)
+BASE_DIR = os.path.join(_PROJECT_ROOT, 'shared', '診療')
 
 
 # ======================================================================
@@ -553,12 +558,12 @@ def build_data(folder):
             total = sum(extract_grand_total(p) for p in paths)
             pdf_totals[key] = total
             if len(paths) > 1:
-                print(f'  {key}: {total:>12,}円 ({len(paths)}ファイル合算)')
+                logger.info('  %s: %12d円 (%dファイル合算)', key, total, len(paths))
             else:
-                print(f'  {key}: {total:>12,}円')
+                logger.info('  %s: %12d円', key, total)
         else:
             pdf_totals[key] = 0
-            print(f'  {key}: PDF未検出')
+            logger.warning('  %s: PDF未検出', key)
 
     # --- 薬剤 診区別小計（分割ファイル対応） ---
     drug_paths = find_pdfs(folder, '薬剤.pdf')
@@ -567,7 +572,7 @@ def build_data(folder):
         subs = extract_drug_subtotals(dp)
         for k, v in subs.items():
             drug_subtotals[k] = drug_subtotals.get(k, 0) + v
-    print(f'  薬剤診区別: {drug_subtotals} ({len(drug_paths)}ファイル)')
+    logger.info('  薬剤診区別: %s (%dファイル)', drug_subtotals, len(drug_paths))
 
     # --- 入院料 ---
     # 単体ファイル（従来パターン: 完全一致のみ）
@@ -592,9 +597,9 @@ def build_data(folder):
         adm_split_paths = [p for p in adm_split_paths
                            if '病棟' not in os.path.basename(p)]
         if adm_split_paths:
-            print(f'  入院料（分割ファイル検出）: {len(adm_split_paths)}件')
+            logger.info('  入院料（分割ファイル検出）: %d件', len(adm_split_paths))
             for sp in adm_split_paths:
-                print(f'    → {os.path.basename(sp)}')
+                logger.info('    → %s', os.path.basename(sp))
             # 全ファイルを連結して解析（診区が跨る場合に対応）
             adm_subtotals = _extract_admission_subtotals_from_paths(adm_split_paths)
             for sp in adm_split_paths:
@@ -602,8 +607,8 @@ def build_data(folder):
             # w1_detail抽出用に最初のファイルをadm_pathに設定
             adm_path = adm_split_paths[0]
 
-    print(f'  入院料診区別: {adm_subtotals}')
-    print(f'  入院料ベースアップ: {adm_baseup:,}円')
+    logger.info('  入院料診区別: %s', adm_subtotals)
+    logger.info('  入院料ベースアップ: %s円', f'{adm_baseup:,}')
 
     # 精神科専門のベースアップ（位置ベース抽出: idx7=入院金額）
     psych_path = find_pdf(folder, '精神科専門.pdf')
@@ -621,7 +626,7 @@ def build_data(folder):
                             psych_baseup += nums[7]  # 入院金額 = idx7
                             if '180729410' in line:
                                 psych_baseup_adm += nums[7]
-    print(f'  精神科ベースアップ: {psych_baseup:,}円（精神科専門から除外のみ、入院料側で計上済）')
+    logger.info('  精神科ベースアップ: %s円（精神科専門から除外のみ、入院料側で計上済）', f'{psych_baseup:,}')
     # 入院料PDFにベースアップがあればそちらを使用、なければ精神科専門PDFから
     total_baseup = adm_baseup if adm_baseup > 0 else psych_baseup_adm
 
@@ -632,7 +637,7 @@ def build_data(folder):
         food2_97 = food2_subs.get('97', 0)
         if food2_97 > 0:
             adm_subtotals['97'] = adm_subtotals.get('97', 0) + food2_97
-            print(f'  食事②追加: {food2_97:,}円 → 食事合計: {adm_subtotals.get("97", 0):,}円')
+            logger.info('  食事②追加: %s円 → 食事合計: %s円', f'{food2_97:,}', f'{adm_subtotals.get("97", 0):,}')
 
     # --- 区分別データ（点） ---
     # 投薬 = 薬剤(内服+屯服+外用) + 調剤処方
@@ -690,7 +695,7 @@ def build_data(folder):
         w2_total = w2_subs.get('90', 0)
         # ベースアップを除外
         w2_total -= extract_admission_items(w2_path)
-        print(f'  2病棟: {w2_total:>12,}円')
+        logger.info('  2病棟: %12d円', w2_total)
 
     if w3_path:
         # 診区90小計のみ取得（食事97を除外）
@@ -698,11 +703,11 @@ def build_data(folder):
         w3_total = w3_subs.get('90', 0)
         # ベースアップを除外
         w3_total -= extract_admission_items(w3_path)
-        print(f'  3病棟: {w3_total:>12,}円')
+        logger.info('  3病棟: %12d円', w3_total)
 
     # 1病棟 = 全体 - 2病棟 - 3病棟
     w1_total = ward_total_yen - w2_total - w3_total
-    print(f'  1病棟: {w1_total:>12,}円（逆算）')
+    logger.info('  1病棟: %12d円（逆算）', w1_total)
 
     data['ward'] = {
         '1病棟（精神療養）': _yen2pt(w1_total),
@@ -1047,8 +1052,12 @@ def generate_html_summary(all_months_data, report_date, output_dir):
 """
 
     html_path = os.path.join(output_dir, save_name)
-    with open(html_path, 'w', encoding='utf-8') as f:
+    tmp_path = html_path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
         f.write(html_text)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, html_path)
     return html_path
 
 
@@ -1057,9 +1066,10 @@ def generate_html_summary(all_months_data, report_date, output_dir):
 # ======================================================================
 
 def main():
-    print('=' * 60)
-    print('入院収益月次レポート自動生成')
-    print('=' * 60)
+    logging.basicConfig(level=logging.INFO, format='%(levelname)s: %(message)s')
+    logger.info('=' * 60)
+    logger.info('入院収益月次レポート自動生成')
+    logger.info('=' * 60)
 
     # 全月フォルダを走査
     all_months_data = {}
@@ -1071,48 +1081,60 @@ def main():
             if os.path.isdir(source) and any(f.endswith('.pdf') for f in os.listdir(source)):
                 month_dirs.append((int(m.group(1)), entry, source))
 
+    month_source_dirs = {}  # month_num → 元データ dir path
+
     # CLI引数で単月指定の場合
     if len(sys.argv) > 1:
         folder = os.path.join(BASE_DIR, sys.argv[1])
         if not os.path.isdir(folder):
-            print(f'ERROR: フォルダが見つかりません: {folder}')
+            logger.error('フォルダが見つかりません: %s', folder)
             return
         year, month = get_report_period(folder)
-        print(f'対象: {year}年{month}月 ({folder})')
+        logger.info('対象: %d年%d月 (%s)', year, month, folder)
         data = build_data(folder)
         all_months_data[month] = data
+        month_source_dirs[month] = folder
     else:
         for month_num, entry, source in sorted(month_dirs):
-            print(f'\n--- {entry} ---')
+            logger.info('--- %s ---', entry)
             year, month = get_report_period(source)
             data = build_data(source)
             all_months_data[month_num] = data
-            print(f'  合計: {data["total"]:>10,}点')
+            month_source_dirs[month_num] = source
+            logger.info('  合計: %10d点', data["total"])
 
     if not all_months_data:
-        print('ERROR: データが見つかりません')
+        logger.error('データが見つかりません')
         return
 
     latest_month = max(all_months_data.keys())
     report_date = f'令和{datetime.date.today().year - 2018}年{datetime.date.today().month}月{datetime.date.today().day}日'
 
     # HTML生成（診療/ルートに出力）
-    print('\nHTML生成中...')
+    logger.info('HTML生成中...')
     html_path = generate_html_summary(all_months_data, report_date, BASE_DIR)
     # 旧月別ファイルを削除
     for m in all_months_data.keys():
         old = os.path.join(BASE_DIR, f'{m}月', f'入院収益月次サマリー_{m}月.html')
         if os.path.isfile(old):
             os.remove(old)
-            print(f'  旧ファイル削除: {old}')
-    print(f'OK: {html_path}')
+            logger.info('  旧ファイル削除: %s', old)
+    logger.info('OK: %s', html_path)
 
-    # JSON出力（診療/ルートに出力）
+    # JSON出力（診療/ルートに出力、アトミック書き込み）
     json_path = os.path.join(BASE_DIR, '入院収益月次データ.json')
     json_data = {}
     for m in sorted(all_months_data.keys()):
         d = all_months_data[m]
+        # sources: 元データPDFのmtime記録
+        sources = {}
+        src_dir = month_source_dirs.get(m)
+        if src_dir and os.path.isdir(src_dir):
+            for f in os.listdir(src_dir):
+                if f.lower().endswith('.pdf'):
+                    sources[f] = round(os.path.getmtime(os.path.join(src_dir, f)), 2)
         json_data[f'{m}月'] = {
+            'sources': sources,
             'total': d.get('total', 0),
             'compare': d.get('compare', {}),
             'ward': d.get('ward', {}),
@@ -1123,14 +1145,18 @@ def main():
             'image_detail': d.get('image_detail', {}),
         }
     import json
-    with open(json_path, 'w', encoding='utf-8') as f:
+    tmp_path = json_path + '.tmp'
+    with open(tmp_path, 'w', encoding='utf-8') as f:
         json.dump(json_data, f, ensure_ascii=False, indent=2)
-    print(f'JSON: {json_path}')
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp_path, json_path)
+    logger.info('JSON: %s', json_path)
 
-    print(f'\n--- 集計 ---')
+    logger.info('--- 集計 ---')
     for m in sorted(all_months_data.keys()):
         d = all_months_data[m]
-        print(f'  {m}月: {d["total"]:>10,}点 ({d["total"] * 10:>12,}円)')
+        logger.info('  %d月: %10d点 (%12d円)', m, d["total"], d["total"] * 10)
 
 
 if __name__ == '__main__':

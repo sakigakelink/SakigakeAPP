@@ -7,6 +7,7 @@ import sys
 import re
 import json
 import threading
+import importlib.util
 
 import logging
 import subprocess
@@ -59,16 +60,18 @@ shift_register_routes(app, SHIFT_BACKUP_DIR, portal_mode=True)
 start_daily_backup(SHIFT_BACKUP_DIR)
 
 # ---------------------------------------------------------------------------
-# 給与分析（ビジネスロジック直接import）
+# 給与・損益ロジック（importlibで明示的にインポート、sys.path汚染を回避）
 # ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.join(BASE_DIR, '給与'))
-import salary_logic
+def _import_from(module_name, file_path):
+    """指定パスのPythonファイルをモジュールとしてインポート"""
+    spec = importlib.util.spec_from_file_location(module_name, file_path)
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[module_name] = mod
+    spec.loader.exec_module(mod)
+    return mod
 
-# ---------------------------------------------------------------------------
-# 損益計算（ビジネスロジック直接import）
-# ---------------------------------------------------------------------------
-sys.path.insert(0, os.path.join(BASE_DIR, '損益'))
-import pnl_logic
+salary_logic = _import_from('salary_logic', os.path.join(BASE_DIR, '給与', 'salary_logic.py'))
+pnl_logic = _import_from('pnl_logic', os.path.join(BASE_DIR, '損益', 'pnl_logic.py'))
 
 # ---------------------------------------------------------------------------
 # ポータル ルート
@@ -151,6 +154,8 @@ def salary_parse():
 @app.route('/api/parse_folder', methods=['POST'])
 def salary_parse_folder():
     folder = request.json.get('folder', '')
+    if not re.match(r'^\d+月$', folder):
+        return jsonify({'error': '無効なフォルダ名'}), 400
     result = salary_logic.parse_folder_data(folder)
     if result is None:
         return jsonify({'error': f'フォルダが見つかりません: {folder}'}), 404
@@ -206,7 +211,7 @@ def pnl_export_pdf():
 @app.route('/api/shinryo_data')
 def shinryo_data():
     """全月の薬剤JSON + 入院収益JSONを統合して返す"""
-    shinryo_dir = os.path.join(BASE_DIR, '診療')
+    shinryo_dir = os.path.join(BASE_DIR, 'shared', '診療')
     result = {'pharmacy': {}, 'inpatient': {}}
 
     # 薬剤月次データ（各月フォルダ内のJSON）
@@ -231,9 +236,9 @@ def shinryo_data():
 
 @app.route('/api/reports/months')
 def reports_months():
-    shinryo_dir = os.path.join(BASE_DIR, '診療')
+    shinryo_dir = os.path.join(BASE_DIR, 'shared', '診療')
     if not os.path.isdir(shinryo_dir):
-        return json.dumps([], ensure_ascii=False)
+        return jsonify([])
     months = []
     for entry in os.listdir(shinryo_dir):
         if re.match(r'^\d{1,2}月$', entry):
@@ -243,7 +248,7 @@ def reports_months():
                 if files:
                     months.append({'month': entry, 'files': sorted(files)})
     months.sort(key=lambda m: int(m['month'].replace('月', '')))
-    return json.dumps(months, ensure_ascii=False)
+    return jsonify(months)
 
 
 _GOOGLE_FONTS_LINK = re.compile(
@@ -253,14 +258,25 @@ _GOOGLE_FONTS_LINK = re.compile(
 _REPORT_FONT_STYLE = '<style>body{font-family:"Segoe UI","Meiryo","Noto Sans JP",sans-serif}</style>'
 
 
+def _safe_read_html(base_dir, filename):
+    """パストラバーサル防止付きHTML読み込み。安全でなければNoneを返す"""
+    safe_path = os.path.realpath(os.path.join(base_dir, filename))
+    if not safe_path.startswith(os.path.realpath(base_dir) + os.sep):
+        return None
+    if not os.path.isfile(safe_path):
+        return None
+    with open(safe_path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+
 @app.route('/api/shinryo_annual')
 def reports_annual():
     """診療/直下の年度レポート一覧"""
-    shinryo_dir = os.path.join(BASE_DIR, '診療')
+    shinryo_dir = os.path.join(BASE_DIR, 'shared', '診療')
     if not os.path.isdir(shinryo_dir):
-        return json.dumps([], ensure_ascii=False)
+        return jsonify([])
     files = sorted(f for f in os.listdir(shinryo_dir) if f.endswith('.html'))
-    return json.dumps(files, ensure_ascii=False)
+    return jsonify(files)
 
 
 @app.route('/api/shinryo_annual/<path:filename>')
@@ -268,11 +284,9 @@ def reports_annual_file(filename):
     """診療/直下の年度レポートを配信"""
     if not filename.endswith('.html'):
         return 'Not Found', 404
-    filepath = os.path.join(BASE_DIR, '診療', filename)
-    if not os.path.isfile(filepath):
+    html = _safe_read_html(os.path.join(BASE_DIR, 'shared', '診療'), filename)
+    if html is None:
         return 'Not Found', 404
-    with open(filepath, 'r', encoding='utf-8') as f:
-        html = f.read()
     html = _GOOGLE_FONTS_LINK.sub(_REPORT_FONT_STYLE, html)
     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
@@ -283,34 +297,50 @@ def reports_file(month, filename):
         return 'Not Found', 404
     if not filename.endswith('.html'):
         return 'Not Found', 404
-    month_dir = os.path.join(BASE_DIR, '診療', month)
+    month_dir = os.path.join(BASE_DIR, 'shared', '診療', month)
     if not os.path.isdir(month_dir):
         return 'Not Found', 404
-    filepath = os.path.join(month_dir, filename)
-    if not os.path.isfile(filepath):
+    html = _safe_read_html(month_dir, filename)
+    if html is None:
         return 'Not Found', 404
-    with open(filepath, 'r', encoding='utf-8') as f:
-        html = f.read()
     html = _GOOGLE_FONTS_LINK.sub(_REPORT_FONT_STYLE, html)
     return html, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 # ---------------------------------------------------------------------------
 # 共通マスタAPI
 # ---------------------------------------------------------------------------
+# 非常勤部課コード（master.htmlから除外）
+_NON_REGULAR_BUKA = {'024', '025', '026', '027', '028', '033', '034', '041', '045', '046'}
+
+
+def _is_master_target(emp):
+    """一般(001)・地域生活(004)の常勤職員のみ"""
+    eid = emp.get('id', '')
+    if len(eid) != 12:
+        return False
+    taikei, buka = eid[:3], eid[3:6]
+    return taikei in ('001', '004') and buka not in _NON_REGULAR_BUKA
+
+
 @app.route('/api/master/employees')
 def master_employees():
     path = os.path.join(BASE_DIR, 'shared', 'employees.json')
     if not os.path.isfile(path):
-        return json.dumps([], ensure_ascii=False), 404
+        return jsonify([]), 404
     with open(path, encoding='utf-8') as f:
-        return json.load(f)
+        all_emps = json.load(f)
+    return jsonify([e for e in all_emps if _is_master_target(e)])
 
 
 @app.route('/api/master/employees', methods=['PUT'])
 def master_employees_save():
     path = os.path.join(BASE_DIR, 'shared', 'employees.json')
-    data = request.get_json(force=True)
-    _atomic_json_write(path, data)
+    master_data = request.get_json(force=True)
+    # master対象外の職員を保持してマージ
+    with open(path, encoding='utf-8') as f:
+        all_emps = json.load(f)
+    non_master = [e for e in all_emps if not _is_master_target(e)]
+    _atomic_json_write(path, master_data + non_master)
     return 'OK'
 
 
@@ -318,9 +348,9 @@ def master_employees_save():
 def master_bonus():
     path = os.path.join(BASE_DIR, 'shared', 'bonus_contributions.json')
     if not os.path.isfile(path):
-        return json.dumps({}, ensure_ascii=False), 200
+        return jsonify({}), 200
     with open(path, encoding='utf-8') as f:
-        return json.load(f)
+        return jsonify(json.load(f))
 
 
 @app.route('/api/master/bonus', methods=['PUT'])
@@ -335,15 +365,23 @@ def master_bonus_save():
 def master_dept_codes():
     path = os.path.join(BASE_DIR, '給与', 'dept_codes.json')
     if not os.path.isfile(path):
-        return json.dumps({}, ensure_ascii=False), 404
+        return jsonify({}), 404
     with open(path, encoding='utf-8') as f:
-        return json.load(f)
+        return jsonify(json.load(f))
 
 # ---------------------------------------------------------------------------
 # サーバー制御API（localhost限定）
 # ---------------------------------------------------------------------------
 def _is_localhost(req):
     return req.remote_addr in ('127.0.0.1', '::1')
+
+
+def _safe_exit():
+    """atexit/logging を実行してからプロセス終了（os._exitの安全なラッパー）"""
+    import atexit
+    atexit._run_exitfuncs()
+    logging.shutdown()
+    os._exit(0)
 
 
 @app.route('/api/shutdown', methods=['POST'])
@@ -353,7 +391,7 @@ def api_shutdown():
 
     def _shutdown():
         time.sleep(0.5)
-        os._exit(0)
+        _safe_exit()
 
     threading.Thread(target=_shutdown).start()
     return 'サーバーを停止します', 200
@@ -372,7 +410,7 @@ def api_restart():
             args.append('--no-browser')
         subprocess.Popen([sys.executable] + args, cwd=BASE_DIR)
         time.sleep(0.3)
-        os._exit(0)
+        _safe_exit()
 
     threading.Thread(target=_restart).start()
     return 'サーバーを再起動します', 200
@@ -381,39 +419,62 @@ def api_restart():
 # ---------------------------------------------------------------------------
 # 起動
 # ---------------------------------------------------------------------------
+def _shinryo_month_stale(month_dir, source_dir):
+    """薬剤JSONのsourcesと元データPDFのmtimeを照合。不一致ならTrue"""
+    # 薬剤JSONを探す
+    json_files = [f for f in os.listdir(month_dir)
+                  if f.startswith('薬剤月次データ') and f.endswith('.json')]
+    if not json_files:
+        return True
+    try:
+        with open(os.path.join(month_dir, json_files[0]), encoding='utf-8') as f:
+            cached = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return True
+    cached_sources = cached.get('sources', {})
+    if not cached_sources:
+        return True
+    # 元データPDFのmtimeと照合
+    for rel_path, cached_mtime in cached_sources.items():
+        full_path = os.path.join(month_dir, rel_path)
+        if not os.path.isfile(full_path):
+            return True
+        if round(os.path.getmtime(full_path), 2) != cached_mtime:
+            return True
+    # 新しいPDFが追加されていないかチェック
+    source_pdfs = {f for f in os.listdir(source_dir) if f.lower().endswith('.pdf')}
+    cached_basenames = {os.path.basename(p) for p in cached_sources}
+    if source_pdfs != cached_basenames:
+        return True
+    return False
+
+
 def generate_shinryo_reports():
-    """診療/N月/ 内の元データPDFからHTMLレポートを自動生成（未生成 or 古い場合のみ）"""
-    shinryo_dir = os.path.join(BASE_DIR, '診療')
-    if not os.path.isdir(shinryo_dir):
+    """診療/N月/ 内の元データPDFからHTMLレポートを自動生成（JSON sources照合）"""
+    shinryo_data_dir = os.path.join(BASE_DIR, 'shared', '診療')
+    shinryo_code_dir = os.path.join(BASE_DIR, '診療')
+    if not os.path.isdir(shinryo_data_dir):
         return
     python = sys.executable
     needs_inpatient = False
-    for entry in os.listdir(shinryo_dir):
+    for entry in os.listdir(shinryo_data_dir):
         if not re.match(r'^\d{1,2}月$', entry):
             continue
-        month_dir = os.path.join(shinryo_dir, entry)
+        month_dir = os.path.join(shinryo_data_dir, entry)
         source_dir = os.path.join(month_dir, '元データ')
         if not os.path.isdir(source_dir):
             continue
         source_pdfs = [f for f in os.listdir(source_dir) if f.lower().endswith('.pdf')]
         if not source_pdfs:
             continue
-        latest_src = max(
-            os.path.getmtime(os.path.join(source_dir, f)) for f in source_pdfs
-        )
-        existing_htmls = [f for f in os.listdir(month_dir) if f.endswith('.html')]
-        if existing_htmls:
-            oldest_html = min(
-                os.path.getmtime(os.path.join(month_dir, f)) for f in existing_htmls
-            )
-            if oldest_html > latest_src:
-                continue
+        if not _shinryo_month_stale(month_dir, source_dir):
+            continue
         needs_inpatient = True
         logger.info("薬剤レポート生成: %s", entry)
         try:
             subprocess.run(
-                [python, os.path.join(shinryo_dir, 'pharmacy_report.py'), entry],
-                cwd=shinryo_dir, timeout=120, capture_output=True,
+                [python, os.path.join(shinryo_code_dir, 'pharmacy_report.py'), entry],
+                cwd=shinryo_code_dir, timeout=120, capture_output=True,
             )
         except Exception as e:
             logger.exception("薬剤レポートエラー (%s): %s", entry, e)
@@ -421,8 +482,8 @@ def generate_shinryo_reports():
         logger.info("入院レポート生成（全月一括）")
         try:
             subprocess.run(
-                [python, os.path.join(shinryo_dir, 'inpatient_report.py')],
-                cwd=shinryo_dir, timeout=180, capture_output=True,
+                [python, os.path.join(shinryo_code_dir, 'inpatient_report.py')],
+                cwd=shinryo_code_dir, timeout=180, capture_output=True,
             )
         except Exception as e:
             logger.exception("入院レポートエラー: %s", e)
@@ -439,6 +500,9 @@ def _hide_console():
 
 def _start_flask():
     """Flaskサーバーをバックグラウンドスレッドで起動"""
+    # 3モジュールのキャッシュ照合（差分なければ解析スキップ → 高速起動）
+    salary_logic.ensure_cache()
+    pnl_logic.ensure_cache()
     generate_shinryo_reports()
     app.run(host='0.0.0.0', port=5000, debug=False, threaded=True)
 
