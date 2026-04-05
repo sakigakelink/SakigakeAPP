@@ -17,7 +17,7 @@ Sakigake Hospital管理業務支援。損益計算、診療報酬分析、給与
 - 各モジュールのビジネスロジックは `*_logic.py` に分離し、ポータルから直接import
   - 給与: `salary_logic.py`、損益: `pnl_logic.py`
 - シフト・給与・損益はiframe経由で配信（`/legacy/shift/` 等）
-- 診療はAPI経由で配信（`/api/reports/months` 等）
+- 診療はJSONデータからJavaScriptで動的描画（`/api/shinryo_data`）
 - シフトは `register_routes(app, ..., portal_mode=True)` で app に直接登録
   - `portal_mode=True` 時、`/`・`/api/shutdown`・`/api/restart` はスキップ
 
