@@ -2,11 +2,25 @@
 
 Sakigake Hospital 管理業務支援システム。
 
+## モジュール構成
+
+| モジュール | ディレクトリ | ポート | 概要 |
+|-----------|------------|--------|------|
+| ポータル | `portal/` | 5000 | ダッシュボード。各モジュールをiframeで統合 |
+| シフト | `シフト/` | 5000 | 勤務表作成。OR-Toolsによる最適化ソルバー |
+| 損益 | `損益/` | 5002 | TKC月次PDFから損益分析 |
+| 給与 | `給与/` | 5001 | 給与明細PDFの解析・集計 |
+| 診療 | `診療/` | — | 入院収益・薬剤レポート生成（CLI実行） |
+
+- 共通データ: `shared/employees.json`、`shared/`配下に各モジュールのデータ
+- 共通ユーティリティ: `cache_utils.py`（JSONキャッシュのmtime照合）
+
 ## 環境
 
 - Python: `C:\Python314\python.exe`
 - 依存パッケージ: `pip install flask flask-cors pywebview pdfplumber ortools`
 - 起動: `python portal/app.py`
+- テスト: `python -m pytest シフト/ 損益/ 給与/ -v`
 - リモート: `C:\Users\Mining-Base\SakigakeAPP\`
   - MCP `mcp__mining-base__exec` 経由。PowerShell。コマンド長は約1000文字が上限
   - リモートへの反映は `git pull` のみ。直接編集しない
