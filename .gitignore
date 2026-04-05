@@ -33,6 +33,11 @@ temp/
 # 実行時生成
 server.pid
 
+# 秘匿データ（ローカル・リモートのみ保存、git管理しない）
+shared/employees.json
+給与/data/R7支払.csv
+給与/data/r7_sheets.json
+
 # OS generated
 Thumbs.db
 Desktop.ini
