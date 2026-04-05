@@ -9,7 +9,7 @@ Sakigake Hospital管理業務支援。損益計算、診療報酬分析、給与
 - デバッグ起動: `C:\Python314\python.exe portal\app.py`
 
 ## 開発フロー
-- デプロイ: `bash deploy.sh "変更内容"`（add → commit → push → リモート pull を一括実行）
+- デプロイ: `bash .claude/deploy.sh "変更内容"`（add → commit → push → リモート pull を一括実行）
 
 ## ポータル構成 (portal/)
 - `portal/app.py` が統合エントリーポイント（Flask + pywebview を単一プロセスで実行）
