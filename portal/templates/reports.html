@@ -5,82 +5,237 @@
 <div class="reports-page sk-fade-in">
   <div class="reports-header">
     <h2 class="sk-h1">診療報酬レポート</h2>
-    <div class="report-tabs" id="reportTabs"></div>
-  </div>
-  <div class="reports-body">
-    <div id="emptyState" class="placeholder">
-      <h2>診療報酬</h2>
-      <p>レポートを選択してください</p>
+    <div class="reports-controls">
+      <div class="report-tabs" id="reportTabs">
+        <button class="report-tab active" onclick="switchTab('inpatient', this)">入院収益</button>
+        <button class="report-tab" onclick="switchTab('pharmacy', this)">薬剤</button>
+      </div>
+      <button class="btn-pdf no-print" onclick="window.print()">PDF出力</button>
     </div>
-    <iframe id="reportFrame" class="app-frame" style="display:none"></iframe>
+  </div>
+  <div class="reports-body" id="reportsBody">
+    <div id="loadingState" class="placeholder"><p>読み込み中...</p></div>
   </div>
 </div>
 
 <style>
 .reports-page { display: flex; flex-direction: column; height: 100vh; }
 .reports-header { padding: 24px 28px 16px; border-bottom: 1px solid var(--sk-surface-border); }
-.reports-header h2 { margin-bottom: 16px; }
-.report-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+.reports-header h2 { margin-bottom: 12px; }
+.reports-controls { display: flex; justify-content: space-between; align-items: center; }
+.report-tabs { display: flex; gap: 6px; }
 .report-tab {
   padding: 7px 16px; border: 1px solid var(--sk-surface-border);
   border-radius: var(--sk-radius-sm); background: var(--sk-bg-3);
   color: var(--sk-text-3); cursor: pointer; font-size: 13px;
   font-family: var(--sk-font); transition: all .15s var(--sk-ease);
-  white-space: nowrap;
 }
 .report-tab:hover { border-color: var(--sk-primary); color: var(--sk-text); }
 .report-tab.active { background: var(--sk-grad-primary); color: #fff; border-color: transparent; }
-.reports-body { flex: 1; position: relative; }
-.reports-body .placeholder { height: 100%; }
-.reports-body .app-frame { width: 100%; height: 100%; border: none; background: var(--sk-bg-1); }
+.btn-pdf {
+  padding: 7px 16px; background: var(--sk-grad-primary); color: #fff; border: none;
+  border-radius: var(--sk-radius-sm); cursor: pointer; font-size: 13px; font-weight: 600;
+  font-family: var(--sk-font);
+}
+.btn-pdf:hover { opacity: .9; }
+.reports-body { flex: 1; overflow: auto; padding: 20px 28px; }
+.reports-body .placeholder { text-align: center; padding: 60px 0; color: var(--sk-text-3); }
+
+/* テーブル */
+.shinryo-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+.shinryo-table caption { text-align: left; font-size: 14px; font-weight: 700; padding: 8px 0; color: var(--sk-text); }
+.shinryo-table th { background: var(--sk-bg-3); padding: 8px 10px; text-align: right; border-bottom: 2px solid var(--sk-surface-border); font-weight: 600; white-space: nowrap; }
+.shinryo-table th:first-child { text-align: left; }
+.shinryo-table td { padding: 6px 10px; text-align: right; border-bottom: 1px solid var(--sk-surface-border); }
+.shinryo-table td:first-child { text-align: left; font-weight: 500; }
+.shinryo-table tr.total-row { font-weight: 700; border-top: 2px solid var(--sk-text-3); }
+.shinryo-table tr.total-row td { padding-top: 8px; }
+
+/* サマリーカード */
+.summary-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px; }
+.summary-card { background: var(--sk-bg-1); border: 1px solid var(--sk-surface-border); border-radius: var(--sk-radius-sm); padding: 14px; }
+.summary-card .label { font-size: 11px; color: var(--sk-text-3); margin-bottom: 4px; }
+.summary-card .value { font-size: 20px; font-weight: 700; color: var(--sk-text); }
+
+/* 印刷用 */
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body { padding: 0 !important; }
+  .sidebar, .no-print { display: none !important; }
+  .reports-page { height: auto; }
+  .reports-header { padding: 8px 0; border: none; }
+  .reports-body { padding: 0; overflow: visible; }
+  .shinryo-table { font-size: 9px; }
+  .shinryo-table th, .shinryo-table td { padding: 3px 5px; }
+  .summary-card .value { font-size: 14px; }
+}
 </style>
 
 <script>
 (function() {
-  var tabs = document.getElementById('reportTabs');
-  var frame = document.getElementById('reportFrame');
-  var empty = document.getElementById('emptyState');
-  var first = true;
+  var DATA = null;
+  var currentTab = 'inpatient';
 
-  function friendlyName(filename) {
-    return filename.replace(/\.html$/, '').replace(/_/g, ' ');
+  function fmt(n) {
+    if (!n && n !== 0) return '-';
+    return n === 0 ? '-' : Number(n).toLocaleString();
   }
 
-  function showFrame(url, btn) {
-    frame.src = url;
-    frame.style.display = 'block';
-    empty.style.display = 'none';
-    tabs.querySelectorAll('.report-tab').forEach(function(t) { t.classList.remove('active'); });
-    btn.classList.add('active');
+  function switchTab(tab, btn) {
+    currentTab = tab;
+    document.querySelectorAll('.report-tab').forEach(function(t) { t.classList.remove('active'); });
+    if (btn) btn.classList.add('active');
+    render();
+  }
+  window.switchTab = switchTab;
+
+  function render() {
+    if (!DATA) return;
+    var body = document.getElementById('reportsBody');
+    if (currentTab === 'inpatient') {
+      body.innerHTML = renderInpatient();
+    } else {
+      body.innerHTML = renderPharmacy();
+    }
   }
 
-  function addTab(label, url) {
-    var btn = document.createElement('button');
-    btn.className = 'report-tab';
-    btn.textContent = label;
-    btn.onclick = function() { showFrame(url, btn); };
-    tabs.appendChild(btn);
-    if (first) { btn.click(); first = false; }
+  function renderInpatient() {
+    var inp = DATA.inpatient;
+    var months = Object.keys(inp).sort(function(a, b) {
+      return parseInt(a) - parseInt(b);
+    });
+    if (!months.length) return '<div class="placeholder"><p>入院収益データがありません</p></div>';
+
+    // サマリーカード（最新月）
+    var latest = inp[months[months.length - 1]];
+    var html = '<div class="summary-cards">';
+    html += card('合計点数（最新月）', fmt(latest.total) + '点');
+    html += card('食事', fmt(latest.food) + '点');
+    var wardTotal = 0;
+    for (var w in latest.ward) wardTotal += latest.ward[w];
+    html += card('入院料合計', fmt(wardTotal) + '点');
+    html += '</div>';
+
+    // 診療区分別テーブル
+    html += buildTable('診療区分別', months, inp, 'compare');
+
+    // 病棟別テーブル
+    html += buildTable('病棟別入院料', months, inp, 'ward');
+
+    // 精神科専門詳細テーブル
+    html += buildTable('精神科専門 詳細', months, inp, 'psych_detail');
+
+    return html;
   }
 
-  // 年度レポート（入院収益など）
-  fetch('/api/shinryo_annual')
-    .then(function(r) { return r.json(); })
-    .then(function(files) {
-      files.forEach(function(f) {
-        addTab(friendlyName(f), '/api/shinryo_annual/' + encodeURIComponent(f));
-      });
-    })
-    .then(function() {
-      // 月別レポート（薬剤など）
-      return fetch('/api/reports/months').then(function(r) { return r.json(); });
-    })
-    .then(function(months) {
+  function renderPharmacy() {
+    var pharm = DATA.pharmacy;
+    var months = Object.keys(pharm).sort(function(a, b) {
+      return parseInt(a) - parseInt(b);
+    });
+    if (!months.length) return '<div class="placeholder"><p>薬剤データがありません</p></div>';
+
+    // サマリーカード（最新月）
+    var latest = pharm[months[months.length - 1]];
+    var html = '<div class="summary-cards">';
+    html += card('合計金額（最新月）', fmt(latest.grand_total) + '円');
+    html += card('品目数', fmt(latest.unique_drugs));
+    html += card('レコード数', fmt(latest.record_count));
+    html += '</div>';
+
+    // カテゴリ別テーブル
+    var allCats = {};
+    months.forEach(function(m) {
+      var cats = pharm[m].categories || {};
+      for (var c in cats) allCats[c] = true;
+    });
+    var catNames = Object.keys(allCats);
+
+    html += '<table class="shinryo-table"><caption>カテゴリ別薬剤費</caption>';
+    html += '<thead><tr><th>カテゴリ</th>';
+    months.forEach(function(m) { html += '<th>' + m + '</th>'; });
+    html += '<th>合計</th></tr></thead><tbody>';
+
+    var monthTotals = {};
+    months.forEach(function(m) { monthTotals[m] = 0; });
+    var grandTotal = 0;
+
+    catNames.forEach(function(cat) {
+      html += '<tr><td>' + cat + '</td>';
+      var rowTotal = 0;
       months.forEach(function(m) {
-        m.files.forEach(function(f) {
-          addTab(friendlyName(f), '/api/reports/' + encodeURIComponent(m.month) + '/' + encodeURIComponent(f));
-        });
+        var v = (pharm[m].categories || {})[cat] || 0;
+        html += '<td>' + fmt(v) + '</td>';
+        rowTotal += v;
+        monthTotals[m] += v;
       });
+      html += '<td>' + fmt(rowTotal) + '</td></tr>';
+      grandTotal += rowTotal;
+    });
+
+    html += '<tr class="total-row"><td>合計</td>';
+    months.forEach(function(m) { html += '<td>' + fmt(monthTotals[m]) + '</td>'; });
+    html += '<td>' + fmt(grandTotal) + '</td></tr>';
+    html += '</tbody></table>';
+
+    return html;
+  }
+
+  function card(label, value) {
+    return '<div class="summary-card"><div class="label">' + label + '</div><div class="value">' + value + '</div></div>';
+  }
+
+  function buildTable(caption, months, data, key) {
+    // 全月からキーを収集
+    var allKeys = {};
+    months.forEach(function(m) {
+      var section = data[m][key] || {};
+      for (var k in section) allKeys[k] = true;
+    });
+    var names = Object.keys(allKeys);
+    if (!names.length) return '';
+
+    var html = '<table class="shinryo-table"><caption>' + caption + '</caption>';
+    html += '<thead><tr><th>項目</th>';
+    months.forEach(function(m) { html += '<th>' + m + '</th>'; });
+    html += '<th>合計</th></tr></thead><tbody>';
+
+    var monthTotals = {};
+    months.forEach(function(m) { monthTotals[m] = 0; });
+    var grandTotal = 0;
+
+    names.forEach(function(name) {
+      html += '<tr><td>' + name + '</td>';
+      var rowTotal = 0;
+      months.forEach(function(m) {
+        var v = (data[m][key] || {})[name] || 0;
+        html += '<td>' + fmt(v) + '</td>';
+        rowTotal += v;
+        monthTotals[m] += v;
+      });
+      html += '<td>' + fmt(rowTotal) + '</td></tr>';
+      grandTotal += rowTotal;
+    });
+
+    html += '<tr class="total-row"><td>合計</td>';
+    months.forEach(function(m) { html += '<td>' + fmt(monthTotals[m]) + '</td>'; });
+    html += '<td>' + fmt(grandTotal) + '</td></tr>';
+    html += '</tbody></table>';
+
+    return html;
+  }
+
+  // データ読み込み
+  fetch('/api/shinryo_data')
+    .then(function(r) { return r.json(); })
+    .then(function(d) {
+      DATA = d;
+      render();
+    })
+    .catch(function(e) {
+      document.getElementById('reportsBody').innerHTML =
+        '<div class="placeholder"><p>データ読み込みエラー: ' + e.message + '</p></div>';
     });
 })();
 </script>

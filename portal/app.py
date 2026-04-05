@@ -191,6 +191,32 @@ def pnl_export_pdf():
 # ---------------------------------------------------------------------------
 # 診療報酬API
 # ---------------------------------------------------------------------------
+@app.route('/api/shinryo_data')
+def shinryo_data():
+    """全月の薬剤JSON + 入院収益JSONを統合して返す"""
+    shinryo_dir = os.path.join(BASE_DIR, '診療')
+    result = {'pharmacy': {}, 'inpatient': {}}
+
+    # 薬剤月次データ（各月フォルダ内のJSON）
+    if os.path.isdir(shinryo_dir):
+        for entry in sorted(os.listdir(shinryo_dir)):
+            if re.match(r'^\d{1,2}月$', entry):
+                month_dir = os.path.join(shinryo_dir, entry)
+                for f in os.listdir(month_dir):
+                    if f.startswith('薬剤月次データ') and f.endswith('.json'):
+                        fpath = os.path.join(month_dir, f)
+                        with open(fpath, encoding='utf-8') as fp:
+                            result['pharmacy'][entry] = json.load(fp)
+
+    # 入院収益月次データ（診療/ルートのJSON）
+    inpatient_path = os.path.join(shinryo_dir, '入院収益月次データ.json')
+    if os.path.isfile(inpatient_path):
+        with open(inpatient_path, encoding='utf-8') as fp:
+            result['inpatient'] = json.load(fp)
+
+    return jsonify(result)
+
+
 @app.route('/api/reports/months')
 def reports_months():
     shinryo_dir = os.path.join(BASE_DIR, '診療')

@@ -1108,6 +1108,26 @@ def main():
             print(f'  旧ファイル削除: {old}')
     print(f'OK: {html_path}')
 
+    # JSON出力（診療/ルートに出力）
+    json_path = os.path.join(BASE_DIR, '入院収益月次データ.json')
+    json_data = {}
+    for m in sorted(all_months_data.keys()):
+        d = all_months_data[m]
+        json_data[f'{m}月'] = {
+            'total': d.get('total', 0),
+            'compare': d.get('compare', {}),
+            'ward': d.get('ward', {}),
+            'food': d.get('food', 0),
+            'psych_detail': d.get('psych_detail', {}),
+            'exam_detail': d.get('exam_detail', {}),
+            'test_detail': d.get('test_detail', {}),
+            'image_detail': d.get('image_detail', {}),
+        }
+    import json
+    with open(json_path, 'w', encoding='utf-8') as f:
+        json.dump(json_data, f, ensure_ascii=False, indent=2)
+    print(f'JSON: {json_path}')
+
     print(f'\n--- 集計 ---')
     for m in sorted(all_months_data.keys()):
         d = all_months_data[m]
