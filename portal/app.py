@@ -8,6 +8,7 @@ import re
 import json
 import threading
 
+import logging
 import subprocess
 import time
 
@@ -17,6 +18,17 @@ from jinja2 import ChoiceLoader, FileSystemLoader
 
 # ベースディレクトリ（プロジェクトルート = portal/ の親）
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+logger = logging.getLogger(__name__)
+
+
+def _atomic_json_write(filepath, data):
+    """アトミック書き込み: 一時ファイルに書き込み後リネーム（クラッシュ安全）"""
+    tmp = filepath + ".tmp"
+    with open(tmp, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.flush()
+        os.fsync(f.fileno())
+    os.replace(tmp, filepath)
 
 # ---------------------------------------------------------------------------
 # Flask初期化
@@ -33,7 +45,7 @@ app.jinja_loader = ChoiceLoader([
 ])
 app.config['TEMPLATES_AUTO_RELOAD'] = True
 app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024
-CORS(app)
+CORS(app, origins=["http://localhost:5000", "http://127.0.0.1:5000"])
 
 # ---------------------------------------------------------------------------
 # シフト管理（appに直接ルート登録、/はポータル側で定義するためスキップ）
@@ -298,8 +310,7 @@ def master_employees():
 def master_employees_save():
     path = os.path.join(BASE_DIR, 'shared', 'employees.json')
     data = request.get_json(force=True)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _atomic_json_write(path, data)
     return 'OK'
 
 
@@ -316,8 +327,7 @@ def master_bonus():
 def master_bonus_save():
     path = os.path.join(BASE_DIR, 'shared', 'bonus_contributions.json')
     data = request.get_json(force=True)
-    with open(path, 'w', encoding='utf-8') as f:
-        json.dump(data, f, ensure_ascii=False, indent=2)
+    _atomic_json_write(path, data)
     return 'OK'
 
 
@@ -399,24 +409,24 @@ def generate_shinryo_reports():
             if oldest_html > latest_src:
                 continue
         needs_inpatient = True
-        print(f"  薬剤レポート生成: {entry} ...")
+        logger.info("薬剤レポート生成: %s", entry)
         try:
             subprocess.run(
                 [python, os.path.join(shinryo_dir, 'pharmacy_report.py'), entry],
                 cwd=shinryo_dir, timeout=120, capture_output=True,
             )
         except Exception as e:
-            print(f"    薬剤レポートエラー ({entry}): {e}")
+            logger.exception("薬剤レポートエラー (%s): %s", entry, e)
     if needs_inpatient:
-        print("  入院レポート生成（全月一括）...")
+        logger.info("入院レポート生成（全月一括）")
         try:
             subprocess.run(
                 [python, os.path.join(shinryo_dir, 'inpatient_report.py')],
                 cwd=shinryo_dir, timeout=180, capture_output=True,
             )
         except Exception as e:
-            print(f"    入院レポートエラー: {e}")
-    print("  診療レポート生成完了")
+            logger.exception("入院レポートエラー: %s", e)
+    logger.info("診療レポート生成完了")
 
 
 def _hide_console():

@@ -8,9 +8,12 @@ TKC月次合算試算表PDFから重点項目を抽出
 import os
 import re
 import json
+import logging
 import calendar
 from datetime import datetime
 import pdfplumber
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # パス
@@ -386,7 +389,7 @@ def load_all_data():
             elif fname.lower().endswith('.txt'):
                 chutaikyo_data = parse_chutaikyo_txt(filepath)
         except Exception as e:
-            print(f"Error processing {fname}: {e}")
+            logger.exception("Error processing %s: %s", fname, e)
     if not pdf_results:
         return {'error': 'No PDF files found in data/'}
     all_data = merge_all_monthly_data(pdf_results, chutaikyo_data)
@@ -423,7 +426,7 @@ def load_all_data():
                                     acc['monthly_data'][matched[0]] = v
                         break
         except Exception as e:
-            print(f"Error loading manual inputs: {e}")
+            logger.exception("Error loading manual inputs: %s", e)
     return result
 
 
